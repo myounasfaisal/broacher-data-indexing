@@ -1,0 +1,36 @@
+# Web framework + server
+fastapi==0.112.0
+uvicorn[standard]==0.30.5
+python-multipart==0.0.9          # required for file uploads
+
+# Claude API (recent enough for the claude-haiku-4-5 model + document blocks)
+anthropic>=0.40.0
+
+# Supabase (Postgres reads/writes)
+supabase==2.7.0
+
+# Auth: verifying Supabase JWTs on protected routes
+pyjwt==2.9.0
+
+# HTTP client: exchange-rate fetch (services/rates.py); also a supabase dep
+httpx==0.27.0
+# Dedup: fuzzy name matching (CAS-first, see services/dedup.py)
+rapidfuzz==3.9.0
+
+# Reliability + config
+tenacity==9.0.0
+pydantic-settings==2.4.0
+python-dotenv==1.0.1
+
+# Rate limiting on the upload endpoint (security checklist)
+slowapi==0.1.9
+
+# Gemini API (Google AI / Vertex)
+google-genai>=1.0.0
+
+# Qwen vision OCR via OpenAI-compatible API (Dashscope or local)
+openai>=1.30.0
+
+# PDF page detection + image rendering (scanned PDF detection)
+pymupdf>=1.24.0
+json-repair==0.30.0  # tolerant JSON parsing for flaky LLM output on dense pages

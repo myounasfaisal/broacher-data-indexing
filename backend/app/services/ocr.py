@@ -1,0 +1,147 @@
+"""
+Qwen vision OCR for scanned PDF pages.
+
+Takes PNG page images rendered by pdf_utils and sends each to Qwen's vision
+model via the OpenAI-compatible API (works with Dashscope or a local vLLM /
+Ollama deployment). The model is asked to faithfully reproduce ALL visible
+text on the page — no summarisation, no interpretation.
+
+The concatenated output is then passed to the extraction model (Gemini or
+Claude) as plain text, so even scanned brochures get structured extraction.
+"""
+
+from __future__ import annotations
+
+import base64
+import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+from openai import OpenAI
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
+
+from app.config import settings
+
+logger = logging.getLogger(__name__)
+
+# Lazy-initialised client (only created when OCR is actually needed).
+_client: OpenAI | None = None
+
+
+def _get_client() -> OpenAI:
+    global _client
+    if _client is None:
+        _client = OpenAI(
+            api_key=settings.qwen_api_key,
+            base_url=settings.qwen_api_base,
+        )
+    return _client
+
+
+# The OCR prompt asks Qwen to be a faithful text extractor — no
+# interpretation, no summarisation, preserve layout where possible.
+_OCR_PROMPT = """\
+You are an OCR engine. The image is one page of a scanned document.
+Extract ALL visible text from the image faithfully and completely.
+
+Rules:
+- Reproduce the text exactly as it appears, preserving the original language \
+and script (Chinese, English, Japanese, Korean, German, Arabic, etc.).
+- Maintain the logical reading order (top to bottom, left to right for LTR \
+scripts, right to left for RTL scripts).
+- Separate distinct sections or columns with blank lines.
+- Do NOT summarise, interpret, or add commentary. Output only the extracted text.
+- If a section is illegible, write [illegible] in its place.
+"""
+
+# Retry on transient errors from the OpenAI-compatible endpoint.
+_RETRYABLE = (Exception,)  # broad — the openai SDK raises various errors
+
+
+@retry(
+    retry=retry_if_exception_type(_RETRYABLE),
+    stop=stop_after_attempt(settings.api_max_retries),
+    wait=wait_exponential(multiplier=1, min=2, max=30),
+    reraise=True,
+)
+def _ocr_single_page(png_bytes: bytes, page_number: int) -> str:
+    """Send one page image to Qwen and return the extracted text."""
+    b64 = base64.standard_b64encode(png_bytes).decode("ascii")
+
+    response = _get_client().chat.completions.create(
+        model=settings.qwen_model,
+        max_tokens=4096,
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/png;base64,{b64}",
+                        },
+                    },
+                    {"type": "text", "text": _OCR_PROMPT},
+                ],
+            }
+        ],
+    )
+
+    text = response.choices[0].message.content or ""
+    logger.debug("OCR page %d: %d chars extracted", page_number, len(text))
+    return text.strip()
+
+
+def _ocr_page_safe(png_bytes: bytes, page_number: int) -> str:
+    """OCR one page, converting any failure into an inline marker (so one bad
+    page never sinks the batch)."""
+    try:
+        text = _ocr_single_page(png_bytes, page_number=page_number)
+        return text or "[no text detected]"
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("OCR failed for page %d: %s", page_number, exc)
+        return f"[OCR failed: {exc}]"
+
+
+def ocr_pages(page_images: list[bytes]) -> str:
+    """
+    Run Qwen vision OCR on a list of page images (PNG bytes).
+
+    Returns all extracted text concatenated in page order with page separators.
+    Pages are OCR'd CONCURRENTLY (up to settings.page_concurrency) to cut
+    wall-clock time — they're independent — while results are re-assembled in
+    order. Set page_concurrency=1 for fully sequential behaviour.
+    """
+    if not page_images:
+        return ""
+
+    workers = max(1, min(settings.page_concurrency, len(page_images)))
+    logger.info(
+        "Starting Qwen OCR for %d page(s) (concurrency=%d)",
+        len(page_images), workers,
+    )
+
+    if workers == 1:
+        texts = [
+            _ocr_page_safe(png, i) for i, png in enumerate(page_images, start=1)
+        ]
+    else:
+        texts = [""] * len(page_images)
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            futures = {
+                pool.submit(_ocr_page_safe, png, i + 1): i
+                for i, png in enumerate(page_images)
+            }
+            for fut in as_completed(futures):
+                texts[futures[fut]] = fut.result()
+
+    parts = [f"--- Page {i} ---\n{t}" for i, t in enumerate(texts, start=1)]
+    result = "\n\n".join(parts)
+    logger.info(
+        "Qwen OCR complete: %d pages, %d total chars", len(page_images), len(result)
+    )
+    return result

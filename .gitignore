@@ -1,0 +1,23 @@
+# Secrets — never commit real env files. Only .env.example is tracked.
+.env
+.env.local
+.env.*.local
+
+# Node / frontend
+node_modules/
+frontend/dist/
+frontend/.vite/
+*.log
+
+# Python / backend
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+backend/.pytest_cache/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

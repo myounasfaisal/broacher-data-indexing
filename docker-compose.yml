@@ -1,0 +1,16 @@
+# Convenience runner for the backend container (backend only — the frontend is
+# a static Vite build served elsewhere).
+#
+#   docker compose up --build
+#
+# Reads secrets/config from backend/.env at runtime (never baked into the image).
+# The API is published on http://localhost:8000.
+services:
+  backend:
+    build: ./backend
+    image: brochure-backend
+    env_file:
+      - ./backend/.env
+    ports:
+      - "8000:8000"
+    restart: unless-stopped

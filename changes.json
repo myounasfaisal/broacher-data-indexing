@@ -1,0 +1,555 @@
+{
+  "project": "Chemical Brochure Extraction Platform",
+  "task": "Roles (admin/manager/viewer) + admin user management, server-side upload job queue with live progress (reload-safe), signup auto-login, search sorts + A-Z alphabet tabs + numbered pagination (max 15/page), duplicate-upload dedup (PDF hash + listing key), bilingual company names, and per-file upload controls (pause/resume/cancel/restart/remove) with per-file animated progress",
+  "upload_controls": {
+    "why": "User wanted per-file control while files upload, plus per-file loading (not one global bar).",
+    "controls": "pause (queued->paused), resume (paused->queued), cancel (queued/paused/processing->cancelled), restart (failed/cancelled->queued, re-runs), remove (drop from list). Server sends can_pause/can_resume/can_cancel/can_restart/can_remove per job so the UI shows only valid buttons.",
+    "limitation": "A processing file's AI call can't be interrupted; cancel drops its result and stops saving more products (already-saved products remain, they're valid). Pause only applies to files still queued.",
+    "worker": "jobs.py rewritten from asyncio.Queue to a scan-based loop + wake Event so a waiting job's state can change (pause/cancel). Statuses: queued|processing|paused|done|failed|cancelled.",
+    "restart": "PDF bytes kept for failed/cancelled jobs (dropped on success/removal) so restart re-runs without re-upload; idempotent via the listing dedup key.",
+    "frontend": "UploadJobRow.tsx: per-file animated 'fake' progress bar (queued -> creeps during extraction -> tracks 'saving product i/N' -> 100%, colored by status) + lucide icon buttons per can_* flags. UploadQueue renders one row per job + optimistic 'Uploading...' placeholders during the client POST."
+  },
+  "status": "completed",
+  "date": "2026-07-14",
+  "details_doc": "CHANGES.md",
+  "dedup": {
+    "why": "Re-uploading the same brochure (same or different filename) created duplicate listings and re-ran the full AI+PubChem+fuzzy pipeline each time.",
+    "level_1_pdf_hash": "SHA-256 of PDF bytes stored in the new 'documents' table. jobs.enqueue() short-circuits an identical re-upload (or a same-batch duplicate via an in-memory in-flight hash set) to a done job with duplicate=true — no AI call, no inserts. Content-based, so renamed copies are caught.",
+    "level_2_listing_key": "listings.dedup_key = company_id|name_raw(lower,trim)|price|currency|purity, UNIQUE index, insert_listing upserts on it. Keyed on name_raw NOT chemical_id (the fuzzy matcher over-merges distinct grades onto one chemical_id — keying on it would delete real products). company_id is in the key, so the SAME chemical from DIFFERENT suppliers stays as separate listings.",
+    "bilingual_company": "companies.company_name_en added; extraction returns company_name (as printed) + company_name_en; resolve_company matches on either name (case-insensitive), backfills English, matches in Python to tolerate commas/parens in supplier names.",
+    "chemical_resolution": "CAS-first flow (dedup.py, part 3): CAS present -> match on CAS ONLY, else create new (name never consulted, so a CAS-bearing product never fuzzy-merges); no CAS -> exact English name reuse, else fuzzy token_sort_ratio>=97 (flagged needs_review), else create new. PubChem lookup removed. Fixes the part-2 over-merge and raises the threshold from 90 to 97."
+  },
+  "provider_configured": "qwen",
+  "roles": {
+    "admin": "search + upload + manage users (Users page)",
+    "manager": "search + upload brochures",
+    "viewer": "search only",
+    "note": "New signups default to 'viewer' — the LIVE handle_new_user trigger has always inserted 'viewer' (earlier docs claiming 'admin' were wrong; db/schema.sql corrected 2026-07-16). Promote via /admin/users; an admin cannot change their OWN role (backend returns 400)."
+  },
+  "test_credentials": {
+    "admin": {
+      "email": "testadmin@brochure-app.net",
+      "password": "password123",
+      "role": "admin"
+    },
+    "viewer": {
+      "email": "testviewer@brochure-app.net",
+      "password": "password123",
+      "role": "viewer (demoted 2026-07-17 to its intended role)"
+    }
+  },
+  "api_surface": {
+    "GET /search": "auth: any user. Params: q, cas, min_price, max_price (USD — compared against normalized price_usd), min_purity, max_purity, details_q (loose JSONB match), priced_only, sort (price sorts order by price_usd, nulls LAST), letter (a-z), page, page_size (max 15). Rows include price_usd (stored) + price_pkr (computed at read time).",
+    "PATCH /listings/{id}": "auth: admin|manager (widened 2026-07-19). Data-fix: any of name_raw/name_en/cas_number/price/currency/purity/needs_review/details (only fields present change; details is a full-object replacement). Recomputes dedup_key + price_usd; collision with an identical listing -> 409. Audited.",
+    "DELETE /listings/{id}": "auth: admin|manager (widened 2026-07-19). Permanently removes one listing. Audited (name captured before deletion).",
+    "POST /listings/bulk-delete": "auth: admin|manager (widened 2026-07-19). Body {ids: [uuid, ...]} (1-200). Deletes the set in one .in_() call; unknown ids skipped. Returns {deleted: n} = rows actually removed. Malformed id -> 400. Drives the bulk-select UI on the search results, review queue, and per-upload listings expander. Audited.",
+    "GET /suppliers": "auth: any user. Paginated suppliers directory: names, email, contact_number, websites[] (from listings), listing_count, created_at.",
+    "GET /admin/review": "auth: admin|manager. Paginated needs_review queue, newest first; each item carries source_content_hash/source_filename from the documents ledger.",
+    "GET /admin/audit": "auth: ADMIN only. Paginated activity log (upload/update_listing/delete_listing/bulk_delete_listings/undo_upload) with actor emails resolved at read time.",
+    "DELETE /uploads/{content_hash}": "auth: admin (any) or manager (own). Undo an upload: deletes its listings (EXCEPT ids shared with another document's listing_ids) + the ledger row so the PDF can be re-uploaded. Returns {deleted_listings, kept_shared}.",
+    "POST /search/ai": "auth: any user; rate-limited 20/min. Body {query}. An LLM converts the sentence into InterpretedFilters ONLY — rows come from the same search_listings path as GET /search (model never generates data). Returns {interpreted_filters, count, page, page_size, total_pages, results}. LLM/parse failure -> 502.",
+    "GET /listings/{id}": "auth: any user. Full listing for the product page incl. details JSONB + company_website. Non-UUID or unknown id -> 404.",
+    "POST /upload-jobs": "auth: admin|manager. Enqueue one PDF (validated: MIME, %PDF- magic, size). Returns the job (202).",
+    "GET /upload-jobs": "auth: admin|manager. Caller's jobs with live stage text + can_* control flags — polling this is how the UI shows per-file progress and survives reloads.",
+    "POST /upload-jobs/clear-finished": "auth: admin|manager. Remove caller's done/failed/cancelled jobs.",
+    "POST /upload-jobs/{id}/action": "auth: admin|manager. Body {action: pause|resume|cancel|restart|remove}. Per-file control. Returns {job} or {removed:true}. 400 on invalid action for the job's state.",
+    "GET /users": "auth: admin. All users with roles (emails via Supabase Admin Auth API).",
+    "PATCH /users/{id}/role": "auth: admin. Body {role: admin|manager|viewer}. Self-change blocked (400).",
+    "removed": "POST /upload-brochure (replaced by the job queue)"
+  },
+  "db_migrations_applied": [
+    {
+      "name": "allow_manager_role",
+      "sql": "profiles.role CHECK widened to ('admin','manager','viewer')"
+    },
+    {
+      "name": "dedup_documents_and_bilingual_company",
+      "sql": "created 'documents' table (content_hash PK) + RLS read policy; added companies.company_name_en; added listings.dedup_key + backfilled all rows + UNIQUE index"
+    },
+    {
+      "name": "add_documents_listing_ids",
+      "sql": "added documents.listing_ids uuid[] (which listings each upload produced)"
+    },
+    {
+      "name": "add_listing_details_and_website",
+      "sql": "added listings.details jsonb + listings.company_website text + GIN index on details + PostgREST computed field details_text(listings) (details::text; EXECUTE revoked from client roles, granted to service_role) for server-side loose matching with correct pagination counts"
+    },
+    {
+      "name": "add_price_usd_and_exchange_rates",
+      "sql": "added listings.price_usd numeric (+index) — USD-normalized price computed by the backend; created exchange_rates table (code PK, rate_per_usd, updated_at) as the persisted rate snapshot (RLS on, no client policies). All 28 priced listings backfilled via services/rates.py."
+    }
+  ],
+  "live_db_shape": {
+    "companies": "id bigint PK, company_name text, company_name_en text, contact_number bigint, email text, created_at",
+    "chemicals": "id uuid PK, cas_number text unique, name_en text, created_at",
+    "listings": "id uuid PK, chemical_id uuid FK, company_id bigint FK, name_raw, name_en, cas_number, price, currency, price_usd numeric (normalized; drives price sorts/bounds), purity, details jsonb (flexible per-brochure attributes), company_website text, needs_review, uploaded_by, dedup_key text UNIQUE, created_at (company_name column REMOVED — joined from companies)",
+    "exchange_rates": "code text PK, rate_per_usd numeric, updated_at — snapshot refreshed by services/rates.py from open.er-api.com (free, no key)",
+    "documents": "content_hash text PK (sha256 of PDF), filename, company_id bigint FK, product_count int, uploaded_by uuid, created_at",
+    "profiles": "id uuid PK -> auth.users, role text (admin|manager|viewer)"
+  },
+  "changes": [
+    {
+      "file": "backend/app/dependencies.py",
+      "action": "modify",
+      "description": "Added require_uploader dependency: allows role 'admin' OR 'manager' on upload endpoints. require_admin unchanged (user management only)."
+    },
+    {
+      "file": "backend/app/services/jobs.py",
+      "action": "create",
+      "description": "In-memory upload job queue: single background worker processes PDFs sequentially; per-job status (queued/processing/done/failed) + live stage text ('Saving product 3/12: Acetone'). PDF bytes dropped when a job finishes; finished records pruned after 6h; 512MB pending cap -> 503. Server-side state is what makes the upload page reload-safe."
+    },
+    {
+      "file": "backend/app/services/database.py",
+      "action": "modify",
+      "description": "search_listings: server-side pagination (returns rows+total via count=exact), sorts name_asc/name_desc/price_asc/price_desc, letter filter using ilike 'x*' (NOT 'x%' — see gotchas), stable id tiebreaker. Added list_users_with_roles (Admin Auth API + profiles merge), set_user_role, _flatten_company (lifts embedded companies.company_name to flat company_name)."
+    },
+    {
+      "file": "backend/app/routers/upload.py",
+      "action": "rewrite",
+      "description": "Replaced synchronous POST /upload-brochure with job endpoints: POST /upload-jobs (validate+enqueue, 202, rate limit 120/min), GET /upload-jobs, POST /upload-jobs/clear-finished. All guarded by require_uploader."
+    },
+    {
+      "file": "backend/app/routers/users.py",
+      "action": "create",
+      "description": "Admin-only user management: GET /users, PATCH /users/{id}/role. Changing your own role is blocked (400)."
+    },
+    {
+      "file": "backend/app/routers/search.py",
+      "action": "modify",
+      "description": "Added sort/letter/page/page_size params (page_size hard-capped at 15 -> 422 above). Response includes page, page_size, total_pages."
+    },
+    {
+      "file": "backend/app/schemas/chemical.py",
+      "action": "modify",
+      "description": "Added UploadJobOut, UploadJobsResponse, ManagedUser, UsersResponse, RoleUpdate. SearchResponse gained page/page_size/total_pages. ListingOut: company_id is int (bigint FK), company_name defaults to ''. UploadResponse removed with the old endpoint."
+    },
+    {
+      "file": "backend/app/main.py",
+      "action": "modify",
+      "description": "Mounted the users router."
+    },
+    {
+      "file": "db/schema.sql",
+      "action": "modify",
+      "description": "Documented the manager role in the profiles CHECK (live DB migrated via 'allow_manager_role')."
+    },
+    {
+      "file": "frontend/src/lib/api.ts",
+      "action": "modify",
+      "description": "Added enqueueUpload/listUploadJobs/clearFinishedJobs, listUsers/setUserRole, SortOption type, paginated SearchParams/SearchResponse. Removed old uploadBrochure."
+    },
+    {
+      "file": "frontend/src/types/chemical.ts",
+      "action": "modify",
+      "description": "UserRole gained 'manager'. Added UploadJob and ManagedUser interfaces. Listing.company_id is number|null."
+    },
+    {
+      "file": "frontend/src/hooks/useAuth.tsx",
+      "action": "modify",
+      "description": "signUp now returns the Supabase session (non-null when email confirmation is disabled) to enable auto-login."
+    },
+    {
+      "file": "frontend/src/pages/LoginPage.tsx",
+      "action": "modify",
+      "description": "After signup: navigates straight to /search when a session exists; otherwise shows 'check your email' and flips to sign-in."
+    },
+    {
+      "file": "frontend/src/components/ProtectedRoute.tsx",
+      "action": "modify",
+      "description": "role prop is now 'admin' | 'uploader' (uploader = admin OR manager)."
+    },
+    {
+      "file": "frontend/src/App.tsx",
+      "action": "modify",
+      "description": "Upload nav/route for admin+manager, Users nav/route for admin, role badge in the navbar, active-link highlighting."
+    },
+    {
+      "file": "frontend/src/pages/AdminUsersPage.tsx",
+      "action": "create",
+      "description": "Users table (email/role/joined/last sign-in) with per-row role dropdown; own row locked; react-query mutation + toasts."
+    },
+    {
+      "file": "frontend/src/pages/AdminUploadPage.tsx",
+      "action": "rewrite",
+      "description": "Files enqueue to the server immediately on selection; page polls GET /upload-jobs every 1.5s while active (stops when idle); 'Clear finished' button. Reload restores the queue from the server."
+    },
+    {
+      "file": "frontend/src/components/upload/UploadQueue.tsx",
+      "action": "rewrite",
+      "description": "Renders server UploadJob[]: overall progress bar (X of N, %), per-file status badge + live stage/error line."
+    },
+    {
+      "file": "frontend/src/components/upload/UploadSummary.tsx",
+      "action": "rewrite",
+      "description": "Batch totals from server jobs: succeeded/failed counts, listings saved, review flags."
+    },
+    {
+      "file": "frontend/src/pages/SearchPage.tsx",
+      "action": "rewrite",
+      "description": "Letter tabs + numbered pagination (15/page) + 'Page X of Y'; keepPreviousData so pages don't flicker while loading; filters reset to page 1."
+    },
+    {
+      "file": "frontend/src/components/search/SearchFilters.tsx",
+      "action": "modify",
+      "description": "Sort select now: price low->high, price high->low, name A->Z, name Z->A."
+    },
+    {
+      "file": "frontend/src/components/search/AlphabetBar.tsx",
+      "action": "create",
+      "description": "All + A-Z tab bar; each letter has its own page count server-side."
+    },
+    {
+      "file": "frontend/src/components/search/Pagination.tsx",
+      "action": "create",
+      "description": "Prev/Next + windowed numbered pages (1 ... 4 5 [6] 7 8 ... 20)."
+    },
+    {
+      "file": "backend/app/services/database.py",
+      "action": "modify",
+      "description": "[dedup] resolve_company now takes+stores company_name_en and matches either name in Python (tolerates commas/parens). Added make_dedup_key/_normalize_price (match SQL backfill). insert_listing upserts on dedup_key. Added find_document/record_document. SEARCH_COLUMNS + _flatten_company expose company_name_en."
+    },
+    {
+      "file": "backend/app/services/jobs.py",
+      "action": "modify",
+      "description": "[dedup] enqueue() hashes PDF bytes; skips identical re-uploads (documents ledger) and same-batch dupes (in-memory _inflight_hashes) as done jobs with duplicate=true. Worker records the document on success, releases the in-flight hash. Job gains duplicate/content_hash/company_id fields; passes company_name_en to resolve_company."
+    },
+    {
+      "file": "backend/app/schemas/chemical.py",
+      "action": "modify",
+      "description": "[dedup] ExtractionResult.company_name_en, ListingOut.company_name_en, UploadJobOut.duplicate."
+    },
+    {
+      "file": "backend/app/prompts/extraction_prompt.py",
+      "action": "modify",
+      "description": "[dedup] Prompt now requires company_name (as printed) AND company_name_en (English translation)."
+    },
+    {
+      "file": "frontend/src/types/chemical.ts",
+      "action": "modify",
+      "description": "[dedup] Listing.company_name_en, UploadJob.duplicate."
+    },
+    {
+      "file": "frontend/src/components/search/ResultsTable.tsx",
+      "action": "modify",
+      "description": "[dedup] Supplier cell shows English company name with the original-language name underneath."
+    },
+    {
+      "file": "frontend/src/components/upload/UploadQueue.tsx",
+      "action": "modify",
+      "description": "[dedup] 'duplicate' badge for skipped (already-processed) PDFs."
+    },
+    {
+      "file": "frontend/src/components/upload/UploadSummary.tsx",
+      "action": "modify",
+      "description": "[dedup] Batch summary counts 'N duplicates skipped' separately from processed."
+    },
+    {
+      "file": "backend/app/services/dedup.py",
+      "action": "rewrite",
+      "description": "[part 3] CAS-first resolution: CAS present -> match on CAS only, else create new (name ignored); no CAS -> exact name reuse, else fuzzy>=97 (needs_review), else create new. Removed PubChem lookup + httpx/tenacity usage. FUZZY_THRESHOLD 90 -> 97."
+    },
+    {
+      "file": "backend/requirements.txt",
+      "action": "modify",
+      "description": "[part 3] Updated dedup comment (PubChem removed; httpx now only transitive)."
+    },
+    {
+      "file": "backend/app/services/jobs.py",
+      "action": "rewrite",
+      "description": "[part 4] Worker rewritten to scan-based loop + wake Event. Per-job control via apply_action (pause/resume/cancel/restart/remove); statuses queued|processing|paused|done|failed|cancelled; cancel checked at checkpoints in _process; PDF bytes kept for failed/cancelled (restart); can_* properties."
+    },
+    {
+      "file": "backend/app/routers/upload.py",
+      "action": "modify",
+      "description": "[part 4] Added POST /upload-jobs/{id}/action (pause/resume/cancel/restart/remove) -> {job} or {removed:true}; ActionError -> 400."
+    },
+    {
+      "file": "backend/app/schemas/chemical.py",
+      "action": "modify",
+      "description": "[part 4] UploadJobOut gains paused/cancelled statuses + can_* flags; added JobActionRequest."
+    },
+    {
+      "file": "frontend/src/components/upload/UploadJobRow.tsx",
+      "action": "create",
+      "description": "[part 4] Per-file row: animated fake progress bar (status-colored, stage-driven) + lucide control buttons shown per can_* flags, each with a busy spinner."
+    },
+    {
+      "file": "frontend/src/components/upload/UploadQueue.tsx",
+      "action": "rewrite",
+      "description": "[part 4] Renders one UploadJobRow per job + optimistic 'Uploading...' placeholder rows for files still being POSTed."
+    },
+    {
+      "file": "frontend/src/pages/AdminUploadPage.tsx",
+      "action": "modify",
+      "description": "[part 4] Tracks in-flight uploads (optimistic rows), wires handleAction -> api.jobAction, polls 1.2s while active."
+    },
+    {
+      "file": "frontend/src/components/upload/UploadSummary.tsx",
+      "action": "modify",
+      "description": "[part 4] Terminal check + counts include 'cancelled'."
+    },
+    {
+      "file": "frontend/src/lib/api.ts",
+      "action": "modify",
+      "description": "[part 4] Added jobAction(id, action)."
+    },
+    {
+      "file": "frontend/src/types/chemical.ts",
+      "action": "modify",
+      "description": "[part 4] UploadJobStatus + JobAction types; can_* flags on UploadJob."
+    },
+    {
+      "file": "frontend/src/hooks/useAuth.tsx",
+      "action": "modify",
+      "description": "[part 9] Added resetPassword(email) (resetPasswordForEmail -> redirectTo /reset-password) and updatePassword(password) (auth.updateUser)."
+    },
+    {
+      "file": "frontend/src/pages/LoginPage.tsx",
+      "action": "rewrite",
+      "description": "[part 9] Three modes: signin | signup | forgot. 'Forgot password?' link next to the password label emails a Supabase recovery link."
+    },
+    {
+      "file": "frontend/src/pages/ResetPasswordPage.tsx",
+      "action": "create",
+      "description": "[part 9] Recovery-link landing page: waits ~1.5s for supabase-js to consume the hash token (avoids a false 'expired' flash), then new-password + confirm form -> auth.updateUser -> /search. Clear invalid/expired-link state."
+    },
+    {
+      "file": "frontend/src/App.tsx",
+      "action": "modify",
+      "description": "[part 9] /reset-password route; nav chrome hidden there like /login."
+    },
+    {
+      "file": "frontend/src/components/ui/skeleton.tsx",
+      "action": "create",
+      "description": "[part 9] Minimal pulsing-skeleton primitive (shadcn-compatible)."
+    },
+    {
+      "file": "frontend/src/components/search/ResultsTable.tsx",
+      "action": "rewrite",
+      "description": "[part 9] Review badge gained a hover/focus CSS tooltip (keyboard-accessible). Below md the table becomes one card per listing (mobile). Exports ResultsSkeleton."
+    },
+    {
+      "file": "frontend/src/components/ProtectedRoute.tsx",
+      "action": "modify",
+      "description": "[part 9] Full-page skeleton instead of 'Loading…' text."
+    },
+    {
+      "file": "frontend/src/pages/SearchPage.tsx",
+      "action": "modify",
+      "description": "[part 9] ResultsSkeleton rows instead of 'Loading…' text."
+    },
+    {
+      "file": "frontend/src/pages/AdminUsersPage.tsx",
+      "action": "modify",
+      "description": "[part 9] Skeleton rows instead of 'Loading…' text."
+    },
+    {
+      "file": "db/schema.sql",
+      "action": "modify",
+      "description": "[part 9] Corrected profiles.role default + handle_new_user back to 'viewer' to match the live DB (the 'admin' text was never applied — see roles.note)."
+    },
+    {
+      "file": "backend/app/prompts/nl_search_prompt.py",
+      "action": "create",
+      "description": "[part 10] NL search prompt: model returns ONLY the filter JSON (name_query/cas_number/min_price/max_price/min_purity/max_purity/details_query/sort); non-fixed attributes map to details_query; never answers or invents data."
+    },
+    {
+      "file": "backend/app/services/nl_search.py",
+      "action": "create",
+      "description": "[part 10] parse_query(): provider call via extraction.complete_text (SEARCH_PROVIDER, falls back to EXTRACTION_PROVIDER) -> fence-tolerant JSON parse -> pydantic InterpretedFilters validation. Failures raise NLSearchError (router -> 502); the model can never 'answer' directly."
+    },
+    {
+      "file": "backend/app/services/extraction.py",
+      "action": "modify",
+      "description": "[part 10] Added complete_text(prompt, provider, max_tokens): plain text-only completion reusing the same three clients + retry policy (no fourth provider path)."
+    },
+    {
+      "file": "backend/app/routers/search.py",
+      "action": "modify",
+      "description": "[part 10] POST /search/ai (require_user, slowapi 20/min, LLM call via asyncio.to_thread) and GET /listings/{id} (404 on non-UUID/unknown). GET /search gained cas/min_price/max_purity/details_q. Removed from __future__ annotations (see gotchas)."
+    },
+    {
+      "file": "backend/app/services/database.py",
+      "action": "modify",
+      "description": "[part 10] search_listings: cas_number/min_price/max_purity/details_query params (details via the details_text computed field — server-side, counts correct). New get_listing + DETAIL_COLUMNS (search rows still omit details)."
+    },
+    {
+      "file": "backend/app/schemas/chemical.py",
+      "action": "modify",
+      "description": "[part 10] ExtractedProduct.details, ExtractionResult.company_website, ListingOut.details/company_website, InterpretedFilters (validators: trim/cap text, bad sort -> price_asc), AISearchRequest/AISearchResponse."
+    },
+    {
+      "file": "backend/app/prompts/extraction_prompt.py",
+      "action": "modify",
+      "description": "[part 10] Products gain a flexible details object (omit absent keys, never null-fill); brochure gains company_website (only if actually printed — never guessed)."
+    },
+    {
+      "file": "backend/app/services/jobs.py",
+      "action": "modify",
+      "description": "[part 10] _process threads product.details + result.company_website into insert_listing (dedup key unchanged, so re-uploads update details via the existing upsert)."
+    },
+    {
+      "file": "backend/app/config.py",
+      "action": "modify",
+      "description": "[part 10] SEARCH_PROVIDER setting (empty = EXTRACTION_PROVIDER); also in .env.example."
+    },
+    {
+      "file": "frontend/src/components/search/AISearchBar.tsx",
+      "action": "create",
+      "description": "[part 10] NL search bar + FilterChips (interpretation as removable chips so the user verifies/corrects it; edits re-run the manual GET /search)."
+    },
+    {
+      "file": "frontend/src/pages/ProductDetail.tsx",
+      "action": "create",
+      "description": "[part 10] /product/:id — fixed fields + dynamic details spec-sheet (humanized keys, empty/null values dropped, card omitted when empty) + 'Supplier website (general site…)' outbound link only when printed."
+    },
+    {
+      "file": "frontend/src/pages/SearchPage.tsx",
+      "action": "modify",
+      "description": "[part 10] AI mode as a third mutually-exclusive mode; interpreted filters drive the normal GET /search (pagination/chips edits included); best-effort hint when a details chip yields zero rows."
+    },
+    {
+      "file": "frontend/src/components/search/ResultsTable.tsx",
+      "action": "modify",
+      "description": "[part 10] Product-name links to /product/:id (table + mobile cards); exports formatPrice/ReviewBadge for the detail page."
+    },
+    {
+      "file": "frontend/src/lib/api.ts",
+      "action": "modify",
+      "description": "[part 10] aiSearch(), getListing(); SearchParams gained cas/minPrice/maxPurity/detailsQ; InterpretedFilters/AISearchResponse types."
+    },
+    {
+      "file": "frontend/src/App.tsx",
+      "action": "modify",
+      "description": "[part 10] /product/:id route (any authenticated user)."
+    },
+    {
+      "file": "frontend/src/types/chemical.ts",
+      "action": "modify",
+      "description": "[part 10] Listing.details / Listing.company_website (populated only by the detail endpoint)."
+    },
+    {
+      "file": "backend/app/services/rates.py",
+      "action": "create",
+      "description": "[part 11] Exchange rates: open.er-api.com (free, no key) -> 12h memory cache -> exchange_rates DB snapshot -> hardcoded seed. normalize_currency parses real extraction output ('Yuan/ton' -> CNY). to_usd/convert_usd helpers."
+    },
+    {
+      "file": "backend/app/services/database.py",
+      "action": "modify",
+      "description": "[part 11] price_usd computed in insert_listing + carried in SEARCH_COLUMNS; price sorts/bounds use price_usd with an EXPLICIT nullslast order param (_order_nulls_last — postgrest-py drops nullsfirst=False, see gotchas); priced_only filter; price_pkr computed at read time in _flatten_company; update_listing (dedup_key+price_usd recompute, DuplicateListingError pre-check), delete_listing, delete_document_and_listings (shared-listing safe via 'ov' array overlap)."
+    },
+    {
+      "file": "backend/app/routers/listings.py",
+      "action": "create",
+      "description": "[part 11] New router: GET /listings/{id} (moved from search.py) + PATCH and DELETE /listings/{id} (require_admin)."
+    },
+    {
+      "file": "backend/app/routers/upload.py",
+      "action": "modify",
+      "description": "[part 11] DELETE /uploads/{content_hash} (undo upload): admin=any, manager=own; returns {deleted_listings, kept_shared}."
+    },
+    {
+      "file": "backend/app/main.py",
+      "action": "modify",
+      "description": "[part 11] DuplicateListingError -> 409 handler (registered for the subclass so it beats the DatabaseError -> 503 handler)."
+    },
+    {
+      "file": "backend/app/schemas/chemical.py",
+      "action": "modify",
+      "description": "[part 11] ListingOut.price_usd/price_pkr; ListingUpdate (optional fields, names must stay non-empty); UndoUploadResult."
+    },
+    {
+      "file": "frontend/src/components/listing/ListingAdminCard.tsx",
+      "action": "create",
+      "description": "[part 11] Admin edit/delete panel on the product page: prefilled form, diff-only PATCH, needs_review clear, delete with confirm, cache invalidation."
+    },
+    {
+      "file": "frontend/src/components/search/ResultsTable.tsx",
+      "action": "modify",
+      "description": "[part 11] ConvertedPrice: '≈ $X · ₨Y' under every printed price (skips the original currency; tooltip notes current-rate approximation)."
+    },
+    {
+      "file": "frontend/src/components/search/SearchFilters.tsx",
+      "action": "modify",
+      "description": "[part 11] 'Max price (USD)' label; 'Only listings with a price' checkbox (priced_only)."
+    },
+    {
+      "file": "frontend/src/components/upload/UploadHistory.tsx",
+      "action": "modify",
+      "description": "[part 11] Per-row Undo button (confirm; toast with deleted/kept counts; invalidates history + search)."
+    },
+    {
+      "file": "frontend/src/pages/ProductDetail.tsx",
+      "action": "modify",
+      "description": "[part 11] Converted price display; admin ListingAdminCard; 'Find this product online' web-search link (site:-scoped when the brochure printed a website — no guessed product URLs)."
+    },
+    {
+      "file": "frontend/src/lib/api.ts",
+      "action": "modify",
+      "description": "[part 11] updateListing/deleteListing/undoUpload; pricedOnly search param."
+    },
+    {
+      "file": "frontend/src/types/chemical.ts",
+      "action": "modify",
+      "description": "[part 11] Listing.price_usd/price_pkr; ListingUpdate."
+    }
+  ],
+  "gotchas": [
+    "Supabase edge for this project throws Cloudflare error 1101 ('Worker threw exception') when a bare .ilike() filter contains a literal '%'. Use PostgREST's '*' wildcard alias instead (.ilike('name_en', 'a*')). '%' inside .or_() strings works fine.",
+    "uvicorn --reload (WatchFiles) is unreliable on this Windows machine: it detects the first change then silently keeps serving OLD code. Run without --reload and restart the backend manually after edits.",
+    "PostgREST embedded joins (companies(company_name)) return a nested object — flatten before Pydantic validation (_flatten_company). The listings.company_id -> companies.id FK must exist for the embed to resolve.",
+    "Do not use 'from __future__ import annotations' in FastAPI routers with UploadFile params.",
+    "The upload job queue and the _inflight_hashes dedup set are in-memory: a backend restart clears them (the persistent 'documents' ledger still prevents cross-restart duplicates). Persist the queue to a DB table if that ever matters.",
+    "min_purity is filtered in Python AFTER pagination, so a page may show slightly fewer than 15 rows when it drops entries.",
+    "Listing dedup MUST key on name_raw, not chemical_id: the fuzzy matcher merges distinct product grades onto one chemical_id, so a chemical_id-based key would drop real products.",
+    "_normalize_price (Python) and the SQL dedup_key backfill must stay in lockstep (both strip trailing zeros/point) or re-uploaded priced rows won't match. Verified equal against a live row.",
+    "resolve_company matches in Python (not a PostgREST filter) because supplier names contain commas/parentheses that break .or_() filter strings.",
+    "The password-reset redirect URL (<origin>/reset-password) must be allowlisted in the Supabase dashboard (Authentication -> URL Configuration -> Redirect URLs). Dashboard-only config — no SQL/migration/env var can set it.",
+    "'from __future__ import annotations' in a router combined with slowapi's @limiter.limit decorator makes FastAPI treat a pydantic BODY model as a QUERY param (422 'Field required' in query). Same family as the UploadFile gotcha — never use future-annotations in routers.",
+    "The pinned postgrest-py's .order(nullsfirst=False) silently DROPS the modifier (it only ever emits .nullsfirst) — and Postgres defaults to NULLS FIRST for DESC, so price_desc showed all unpriced rows first. database._order_nulls_last() writes the order query param explicitly; use it for any nullable-column sort.",
+    "min_price/max_price are USD bounds compared against price_usd, NOT the raw mixed-currency price column. Extraction writes currency strings like 'Yuan/ton' — rates.normalize_currency() parses the token before '/'.",
+    "Listings extracted before part 10 have details=null and no company_website; their PDFs are content-hash-deduped so a re-upload will NOT re-extract them. Backfill requires a re-process feature (roadmap)."
+  ],
+  "suppliers_review_audit_2026_07_19": {
+    "summary": "Fix 6: /suppliers directory (all roles) — every extracted supplier with bilingual names, printed email/phone (extraction now captures company_email/company_phone; existing suppliers predate this), aggregated websites, listing count, slide-in supplier panel with product preview, and a 'View products' link into search. Fix 7: dashboard 'Needs review' card -> /admin/review queue (admin+manager) built ONLY on the existing needs_review flag (the pipeline's cas_checksum flags never reach the live DB), grouped by source PDF with Mark verified (PATCH needs_review=false), Edit (slide-in panel), Delete selected (bulk endpoint), Delete file (existing undo). Per user decision, listing write access (PATCH/DELETE/bulk-delete) widened admin->admin+manager; undo keeps admin-any/manager-own. Plus: admin-only /admin/audit activity log (upload/update/delete/bulk/undo actions recorded server-side, names captured before deletion); technical details editable in the listing form (add/change/remove; untouched rows keep exact types; reference_data preserved); edit form collapsed behind an Edit button on the product page and panel, with per-row Edit buttons in search results / review queue / upload-history expander; all remaining window.confirm deletes replaced with the kit Modal; SearchPage consumes ?q= (supplier links).",
+    "migrations": ["companies_contact_text (contact_number bigint->text, was all NULL)", "add_audit_log (audit_log table, RLS, service-role only)"],
+    "gotcha": "Supplier 'View products' links cut the name at the first comma/paren (supplierSearchQuery) because the search sanitizer strips those chars from the QUERY but not the indexed text — a full '…CO.,LTD.' name would not match itself.",
+    "stale_backend_note": "User-reported 404s on /suppliers and /admin/review + 'HR990 missing' were the :8000 uvicorn serving pre-part-14 code; process killed and relaunched, then verified over real HTTP (HR990 returned, new routes 401 without auth).",
+    "status": "completed",
+    "date": "2026-07-19"
+  },
+  "uiux_fixes_2026_07_19": {
+    "summary": "Four UX fixes: (1) free-text search widened to ONE broad surface — supplier names + details/description text + names/CAS — via new computed field search_text(listings); (2) product detail opens in a right-side slide-in panel over the still-mounted list (list scroll/filters survive; /product/:id kept for shareable links); (3) search state + scroll offset persisted to sessionStorage so full navigations (deep link, Full page link, browser back/forward) also restore position; (4) shared bulk select + delete across search results, upload history, and the per-upload listings expander.",
+    "search_surface": "Migration add_listings_search_text: search_text(listings) = concat_ws(' ', name_raw, name_en, cas_number, details::text, company_name, company_name_en) — STABLE (reads companies), EXECUTE revoked from client roles / granted service_role (details_text pattern). search_listings(q) and suggest() filter with a single .ilike('search_text', '*q*') ('*' wildcard, not '%'). Acceptance verified live: 'titanium dioxide' returns HR990; a supplier-name search returns only/all that supplier's listings. Limitation: 'TiO2' only matches rows whose stored record contains that literal string (R906 yes, HR990 no — its brochure never printed it); search matches stored text, never invented synonyms.",
+    "slide_in_panel": "components/listing/ListingPanel.tsx (portal, glass drawer, Escape/scrim/X close, body scroll locked, focus moved in; swapping id swaps content without closing). Shared rendering extracted to components/listing/ListingDetailBody.tsx; pages/ProductDetail.tsx is a thin frame around it. ListingAdminCard gained onDeleted (panel closes on delete; full page still navigates). New slide-in-right keyframe in tailwind.config.js.",
+    "position_restore": "SearchPage persists {q, filters, appliedFilters, letter, aiFilters, page} + window scroll to sessionStorage (searchPage:state / searchPage:scroll); restores state on mount and scroll once after the first results render. Also clamps page after the result set shrinks.",
+    "bulk_select": "Shared pieces: hooks/useSelection.ts + ui/checkbox.tsx + ui/selection-bar.tsx. Select-all = rows shown on the current page (labelled); selections persist across pages, cleared when filters/scope/range change; confirm modal states the exact count. Views: search results (admin, POST /listings/bulk-delete), upload history (admin+manager, bulk Undo runs the existing DELETE /uploads/{hash} sequentially so shared-listing + ownership rules apply unchanged), per-upload listings expander (admin, POST /listings/bulk-delete). The transient upload queue intentionally unchanged (already had remove/clear-finished; deletes no DB data).",
+    "status": "completed",
+    "date": "2026-07-19"
+  },
+  "design_system_2026_07_18": {
+    "summary": "Presentation-only pass: a cohesive 'Marine' design system applied to every page, full light/dark theming, a persistent sidebar app shell, and a new admin dashboard. No route/auth/extraction/search logic changed except one new read-only aggregate endpoint.",
+    "typography": "Geist (all UI) + Geist Mono (all precise data), loaded via Google Fonts in index.html, committed in the base layer.",
+    "color": "Two layers — raw palette in tailwind.config.js (ink cool-neutral, brand deep-teal, success/warning/danger) + semantic CSS-variable tokens in index.css (app/surface/elevated/muted/hover/fg/fg-muted/fg-subtle/line/line-strong/brand*/danger*/warn*/ok*) that FLIP light<->dark, exposed as utilities via @theme inline. Components use the semantic tokens so one .dark class re-themes everything.",
+    "tokens": "Named radii chip/btn/card/panel (7/10/14/18px); shadows card/card-hover/pop; glass/.glass-strong/.scrim (theme-aware blur+translucency) on sidebar/modals/drawers/dropdowns. CAS+price render as monospace data chips everywhere (ui/mono-chip.tsx).",
+    "tailwind_v4": "Consolidated a broken v3/v4 mix to pure v4: tailwindcss upgraded to 4.3.3 to match @tailwindcss/vite; index.css uses @import 'tailwindcss' + @config '../tailwind.config.js' (v4 doesn't auto-read the JS config) + @custom-variant dark; postcss.config.js emptied (Vite plugin handles Tailwind+prefixing).",
+    "dark_mode": "hooks/useTheme.tsx (ThemeProvider) — light/dark/system, persisted to localStorage, follows OS on 'system', toggles .dark on <html>; inline script in index.html sets the class before first paint (no FOUC). ui/theme-toggle.tsx in the sidebar/top-bar/login. Sonner toasts follow the theme.",
+    "app_shell": "components/layout/AppShell.tsx replaces the top NavBar: role-gated glass left sidebar (Dashboard/Upload for admin+manager, Users for admin, Search for all) -> mobile drawer. App.tsx uses a ShellLayout layout route; role-based landing sends admin/manager to /admin/dashboard and viewers to /search (login/reset now navigate to '/').",
+    "dashboard": "New /admin/dashboard (admin+manager). Stat cards (total listings, distinct suppliers, uploads last 7 days, needs_review) from GET /admin/dashboard/summary. Recent uploads reuse <UploadHistory> (View listings + Undo). Users table (admin only) reuses the role editor, extracted to the shared components/admin/UsersTable.tsx.",
+    "backend": "routers/dashboard.py: GET /admin/dashboard/summary guarded by require_uploader (admin|manager). database.dashboard_summary() builds 4 counts from existing tables via PostgREST count='exact' (listings, companies, documents where created_at>=now-7d, listings where needs_review). schemas.chemical.DashboardSummary. No new tables/columns.",
+    "temporary": "/kit (pages/KitPreview.tsx) is a public design-kit showcase for reviewing tokens live in both themes; remove after sign-off.",
+    "status": "completed",
+    "date": "2026-07-18"
+  },
+  "verification": {
+    "backend_roles_search": "Live smoke test: sign-in 200; search pagination 34 results -> 3 pages x 15; all 4 sorts 200; letter filter 200; page_size=16 -> 422; upload-jobs 200; users list 200; self-demote -> 400; manager can GET /upload-jobs (200) but GET /users -> 403; role restore 200.",
+    "backend_dedup": "Live dedup test (scratchpad/dedup_test.py): Python make_dedup_key == stored SQL dedup_key; price normalization cases; resolve_company reuses supplier on English-name match and creates distinct id for a different supplier; identical offer upserts to same listing id (only 1 row); same chemical + different company -> distinct listing; document ledger find/record round-trip. All PASS; test data cleaned up; DB back to 51 listings.",
+    "chemical_resolution": "Mocked-DB unit check: known CAS reuses (no review); unknown CAS creates new and ignores a matching name; no-CAS exact name reuses; fuzzy <97 creates new; fuzzy >=97 merges with needs_review. All PASS.",
+    "upload_controls": "State-machine + worker async test (scratchpad/jobs_test.py, 16 checks): pause skips a queued job; resume processes it; cancel queued->cancelled and processing->flag set; restart only with bytes; remove on done drops it; cross-user rejected; done drops bytes. Live HTTP wiring: list 200, unknown-job action 400, invalid action 422, no-auth 401. All PASS.",
+    "frontend": "tsc --noEmit clean; vite build succeeds.",
+    "ai_search_details_product_page": "Live TestClient suite vs real DB (19/19): no-auth 401s; listing detail 200 with seeded details/website; non-UUID + unknown-UUID 404; details_q via the details_text computed field returned exactly the seeded row (count=1, server-side); mocked-parser POST /search/ai rows IDENTICAL to GET /search with the same filters (acceptance rule verified literally); live Qwen parse ('cheapest white PVC resin under 900 with purity over 90%' -> max_price 900, min_purity 90, details_query 'white', price_asc); empty query 422; burst -> 429. Seeded test data removed afterwards. Backend byte-compiles; frontend tsc + vite build clean.",
+    "currency_edit_undo": "Live TestClient suite (26/26): price_desc/asc page 1 fully priced + correctly USD-ordered (nulls last — the reported bug); price_pkr == price_usd x live rate; priced_only count 28; max_price USD bound respected; viewer PATCH/DELETE/undo 403; admin PATCH recomputes price_usd (500 CNY -> ~$73.7); duplicate-collision PATCH 409; empty PATCH 400; unknown 404; undo upload deletes 1 / keeps 1 shared listing + removes ledger row; temp rows cleaned up. Backfill: 28/28 priced listings normalized (166-currency snapshot persisted).",
+    "frontend_design_system": "Frontend: tsc --noEmit + vite build clean (1710 modules); dev-server HMR applied every change without error; all routes serve 200. Backend: changed modules byte-compile; app.main imports and registers GET /admin/dashboard/summary; TestClient returns 401 with no token and with a bad token (role check + aggregate only run once authenticated). Live-DB round-trip not exercised from the build shell (no network to Supabase at the time); dashboard_summary() reuses the same count='exact'/gte/eq patterns as the working suggest()/search_listings().",
+    "uiux_fixes": "Live TestClient suite vs the real DB (15/15): 'titanium dioxide' -> HR990 in results; 'TiO2' -> details-bearing rows incl. R906; supplier search returns exactly one supplier and ALL its listings (API count == direct DB count); bulk-delete guards (no-auth 401, viewer 403, malformed id 400, empty ids 422, unknown uuid -> {deleted:0}); two seeded listings bulk-deleted in one call, verified gone from DB and search; temp rows cleaned up. Existing pytest suite 38/38. Frontend tsc + vite build clean."
+  }
+}

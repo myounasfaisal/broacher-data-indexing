@@ -1,0 +1,215 @@
+@import "tailwindcss";
+
+/* This project runs Tailwind v4 (via @tailwindcss/vite). v4 does NOT read
+ * tailwind.config.js automatically, so load our JS token config (ink/brand
+ * scales, named radii, shadows, keyframes) explicitly. */
+@config "../tailwind.config.js";
+
+/*
+ * Design system — "Marine" kit, now theme-aware (light + dark).
+ *
+ * Two layers:
+ *   1. Raw palette (ink / brand / success / warning / danger scales) lives in
+ *      tailwind.config.js — fixed hex, for when a specific shade is needed.
+ *   2. SEMANTIC tokens below (surface, fg, line, brand, …) are CSS variables
+ *      that FLIP between light and dark. Components use these so a single
+ *      `.dark` class on <html> re-themes the whole app. Prefer these.
+ *
+ * Fonts (Geist + Geist Mono) are loaded via <link> in index.html.
+ */
+
+/* Class-based dark mode: `dark:` applies inside a `.dark` ancestor. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Expose the semantic CSS variables as Tailwind color utilities.
+ * `inline` means utilities reference var(--x) directly, so flipping the
+ * variable under `.dark` re-themes without regenerating classes. */
+@theme inline {
+  --color-app: var(--app);
+  --color-surface: var(--surface);
+  --color-elevated: var(--elevated);
+  --color-muted: var(--muted);
+  --color-hover: var(--hover);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-subtle: var(--fg-subtle);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-on-brand: var(--on-brand);
+  --color-brand-text: var(--brand-text);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-soft-text: var(--brand-soft-text);
+
+  --color-danger: var(--danger);
+  --color-danger-hover: var(--danger-hover);
+  --color-on-danger: var(--on-danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-text: var(--danger-text);
+
+  --color-warn-soft: var(--warn-soft);
+  --color-warn-text: var(--warn-text);
+  --color-ok-soft: var(--ok-soft);
+  --color-ok-text: var(--ok-text);
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+
+    --app: #f6f7f9;
+    --surface: #ffffff;
+    --elevated: #ffffff;
+    --muted: #eceef2;
+    --hover: #e7eaef;
+    --fg: #171b24;
+    --fg-muted: #6b7688;
+    --fg-subtle: #98a2b1;
+    --line: #dde1e8;
+    --line-strong: #c4cbd5;
+
+    --brand: #0f7a72;
+    --brand-hover: #0b615a;
+    --on-brand: #ffffff;
+    --brand-text: #0b615a;
+    --brand-soft: #e8f6f4;
+    --brand-soft-text: #0b615a;
+
+    --danger: #c6413b;
+    --danger-hover: #a5322d;
+    --on-danger: #ffffff;
+    --danger-soft: #fcecec;
+    --danger-text: #a5322d;
+
+    --warn-soft: #fcf3e6;
+    --warn-text: #8f5e12;
+    --ok-soft: #e9f7ef;
+    --ok-text: #0e6d4a;
+
+    --selection: 15 122 114; /* brand-600 */
+    --scrim: 15 18 25 / 0.32;
+    --glass: 255 255 255 / 0.72;
+    --glass-strong: 255 255 255 / 0.85;
+  }
+
+  .dark {
+    color-scheme: dark;
+
+    --app: #0e1116;
+    --surface: #161a21;
+    --elevated: #1c212a;
+    --muted: #232935;
+    --hover: #2a3140;
+    --fg: #e7eaf0;
+    --fg-muted: #99a3b2;
+    --fg-subtle: #6b7686;
+    --line: #262d39;
+    --line-strong: #384152;
+
+    /* Brighter teal fill + near-black text reads clearly on a dark surface
+       (deep teal + white text would sink into the background). */
+    --brand: #21b6a8;
+    --brand-hover: #33c6b8;
+    --on-brand: #052623;
+    --brand-text: #46d0c2;
+    --brand-soft: #123734;
+    --brand-soft-text: #5fddcf;
+
+    --danger: #e0655f;
+    --danger-hover: #e87a74;
+    --on-danger: #2a0a08;
+    --danger-soft: #3a1613;
+    --danger-text: #f0a6a1;
+
+    --warn-soft: #33270f;
+    --warn-text: #e6b968;
+    --ok-soft: #103026;
+    --ok-text: #63d19e;
+
+    --selection: 70 208 194; /* brand-text */
+    --scrim: 3 5 8 / 0.55;
+    --glass: 22 26 33 / 0.72;
+    --glass-strong: 28 33 42 / 0.85;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-app text-fg font-sans;
+    /* Slightly open tracking + light default weight = calm, precise. */
+    font-weight: 400;
+    letter-spacing: -0.006em;
+  }
+
+  /* Headings stay controlled — medium weight, tighter tracking, never loud. */
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-medium text-fg;
+    letter-spacing: -0.02em;
+  }
+
+  /* One consistent, visible keyboard focus ring on every interactive element. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-brand/70 ring-offset-2 ring-offset-app;
+  }
+
+  ::selection {
+    background-color: rgb(var(--selection) / 0.18);
+  }
+
+  /* Tabular figures for all monospace data so columns of numbers align. */
+  .font-mono {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "cv01" 1;
+  }
+}
+
+@layer components {
+  /* Glass surface — subtle blur + translucency. Reserved for overlays,
+     modals, and the sidebar where it sits above content. Flips with theme. */
+  .glass {
+    background-color: rgb(var(--glass));
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+  }
+  .glass-strong {
+    background-color: rgb(var(--glass-strong));
+    backdrop-filter: saturate(180%) blur(24px);
+    -webkit-backdrop-filter: saturate(180%) blur(24px);
+  }
+  /* Dim scrim behind modals/drawers. */
+  .scrim {
+    background-color: rgb(var(--scrim));
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
+}
+
+/* Respect reduced-motion — kill transitions/animations for those who ask. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Quiet, theme-aware scrollbars for the data-dense panels. */
+@supports (scrollbar-color: auto) {
+  * {
+    scrollbar-color: var(--line-strong) transparent;
+    scrollbar-width: thin;
+  }
+}

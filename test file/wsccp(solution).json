@@ -1,0 +1,1819 @@
+{
+  "company_name": "大連化學工業股份有限公司",
+  "company_name_en": "Dairen Chemical Corporation",
+  "company_website": "www.dcc.com.tw",
+  "products": [
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-100",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-100",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-100",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid"
+        ],
+        "solid_content_wt_percent": 55.0,
+        "viscosity_cp": "1100-1600",
+        "spindle_rpm": "3/60",
+        "ph": "4.5-6.5",
+        "tg_c": 0,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "Superior bonding for a wide range of application. Provides soft and flexible film for various porous and non-porous substrates, without further additive required, and especially useful for paper and plastic packaging.",
+        "special_feature_zh": "對各種多孔和非多孔基材有良好的接着，在無需添加任何助劑亦能給予柔軟和柔性膜。擁有良好的耐熱和耐水性質，特別適合用于紙張和塑料包裝接着。",
+        "recommended_applications": {
+          "General adhesive": "Recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-100L",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-100L",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-100L",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid"
+        ],
+        "solid_content_wt_percent": 54.5,
+        "viscosity_cp": "500-1000",
+        "spindle_rpm": "3/60",
+        "ph": "4.5-6.5",
+        "tg_c": 0,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "recommended_applications": {
+          "General adhesive": "Recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-101",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-101",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-101",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid"
+        ],
+        "solid_content_wt_percent": 55.0,
+        "viscosity_cp": "1500-2500",
+        "spindle_rpm": "4/60",
+        "ph": "4.5-6.5",
+        "tg_c": 0,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "recommended_applications": {
+          "General adhesive": "Recommended",
+          "Wood adhesive": "Recommended",
+          "Nonwoven/Carpet": "Recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-102",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-102",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-102",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid"
+        ],
+        "solid_content_wt_percent": 55.0,
+        "viscosity_cp": "2500-3700",
+        "spindle_rpm": "4/60",
+        "ph": "4.5-6.5",
+        "tg_c": 0,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "recommended_applications": {
+          "General adhesive": "Highly recommended",
+          "Wood adhesive": "Recommended",
+          "Nonwoven/Carpet": "Recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-102H",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-102H",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-102H",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid"
+        ],
+        "solid_content_wt_percent": 55.0,
+        "viscosity_cp": "3500-4500",
+        "spindle_rpm": "4/60",
+        "ph": "4.5-6.5",
+        "tg_c": 0,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "High viscosity version of DA-101. Suitable for difficult-to-adhere substrate surface adhesion.",
+        "special_feature_zh": "性質同DA-101，黏度較高之乳液。擁有良好的耐熱與耐水性質，適用於難貼表面基材的接着。",
+        "recommended_applications": {
+          "General adhesive": "Highly recommended",
+          "Wood adhesive": "Recommended",
+          "Nonwoven/Carpet": "Recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-103",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-103",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-103",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid"
+        ],
+        "solid_content_wt_percent": 60.0,
+        "viscosity_cp": "1500-2500",
+        "spindle_rpm": "4/60",
+        "ph": "4.5-6.5",
+        "tg_c": 0,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "High solid content version of DA-101. Good heat and water-resistance for adhesion.",
+        "special_feature_zh": "性質同DA-101,固形份較高之乳液。擁有良好的耐熱與耐水性質，適用於接着。",
+        "recommended_applications": {
+          "General adhesive": "Recommended",
+          "_uncertain_second_mark": "Recommended (column uncertain - table flattening lost exact position)"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-103H",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-103H",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-103H",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid"
+        ],
+        "solid_content_wt_percent": 60.0,
+        "viscosity_cp": "3200-4200",
+        "spindle_rpm": "4/60",
+        "ph": "4.5-6.5",
+        "tg_c": 0,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "High solid content and viscosity version of DA-103. Good heat and water-resistance for adhesion.",
+        "special_feature_zh": "性質同DA-103，黏度較高之乳液。擁有良好的耐熱與耐水性質，適用于接着。",
+        "recommended_applications": {
+          "General adhesive": "Recommended",
+          "_uncertain_second_mark": "Recommended (column uncertain)"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-103I",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-103I",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-103I",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid"
+        ],
+        "solid_content_wt_percent": 58.0,
+        "viscosity_cp": "850-1050",
+        "spindle_rpm": "2/6",
+        "ph": "4.0-7.0",
+        "tg_c": 0,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "Dispersion combines high solid content and low viscosity and allows the addition of high filler loading. Suited in carpet backing application where a medium/soft hand is required.",
+        "special_feature_zh": "黏度較低之乳液。擁有良好的粉料相容性，適用于地毯背膠，手感中等。",
+        "recommended_applications": {
+          "Nonwoven/Carpet": "Highly recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-104",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-104",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-104",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid"
+        ],
+        "solid_content_wt_percent": 55.0,
+        "viscosity_cp": "2000-3000",
+        "spindle_rpm": "4/60",
+        "ph": "4.5-6.5",
+        "tg_c": -10,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "Low Tg. Flexible adhesive specifically tailored for low temperature packaging application.",
+        "special_feature_zh": "低玻璃轉化溫度。柔軟性質的膠黏劑專為低溫包裝接着。",
+        "recommended_applications": {
+          "General adhesive": "Highly recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-105",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-105",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-105",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P+S",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid",
+          "Surfactant (emulsifier)"
+        ],
+        "solid_content_wt_percent": 50.0,
+        "viscosity_cp": "4000-6000",
+        "spindle_rpm": "4/20",
+        "ph": "4.5-6.5",
+        "tg_c": 0,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "Low free monomer. Suitable for adhesion of difficult substrate such as lacquered surface, foil or plastic film. Suitable for cigarette adhesive application.",
+        "special_feature_zh": "低殘單。適于難貼表面基材（如漆表面、金屬箔或塑料薄膜）的接着。也適用于捲煙膠。",
+        "recommended_applications": {
+          "Cigarette adhesive": "Highly recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-107",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-107",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-107",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P+S",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid",
+          "Surfactant (emulsifier)"
+        ],
+        "solid_content_wt_percent": 65.0,
+        "viscosity_cp": "1000-2500",
+        "spindle_rpm": "4/60",
+        "ph": "4.5-6.5",
+        "tg_c": 0,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "High solid content version of DA-101. Suitable for adhesion and construction use.",
+        "special_feature_zh": "性質同DA-101，固形份較高之乳液。可用于接着與建築應用。",
+        "recommended_applications": {
+          "General adhesive": "Recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-107L",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-107L",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-107L",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P+S",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid",
+          "Surfactant (emulsifier)"
+        ],
+        "solid_content_wt_percent": 65.0,
+        "viscosity_cp": "500-1500",
+        "spindle_rpm": "3/60",
+        "ph": "4.5-6.5",
+        "tg_c": 0,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "High solid content and low viscosity version of DA-107. Suitable for adhesion and construction use.",
+        "special_feature_zh": "性質同DA-107，黏度較低之乳液。擁有良好的耐熱與耐水性質，可用于接着與建築應用。",
+        "recommended_applications": {
+          "General adhesive": "Recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-108",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-108",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-108",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P+S",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid",
+          "Surfactant (emulsifier)"
+        ],
+        "solid_content_wt_percent": 72.0,
+        "viscosity_cp": "1500-2500",
+        "spindle_rpm": "4/60",
+        "ph": "4.5-6.5",
+        "tg_c": 0,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "High solid content version of DA-101. Good heat and water-resistance for adhesion.",
+        "special_feature_zh": "性質同DA-101，固形份較高之乳液。",
+        "recommended_applications": {
+          "General adhesive": "Recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-108H",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-108H",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-108H",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P+S",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid",
+          "Surfactant (emulsifier)"
+        ],
+        "solid_content_wt_percent": 72.0,
+        "viscosity_cp": "2500-5000",
+        "spindle_rpm": "4/60",
+        "ph": "4.5-6.5",
+        "tg_c": 0,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "High solid content and viscosity. Good heat and water-resistance for adhesion.",
+        "special_feature_zh": "性質同DA-108，黏度較高之乳液。擁有良好的耐熱與耐水性質，適用于接着。",
+        "recommended_applications": {
+          "General adhesive": "Recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-111",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-111",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-111",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid"
+        ],
+        "solid_content_wt_percent": 55.0,
+        "viscosity_cp": "1500-2500",
+        "spindle_rpm": "4/60",
+        "ph": "4.5-6.5",
+        "tg_c": 14,
+        "mfft_c": -1,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "High Tg. Suitable for paper and packaging adhesion and construction use.",
+        "special_feature_zh": "高玻璃轉化溫度。可用于接着與建築應用。",
+        "recommended_applications": {
+          "General adhesive": "Recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-125",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-125",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-125",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P+S",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid",
+          "Surfactant (emulsifier)"
+        ],
+        "solid_content_wt_percent": 55.0,
+        "viscosity_cp": "2500-3500",
+        "spindle_rpm": "4/60",
+        "ph": "4.5-6.5",
+        "tg_c": -8,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives",
+          "Construction & Building"
+        ],
+        "special_feature_en": "Specifically tailored for low temperature packaging application.",
+        "special_feature_zh": "適用于低溫接着。",
+        "recommended_applications": {
+          "General adhesive": "Highly recommended"
+        },
+        "construction_applications": {
+          "_note": "Appears in Construction table with 1 mark; exact column uncertain, likely Cement admixture based on general-purpose use"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-128",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-128",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-128",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P+S",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid",
+          "Surfactant (emulsifier)"
+        ],
+        "solid_content_wt_percent": 60.0,
+        "viscosity_cp": "5000-7500",
+        "spindle_rpm": "5/20",
+        "ph": "4.5-6.5",
+        "tg_c": -10,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "Low Tg. Flexible adhesive specifically tailored for low temperature packaging application.",
+        "special_feature_zh": "低玻璃轉化溫度。柔軟性質的膠黏劑專為低溫包裝接着。",
+        "recommended_applications": {
+          "General adhesive": "Highly recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-128H",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-128H",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-128H",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P+S",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid",
+          "Surfactant (emulsifier)"
+        ],
+        "solid_content_wt_percent": 60.0,
+        "viscosity_cp": "7500-13000",
+        "spindle_rpm": "5/20",
+        "ph": "4.5-6.5",
+        "tg_c": -10,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "Low Tg. Flexible adhesive specifically tailored for low temperature packaging application. Suitable for difficult substrate surface adhesion.",
+        "special_feature_zh": "低玻璃轉化溫度。柔軟性質的膠黏劑專為低溫包裝接着。擁有良好的耐熱與耐水性質，適用于難貼表面基材的接着。",
+        "recommended_applications": {
+          "General adhesive": "Highly recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-140L",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-140L",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-140L",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid"
+        ],
+        "solid_content_wt_percent": 54.5,
+        "viscosity_cp": "500-1000",
+        "spindle_rpm": "3/60",
+        "ph": "4.5-6.5",
+        "tg_c": 0,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "Low free monomer, VOC and formaldehyde. Adhesive with superior bonding that is specifically formulated as cigarette adhesive.",
+        "special_feature_zh": "極低殘余單体及VOC，無甲醛，由良好的快干性，適用于高速卷煙紙接嘴、搭口以及包裝膠。",
+        "recommended_applications": {
+          "Cigarette adhesive": "Highly recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-141",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-141",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-141",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid"
+        ],
+        "solid_content_wt_percent": 55.0,
+        "viscosity_cp": "1500-2500",
+        "spindle_rpm": "4/60",
+        "ph": "4.5-6.5",
+        "tg_c": 0,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "Low free monomer, VOC and formaldehyde. Adhesive with superior bonding that is specifically formulated as cigarette adhesive.",
+        "special_feature_zh": "極低殘余單体及VOC，無甲醛，由良好的快干性，適用于高速卷煙紙接嘴、搭口以及包裝膠。",
+        "recommended_applications": {
+          "Cigarette adhesive": "Highly recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-142",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-142",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-142",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid"
+        ],
+        "solid_content_wt_percent": 55.0,
+        "viscosity_cp": "2500-3700",
+        "spindle_rpm": "4/60",
+        "ph": "4.5-6.5",
+        "tg_c": 0,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "Low free monomer, VOC and formaldehyde. Adhesive with superior bonding that is specifically formulated as cigarette adhesive.",
+        "special_feature_zh": "極低殘余單体及VOC，無甲醛，由良好的快干性，適用于高速卷煙紙接嘴、搭口以及包裝膠。",
+        "recommended_applications": {
+          "Cigarette adhesive": "Highly recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-143",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-143",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-143",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid"
+        ],
+        "solid_content_wt_percent": 60.0,
+        "viscosity_cp": "1500-2500",
+        "spindle_rpm": "4/60",
+        "ph": "4.5-6.5",
+        "tg_c": 0,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "Low free monomer, VOC and formaldehyde. Adhesive with superior bonding that is specifically formulated as cigarette adhesive.",
+        "special_feature_zh": "極低殘余單体及VOC，無甲醛，由良好的快干性，適用于高速卷煙紙接嘴、搭口以及包裝膠。",
+        "recommended_applications": {
+          "Cigarette adhesive": "Highly recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-144",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-144",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-144",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid"
+        ],
+        "solid_content_wt_percent": 55.0,
+        "viscosity_cp": "2000-3000",
+        "spindle_rpm": "4/60",
+        "ph": "4.5-6.5",
+        "tg_c": -15,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "Low free monomer, VOC and formaldehyde. Adhesive with superior bonding that is specifically formulated as cigarette adhesive.",
+        "special_feature_zh": "極低殘余單体及VOC，無甲醛，由良好的快干性，適用于高速卷煙紙接嘴、搭口以及包裝膠。",
+        "recommended_applications": {
+          "Cigarette adhesive": "Highly recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-146",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-146",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-146",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid"
+        ],
+        "solid_content_wt_percent": 55.0,
+        "viscosity_cp": "1800-2700",
+        "spindle_rpm": "3/20",
+        "ph": "4.5-6.5",
+        "tg_c": 15,
+        "mfft_c": 2,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "Low free monomer, VOC and formaldehyde. Adhesive with superior bonding that is specifically formulated as cigarette adhesive.",
+        "special_feature_zh": "極低殘余單体及VOC，無甲醛，由良好的快干性，適用于高速卷煙紙接嘴、搭口以及包裝膠。",
+        "recommended_applications": {
+          "Cigarette adhesive": "Highly recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-147",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-147",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-147",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P+S",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid",
+          "Surfactant (emulsifier)"
+        ],
+        "solid_content_wt_percent": 55.0,
+        "viscosity_cp": "1800-2700",
+        "spindle_rpm": "3/20",
+        "ph": "4.5-6.5",
+        "tg_c": 15,
+        "mfft_c": 1,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "Low free monomer, VOC and formaldehyde. Adhesive with superior bonding that is specifically formulated as cigarette adhesive.",
+        "special_feature_zh": "極低殘余單体及VOC，無甲醛，由良好的快干性，適用于高速卷煙紙接嘴、搭口以及包裝膠。",
+        "recommended_applications": {
+          "Cigarette adhesive": "Highly recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-161",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-161",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-161",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid"
+        ],
+        "solid_content_wt_percent": 55.5,
+        "viscosity_cp": "1500-3000",
+        "spindle_rpm": "4/60",
+        "ph": "4.8-6.0",
+        "tg_c": 5,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "Suitable for roller or high speed nozzle application. Good redispersibility for easy cleaning and good heat resistance.",
+        "special_feature_zh": "適用于易清洗膠。",
+        "recommended_applications": {
+          "General adhesive": "Highly recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-201",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-201",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-201",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid"
+        ],
+        "solid_content_wt_percent": 55.0,
+        "viscosity_cp": "1300-2200",
+        "spindle_rpm": "4/60",
+        "ph": "4.0-6.5",
+        "tg_c": 0,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "Provides soft and flexible film for various porous and non-porous substrates, without further additive required. Especially suited to be used in the textile industries that the product needed in white-based color.",
+        "special_feature_zh": "對各種多孔和非多孔基材有良好的接着，在無需添加任何助劑亦能給予柔軟和柔性膜。擁有良好的耐熱與耐水及高溫低黃變性質，適用于接着。",
+        "recommended_applications": {
+          "General adhesive": "Recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-201E",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-201E",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-201E",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid"
+        ],
+        "solid_content_wt_percent": 55.0,
+        "viscosity_cp": "2000-2800",
+        "spindle_rpm": "4/20",
+        "ph": "4.0-6.0",
+        "tg_c": 0,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "recommended_applications": {
+          "General adhesive": "Recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-202",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-202",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-202",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid"
+        ],
+        "solid_content_wt_percent": 55.0,
+        "viscosity_cp": "2000-3500",
+        "spindle_rpm": "4/60",
+        "ph": "4.0-6.5",
+        "tg_c": 0,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "recommended_applications": {
+          "General adhesive": "Recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-202E",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-202E",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-202E",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid"
+        ],
+        "solid_content_wt_percent": 55.0,
+        "viscosity_cp": "3000-4000",
+        "spindle_rpm": "4/20",
+        "ph": "4.0-6.0",
+        "tg_c": 0,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "recommended_applications": {
+          "General adhesive": "Recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-265",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-265",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-265",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "C+S",
+        "stabilization_system": [
+          "Cellulose derivative protective colloid",
+          "Surfactant (emulsifier)"
+        ],
+        "solid_content_wt_percent": 65.0,
+        "viscosity_cp": "1000-2000",
+        "spindle_rpm": "4/60",
+        "ph": "4.5-6.5",
+        "tg_c": -25,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "Low Tg. Suitable for adhesion of difficult substrate such as lacquered surface, foil or plastic film and pressure sensitive adhesive application.",
+        "special_feature_zh": "低玻璃轉化溫度。適用于PVC、紙、OPP等基材接着。也可用於塑料層與壓敏接着劑。",
+        "recommended_applications": {
+          "_uncertain_mark": "Highly recommended (column uncertain - no exact column in the 4-category matrix clearly matches 'pressure sensitive adhesive'; verify against source PDF)"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-265H",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-265H",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-265H",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "C+S",
+        "stabilization_system": [
+          "Cellulose derivative protective colloid",
+          "Surfactant (emulsifier)"
+        ],
+        "solid_content_wt_percent": 65.0,
+        "viscosity_cp": "2000-3000",
+        "spindle_rpm": "4/60",
+        "ph": "4.5-6.5",
+        "tg_c": -25,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "High viscosity version of DA-265. Suitable for adhesion of difficult substrate such as lacquered surface, foil or plastic film and pressure sensitive adhesive application.",
+        "special_feature_zh": "性質同DA-265，黏度較高之乳液。低玻璃轉化溫度。適用于PVC、紙、OPP等基材接着。也可用於塑料層與壓敏接着劑。",
+        "recommended_applications": {
+          "_uncertain_mark": "Highly recommended (column uncertain)"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-266",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-266",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-266",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "C+S",
+        "stabilization_system": [
+          "Cellulose derivative protective colloid",
+          "Surfactant (emulsifier)"
+        ],
+        "solid_content_wt_percent": 65.0,
+        "viscosity_cp": "1000-2000",
+        "spindle_rpm": "4/60",
+        "ph": "4.5-6.5",
+        "tg_c": -30,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "Low Tg. Suitable for adhesion of difficult substrate such as lacquered surface, foil or plastic film and pressure sensitive adhesive application.",
+        "special_feature_zh": "低玻璃轉化溫度。適用于PVC、紙、OPP等基材接着。也可用於塑料層與壓敏接着劑。",
+        "recommended_applications": {
+          "_uncertain_mark": "Highly recommended (column uncertain)"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-310",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-310",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-310",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P+S",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid",
+          "Surfactant (emulsifier)"
+        ],
+        "solid_content_wt_percent": 60.0,
+        "viscosity_cp": "1000-2000",
+        "spindle_rpm": "4/60",
+        "ph": "3.5-5.5",
+        "tg_c": 0,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "Suitable for metalized substrates adhesion application.",
+        "special_feature_zh": "適用于金屬材料包裝接着。",
+        "recommended_applications": {
+          "_uncertain_mark": "Highly recommended (column uncertain)"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-342",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-342",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-342",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "S",
+        "stabilization_system": [
+          "Surfactant (emulsifier)"
+        ],
+        "solid_content_wt_percent": 52.0,
+        "viscosity_cp": "50-500",
+        "spindle_rpm": "2/60",
+        "ph": "4.0-7.0",
+        "tg_c": 0,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "Low formaldehyde content. Suitable used as nonwoven binders. Medium/soft hand feel.",
+        "special_feature_zh": "低甲醛含量。適用于無紡紙接着與纖維處理。手感中等粗硬。",
+        "recommended_applications": {
+          "Nonwoven/Carpet": "Highly recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-346",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-346",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-346",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "S",
+        "stabilization_system": [
+          "Surfactant (emulsifier)"
+        ],
+        "solid_content_wt_percent": 52.0,
+        "viscosity_cp": "50-500",
+        "spindle_rpm": "2/60",
+        "ph": "4.0-7.0",
+        "tg_c": -15,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "Low formaldehyde content. Suitable used as nonwoven binders. Soft hand feel.",
+        "special_feature_zh": "低甲醛含量。適用于無紡紙接着與纖維處理。手感柔軟。",
+        "recommended_applications": {
+          "Nonwoven/Carpet": "Highly recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-500",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-500",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-500",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P+S",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid",
+          "Surfactant (emulsifier)"
+        ],
+        "solid_content_wt_percent": 54.5,
+        "viscosity_cp": "500-1000",
+        "spindle_rpm": "3/60",
+        "ph": "4.5-6.5",
+        "tg_c": 0,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "Suitable for high speed packaging, good heat and water resistance.",
+        "special_feature_zh": "擁有良好的耐熱與耐水性質，適用于高速包裝接着。",
+        "recommended_applications": {
+          "_uncertain_marks": "2 marks present (one Recommended, one Highly recommended) - exact columns uncertain"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-502",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-502",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-502",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P+S",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid",
+          "Surfactant (emulsifier)"
+        ],
+        "solid_content_wt_percent": 54.5,
+        "viscosity_cp": "3000-4000",
+        "spindle_rpm": "4/60",
+        "ph": "4.5-6.5",
+        "tg_c": 0,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "Good heat and water resistance, especially suitable for general adhesive application.",
+        "special_feature_zh": "擁有良好的耐熱與耐水性質，適用于一般接着。",
+        "recommended_applications": {
+          "General adhesive": "Recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-511",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-511",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-511",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid"
+        ],
+        "solid_content_wt_percent": 55.0,
+        "viscosity_cp": "1500-2500",
+        "spindle_rpm": "4/60",
+        "ph": "4.5-6.5",
+        "tg_c": 15,
+        "mfft_c": 2,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "High Tg, suitable for high speed packaging, excellent mechanical stability and fast setting speed.",
+        "special_feature_zh": "高玻璃轉化溫度，擁有良好的耐熱、耐水、機械穩定性與快干燥速率性質。適用于高速包裝接着。",
+        "recommended_applications": {
+          "_uncertain_marks": "2 marks present (Highly recommended + Recommended) - exact columns uncertain"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-524",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-524",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-524",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid"
+        ],
+        "solid_content_wt_percent": 55.0,
+        "viscosity_cp": "1500-2500",
+        "spindle_rpm": "4/60",
+        "ph": "4.5-6.5",
+        "tg_c": 20,
+        "mfft_c": 3,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "High Tg, suitable for general adhesive, good heat resistance and good water sensitivity.",
+        "special_feature_zh": "高玻璃磚化溫度，擁有良好的耐熱與水溶性性質。適用于一般接着。",
+        "recommended_applications": {
+          "_uncertain_marks": "2 marks present (Recommended + Highly recommended) - exact columns uncertain"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-652",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-652",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-652",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid"
+        ],
+        "solid_content_wt_percent": 55.5,
+        "viscosity_cp": "1500-20000",
+        "spindle_rpm": "4/30",
+        "ph": "4.0-7.0",
+        "tg_c": 0,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "Good heat and water resistance.",
+        "special_feature_zh": "擁有良好的耐熱與耐水性質。",
+        "recommended_applications": {
+          "General adhesive": "Highly recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-691",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-691",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-691",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P+S",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid",
+          "Surfactant (emulsifier)"
+        ],
+        "solid_content_wt_percent": 54.5,
+        "viscosity_cp": "100-500",
+        "spindle_rpm": "2/60",
+        "ph": "5.0-7.5",
+        "tg_c": 0,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "Good heat and water resistance, especially suitable for D4 grade woodworking adhesive.",
+        "special_feature_zh": "擁有良好的耐熱與水溶性性質。適用于集成材用雙組份木工膠。可達歐洲標準EN204 D4級。",
+        "recommended_applications": {
+          "General adhesive": "Recommended",
+          "Wood adhesive": "Highly recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Ethylene-vinyl acetate-vinyl chloride (EVAVC) emulsion DA-901",
+      "name_en": "Ethylene-vinyl acetate-vinyl chloride (EVAVC) emulsion DA-901",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-901",
+        "polymer_family": "Ethylene-vinyl acetate-vinyl chloride (EVAVC) emulsion",
+        "stabilization_system_code": "P",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid"
+        ],
+        "solid_content_wt_percent": 50.0,
+        "viscosity_cp": "1000-3000",
+        "spindle_rpm": "3/60",
+        "ph": "5.0-7.0",
+        "tg_c": 0,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "General adhesive with fire-retardant property, good bonding strength as D4 grade woodworking adhesive.",
+        "special_feature_zh": "具防火性質的一般接着劑。適用于集成材用雙組份木工膠。可達歐洲標準EN204 D4級。",
+        "recommended_applications": {
+          "General adhesive": "Recommended",
+          "Wood adhesive": "Highly recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯 – 氯乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Ethylene-vinyl acetate-vinyl chloride (EVAVC) emulsion DA-903",
+      "name_en": "Ethylene-vinyl acetate-vinyl chloride (EVAVC) emulsion DA-903",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-903",
+        "polymer_family": "Ethylene-vinyl acetate-vinyl chloride (EVAVC) emulsion",
+        "stabilization_system_code": "C+S",
+        "stabilization_system": [
+          "Cellulose derivative protective colloid",
+          "Surfactant (emulsifier)"
+        ],
+        "solid_content_wt_percent": 50.0,
+        "viscosity_cp": "10-200",
+        "spindle_rpm": "2/60",
+        "ph": "5.0-7.0",
+        "tg_c": 20,
+        "mfft_c": 30,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "Self-crosslinkable emulsion with fire-retardant property. Suitable for textile, non-woven and carpet backing applications.",
+        "special_feature_zh": "具防火性質的自交聯接着劑。適用于紡織、無紡紙的接着與地毯背膠。",
+        "recommended_applications": {
+          "Nonwoven/Carpet": "Highly recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯 – 氯乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Ethylene-vinyl acetate-vinyl chloride (EVAVC) emulsion DA-905",
+      "name_en": "Ethylene-vinyl acetate-vinyl chloride (EVAVC) emulsion DA-905",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-905",
+        "polymer_family": "Ethylene-vinyl acetate-vinyl chloride (EVAVC) emulsion",
+        "stabilization_system_code": "C+S",
+        "stabilization_system": [
+          "Cellulose derivative protective colloid",
+          "Surfactant (emulsifier)"
+        ],
+        "solid_content_wt_percent": 50.0,
+        "viscosity_cp": "10-100",
+        "spindle_rpm": "2/60",
+        "ph": "5.0-7.0",
+        "tg_c": 30,
+        "mfft_c": 40,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "General adhesive with fire-retardant property, extensive use in textile applications, excellent bonding strength as D4 grade woodworking adhesive.",
+        "special_feature_zh": "具防火性質的一般接着劑。適用于紡織的接着與纖維處理。適用于集成材用雙組份木工膠。可達歐洲標準EN204 D4級。",
+        "recommended_applications": {
+          "Nonwoven/Carpet": "Highly recommended",
+          "Wood adhesive": "Highly recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯 – 氯乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Ethylene-vinyl acetate-vinyl chloride (EVAVC) emulsion DA-908",
+      "name_en": "Ethylene-vinyl acetate-vinyl chloride (EVAVC) emulsion DA-908",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-908",
+        "polymer_family": "Ethylene-vinyl acetate-vinyl chloride (EVAVC) emulsion",
+        "stabilization_system_code": "P",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid"
+        ],
+        "solid_content_wt_percent": 50.0,
+        "viscosity_cp": "200-1200",
+        "spindle_rpm": "3/60",
+        "ph": "4.5-6.5",
+        "tg_c": 25,
+        "mfft_c": 30,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "General adhesive with fire-retardant property, excellent bonding strength as D4 grade woodworking adhesive.",
+        "special_feature_zh": "具防火性質的一般接着劑。適用于集成材用雙組份木工膠。可達歐洲標準EN204 D4級。",
+        "recommended_applications": {
+          "General adhesive": "Recommended",
+          "Wood adhesive": "Highly recommended",
+          "_uncertain_third_mark": "Recommended (column uncertain)"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯 – 氯乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Ethylene-vinyl chloride (EVCL) emulsion DA-910",
+      "name_en": "Ethylene-vinyl chloride (EVCL) emulsion DA-910",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-910",
+        "polymer_family": "Ethylene-vinyl chloride (EVCL) emulsion",
+        "stabilization_system_code": "S",
+        "stabilization_system": [
+          "Surfactant (emulsifier)"
+        ],
+        "solid_content_wt_percent": 50.0,
+        "viscosity_cp": "1-50",
+        "spindle_rpm": "1/60",
+        "ph": "6.0-8.0",
+        "tg_c": 0,
+        "mfft_c": 0,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "Low Tg, self-crosslinkable emulsion with fire-retardant property. Suitable for non-woven and carpet backing applications.",
+        "special_feature_zh": "低玻璃轉化溫度。具防火性質的自交聯接着劑。適用于無紡紙的接着、纖維處理與地毯背膠。可應用于汽車內襯接着。",
+        "recommended_applications": {
+          "Nonwoven/Carpet": "Highly recommended"
+        },
+        "polymer_family_zh": "乙烯 – 氯乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Ethylene-vinyl chloride (EVCL) emulsion DA-930",
+      "name_en": "Ethylene-vinyl chloride (EVCL) emulsion DA-930",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-930",
+        "polymer_family": "Ethylene-vinyl chloride (EVCL) emulsion",
+        "stabilization_system_code": "S",
+        "stabilization_system": [
+          "Surfactant (emulsifier)"
+        ],
+        "solid_content_wt_percent": 50.0,
+        "viscosity_cp": "1-50",
+        "spindle_rpm": "1/60",
+        "ph": "7.0-8.0",
+        "tg_c": 30,
+        "mfft_c": 40,
+        "industry": [
+          "Adhesives"
+        ],
+        "special_feature_en": "High Tg, self-crosslinkable emulsion with fire-retardant property. Suitable for non-woven and carpet backing applications.",
+        "special_feature_zh": "高玻璃轉化溫度。具防火性質的自交聯接着劑。適用于無紡紙的接着、纖維處理與地毯背膠。可應用于汽車內襯接着。",
+        "recommended_applications": {
+          "Nonwoven/Carpet": "Highly recommended"
+        },
+        "polymer_family_zh": "乙烯 – 氯乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-371",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-371",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-371",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P+S",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid",
+          "Surfactant (emulsifier)"
+        ],
+        "solid_content_wt_percent": 55.0,
+        "viscosity_cp": "500-1500",
+        "spindle_rpm": "3/60",
+        "ph": "4.5-6.5",
+        "tg_c": 10,
+        "mfft_c": 0,
+        "industry": [
+          "Paint & Coating"
+        ],
+        "recommended_pigment_volume_concentration": {
+          "High": "Highly recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-381",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-381",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-381",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P+S",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid",
+          "Surfactant (emulsifier)"
+        ],
+        "solid_content_wt_percent": 55.0,
+        "viscosity_cp": "100-1000",
+        "spindle_rpm": "2/20",
+        "ph": "4.5-6.5",
+        "tg_c": 10,
+        "mfft_c": 0,
+        "industry": [
+          "Paint & Coating"
+        ],
+        "recommended_pigment_volume_concentration": {
+          "Medium": "Highly recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-382",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-382",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-382",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P+S",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid",
+          "Surfactant (emulsifier)"
+        ],
+        "solid_content_wt_percent": 55.0,
+        "viscosity_cp": "100-700",
+        "spindle_rpm": "2/20",
+        "ph": "4.0-6.5",
+        "tg_c": 8,
+        "mfft_c": 0,
+        "industry": [
+          "Paint & Coating"
+        ],
+        "recommended_pigment_volume_concentration": {
+          "High": "Highly recommended",
+          "Low": "Highly recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-391",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-391",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-391",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "S",
+        "stabilization_system": [
+          "Surfactant (emulsifier)"
+        ],
+        "solid_content_wt_percent": 55.0,
+        "viscosity_cp": "100-700",
+        "spindle_rpm": "2/20",
+        "ph": "4.0-6.0",
+        "tg_c": 8,
+        "mfft_c": 0,
+        "industry": [
+          "Paint & Coating"
+        ],
+        "recommended_pigment_volume_concentration": {
+          "High": "Highly recommended",
+          "Low": "Highly recommended"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-117",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-117",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-117",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "C+S",
+        "stabilization_system": [
+          "Cellulose derivative protective colloid",
+          "Surfactant (emulsifier)"
+        ],
+        "solid_content_wt_percent": 65.0,
+        "viscosity_cp": "500-1500",
+        "spindle_rpm": "3/60",
+        "ph": "4.5-6.5",
+        "tg_c": 0,
+        "mfft_c": 0,
+        "industry": [
+          "Construction & Building"
+        ],
+        "construction_applications": {
+          "_note": "4 marks present out of 5 columns (Primer/Cement admixture/Waterproofing(2K)/Tile adhesive(2K)/Joint compound). Best-effort mapping below; verify against source PDF.",
+          "Primer": "Highly recommended (best effort)",
+          "Cement admixture": "Highly recommended (best effort)",
+          "Waterproofing (2K)": "Highly recommended (best effort)",
+          "Joint compound": "Highly recommended (best effort)"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-180L",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-180L",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-180L",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P+S",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid",
+          "Surfactant (emulsifier)"
+        ],
+        "solid_content_wt_percent": 54.5,
+        "viscosity_cp": "500-1000",
+        "spindle_rpm": "3/60",
+        "ph": "4.5-6.5",
+        "tg_c": 0,
+        "mfft_c": 0,
+        "industry": [
+          "Construction & Building"
+        ],
+        "construction_applications": {
+          "_note": "3 marks present out of 5 columns - exact columns uncertain, verify against source PDF"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-183",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-183",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-183",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P+S",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid",
+          "Surfactant (emulsifier)"
+        ],
+        "solid_content_wt_percent": 55.0,
+        "viscosity_cp": "1500-2500",
+        "spindle_rpm": "4/60",
+        "ph": "4.5-6.5",
+        "tg_c": 0,
+        "mfft_c": 0,
+        "industry": [
+          "Construction & Building"
+        ],
+        "construction_applications": {
+          "_note": "1 mark present - exact column uncertain, verify against source PDF"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    },
+    {
+      "name_raw": "Vinyl acetate-ethylene (VAE) emulsion DA-187",
+      "name_en": "Vinyl acetate-ethylene (VAE) emulsion DA-187",
+      "formula": null,
+      "cas_number": null,
+      "price": null,
+      "currency": null,
+      "purity": null,
+      "details": {
+        "grade": "DA-187",
+        "polymer_family": "Vinyl acetate-ethylene (VAE) emulsion",
+        "stabilization_system_code": "P+S",
+        "stabilization_system": [
+          "PVOH (polyvinyl alcohol) protective colloid",
+          "Surfactant (emulsifier)"
+        ],
+        "solid_content_wt_percent": 55.0,
+        "viscosity_cp": "200-2000",
+        "spindle_rpm": "3/60",
+        "ph": "4.0-6.0",
+        "tg_c": 3,
+        "mfft_c": 0,
+        "industry": [
+          "Construction & Building"
+        ],
+        "construction_applications": {
+          "_note": "3 marks present out of 5 columns - exact columns uncertain, verify against source PDF"
+        },
+        "polymer_family_zh": "醋酸乙烯 – 乙烯共聚物"
+      }
+    }
+  ]
+}
