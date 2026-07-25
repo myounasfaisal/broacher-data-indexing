@@ -133,6 +133,18 @@ class Settings(BaseSettings):
     # Retry count for flaky external API calls (Claude, PubChem).
     api_max_retries: int = 3
 
+    # --- Reconciler (app/reconciler.py) ---
+    # How often the reconciler sweeps for stalled/failed work.
+    reconciler_interval_seconds: int = 30
+    # A document 'extracting' with no page progress (claimed_at heartbeat) older
+    # than this is treated as owned by a dead worker and reset to claimable.
+    # Keep it comfortably above the slowest single page so a live worker on a
+    # long page is never mistaken for stalled.
+    document_stale_seconds: int = 300
+    # A page that has failed this many times is dead-lettered (surfaced in review
+    # instead of retried forever).
+    max_page_attempts: int = 3
+
     # Load from backend/.env during local development.
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

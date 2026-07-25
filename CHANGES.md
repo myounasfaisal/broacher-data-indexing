@@ -1572,3 +1572,50 @@ reload or backend restart loses nothing.
 - Verified: `tests/test_cas.py` 13/13; frontend `tsc --noEmit` clean; backend
   byte-compiles + imports; live pilot (ECHEMI, 3pg) split→claim→extract→48
   products→supplier dedup, cleaned up after.
+
+---
+
+## Part 18 — Reconciler + PDF retention / pause (2026-07-26)
+
+Two related pieces landed on top of Part 17: the **lifecycle refinement** (commit
+`ce4987b`, already in Part 17) and the **reconciler** (this part).
+
+### Reconciler (`app/reconciler.py`)
+Single standalone self-healing loop — `python -m app.reconciler` (one instance,
+unlike the workers). Every `reconciler_interval_seconds` (30) it sweeps and:
+1. **Dead-letters** pages that failed `>= max_page_attempts` (3) → `dead`
+   (surfaced in review, not retried forever).
+2. **Finishes** any non-terminal document whose every page is terminal
+   (done/dead) → `done` + deletes the retained source PDF.
+3. **Retries** `failed` documents that still have retriable pages → back to a
+   claimable status (worker resumes at the first non-done page).
+4. **Resets stalled claims**: a document `extracting` past
+   `document_stale_seconds` (300) with no page heartbeat (dead worker) → back to
+   claimable.
+- **Guard**: a no-pages document with **no retained PDF** is left `failed`
+  instead of looping `failed→pending→failed` forever (added after leftover
+  pre-retention junk surfaced exactly this).
+- Never deletes listings or resolved suppliers — only status/page transitions
+  and the already-superseded PDF.
+
+### Worker heartbeat
+- `pipeline_db.touch_claim(doc_id)` after each page refreshes `documents.
+  claimed_at`, so the reconciler distinguishes a live worker on a long document
+  from a dead one (stall detection). `pipeline_db.source_pdf_exists()` added for
+  the reconciler's recoverability guard.
+
+### Config
+- `reconciler_interval_seconds=30`, `document_stale_seconds=300`,
+  `max_page_attempts=3`.
+
+### Files (part 18)
+- Backend new: `app/reconciler.py`.
+- Backend changed: `app/config.py` (reconciler settings), `app/services/
+  pipeline_db.py` (`touch_claim`, `source_pdf_exists`, `_now_iso`),
+  `app/worker.py` (per-page heartbeat).
+- Verified: imports clean; a live reconcile sweep correctly detected + re-queued
+  genuinely-stuck documents. **Reconciler/worker left stopped pending go-ahead.**
+
+> Note: the live `listings` catalog was intentionally cleared during testing on
+> 2026-07-25 (353 → 28 rows, all from an 11:16–11:20 UTC test run); the 28 rows
+> are the current baseline. `companies` 11, `chemicals` 730.

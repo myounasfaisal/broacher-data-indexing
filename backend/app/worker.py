@@ -224,6 +224,9 @@ def process_document(doc: dict[str, Any]) -> None:
             markdown_output=result.markdown,
             raw_json=json.loads(result.model_dump_json())["listings"],
         )
+        # Heartbeat after each page so the reconciler sees ongoing progress and
+        # doesn't reset a live worker on a long document.
+        pipeline_db.touch_claim(doc_id)
         # Carry the running_context forward, persisted so a crash mid-document
         # resumes with the same table/family context.
         if result.next_context is not None:

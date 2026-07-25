@@ -16,6 +16,7 @@ Page lifecycle:
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 from typing import Any
 
 from app.services.database import _db_op, get_client
@@ -23,6 +24,10 @@ from app.services.database import _db_op, get_client
 logger = logging.getLogger(__name__)
 
 BUCKET = "brochure-pages"
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 
 # ── Documents ────────────────────────────────────────────────────────────
@@ -54,6 +59,13 @@ def set_document(doc_id: str, **fields: Any) -> None:
     """Patch arbitrary columns on a document row (status, page_count,
     running_context, company_id, ...)."""
     get_client().table("documents").update(fields).eq("id", doc_id).execute()
+
+
+@_db_op
+def touch_claim(doc_id: str) -> None:
+    """Heartbeat: refresh claimed_at so the reconciler can tell a live worker
+    making page-by-page progress from a dead one (stall detection)."""
+    get_client().table("documents").update({"claimed_at": _now_iso()}).eq("id", doc_id).execute()
 
 
 @_db_op
@@ -300,6 +312,16 @@ def upload_source_pdf(doc_id: str, pdf_bytes: bytes) -> str:
     except Exception as exc:  # noqa: BLE001
         raise RuntimeError(f"Failed to store source PDF {path}: {exc}") from exc
     return path
+
+
+def source_pdf_exists(doc_id: str) -> bool:
+    """Whether a retained source PDF still exists for this document (used by the
+    reconciler to avoid re-queuing an unrecoverable no-pages document forever)."""
+    try:
+        items = get_client().storage.from_(BUCKET).list(doc_id)
+        return any(i.get("name") == "source.pdf" for i in (items or []))
+    except Exception:  # noqa: BLE001
+        return False
 
 
 def download_source_pdf(doc_id: str) -> bytes | None:
