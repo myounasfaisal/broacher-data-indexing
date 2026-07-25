@@ -113,6 +113,18 @@ class Settings(BaseSettings):
     # max_tokens for both pipeline stages (brochures can be dense).
     pipeline_max_tokens: int = 8000
 
+    # --- Two-stage page pipeline (services/page_extract.py) ---
+    # The DB-worker extraction path: image -> markdown (stage 1), then
+    # markdown -> JSON via forced tool-calling (stage 2). Only "qwen" (now) and
+    # "claude" (production) are supported here — this is the one place the model
+    # is chosen, per the pipeline design. Qwen for testing; flip to claude once a
+    # funded Sonnet 5 key exists.
+    page_extract_provider: str = "qwen"
+    # Model used for stage 2 when page_extract_provider="claude". Sonnet 5 in
+    # production (set via env once available); the config-level default is left
+    # to claude_model below so nothing hard-codes an unfunded model.
+    page_extract_claude_model: str = ""
+
     # --- Behaviour / limits ---
     allowed_origin: str = "http://localhost:5173"
     max_upload_size_mb: int = 20

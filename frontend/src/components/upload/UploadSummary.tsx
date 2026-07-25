@@ -1,25 +1,25 @@
-import type { UploadJob } from "@/types/chemical";
+import type { DocumentStatus } from "@/types/chemical";
 
-/** End-of-batch summary: counts of succeeded / failed brochures + listings. */
-export function UploadSummary({ jobs }: { jobs: UploadJob[] }) {
-  const duplicates = jobs.filter((j) => j.duplicate).length;
-  const done = jobs.filter((j) => j.status === "done" && !j.duplicate).length;
-  const failed = jobs.filter((j) => j.status === "failed").length;
-  const cancelled = jobs.filter((j) => j.status === "cancelled").length;
-  const total = jobs.length;
+/** End-of-batch summary: counts of succeeded / failed documents + products. */
+export function UploadSummary({ documents }: { documents: DocumentStatus[] }) {
+  const duplicates = documents.filter((d) => d.duplicate).length;
+  const done = documents.filter((d) => d.status === "done" && !d.duplicate).length;
+  const failed = documents.filter((d) => d.status === "failed").length;
+  const cancelled = documents.filter((d) => d.status === "cancelled").length;
+  const total = documents.length;
 
-  // Only show once every job has reached a terminal state.
+  // Only show once every document has reached a terminal state.
   const finished =
-    jobs.every(
-      (j) =>
-        j.status === "done" ||
-        j.status === "failed" ||
-        j.status === "cancelled",
+    documents.every(
+      (d) =>
+        d.status === "done" ||
+        d.status === "failed" ||
+        d.status === "cancelled" ||
+        d.duplicate,
     ) && total > 0;
   if (!finished) return null;
 
-  const listings = jobs.reduce((sum, j) => sum + j.listings_inserted, 0);
-  const review = jobs.reduce((sum, j) => sum + j.needs_review, 0);
+  const products = documents.reduce((sum, d) => sum + (d.product_count || 0), 0);
 
   return (
     <p className="text-sm text-fg-muted">
@@ -36,9 +36,7 @@ export function UploadSummary({ jobs }: { jobs: UploadJob[] }) {
       {cancelled > 0 && (
         <>
           {" · "}
-          <span className="font-medium text-fg-muted">
-            {cancelled} cancelled
-          </span>
+          <span className="font-medium text-fg-muted">{cancelled} cancelled</span>
         </>
       )}
       {failed > 0 && (
@@ -47,8 +45,7 @@ export function UploadSummary({ jobs }: { jobs: UploadJob[] }) {
           <span className="font-medium text-danger-text">{failed} failed</span>
         </>
       )}{" "}
-      of {total} — {listings} listing(s) saved
-      {review > 0 && <>, {review} flagged for review</>}.
+      of {total} — {products} product(s) saved.
     </p>
   );
 }

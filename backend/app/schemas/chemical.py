@@ -285,6 +285,31 @@ class UploadJobsResponse(BaseModel):
     jobs: list[UploadJobOut]
 
 
+class DocumentStatusOut(BaseModel):
+    """One document in the new DB-worker pipeline, as shown in the upload
+    progress UI. Progress is derived from the documents/pages status machine —
+    there is no in-memory job any more."""
+
+    id: str
+    content_hash: str = ""
+    filename: str = ""
+    # splitting | split | extracting | done | failed (pending is transient).
+    status: str
+    page_count: int = 0
+    pages_done: int = 0
+    product_count: int = 0
+    company_name: str | None = None
+    duplicate: bool = False  # true when skipped as an already-processed PDF
+    error: str | None = None
+    created_at: str = ""
+
+
+class DocumentStatusListResponse(BaseModel):
+    """Envelope for the caller's recent pipeline documents (upload progress)."""
+
+    documents: list[DocumentStatusOut]
+
+
 class JobActionRequest(BaseModel):
     """Body for POST /upload-jobs/{id}/action."""
 

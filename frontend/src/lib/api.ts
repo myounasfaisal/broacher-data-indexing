@@ -3,7 +3,7 @@ import type {
   AuditLogResponse,
   DashboardSummary,
   DocumentListings,
-  JobAction,
+  DocumentStatus,
   Listing,
   ListingUpdate,
   ManagedUser,
@@ -11,7 +11,6 @@ import type {
   Suggestion,
   SuppliersResponse,
   UploadHistoryResponse,
-  UploadJob,
   UploadRange,
   UserRole,
 } from "@/types/chemical";
@@ -202,8 +201,9 @@ async function suggest(
 // Upload jobs (server-side queue — survives page reloads)
 // ---------------------------------------------------------------------
 
-/** Enqueue a single brochure PDF for extraction; returns the created job. */
-async function enqueueUpload(file: File): Promise<UploadJob> {
+/** Accept a single brochure PDF: the backend creates a documents row and splits
+ * it; the worker extracts it. Returns the document's initial status. */
+async function enqueueUpload(file: File): Promise<DocumentStatus> {
   const form = new FormData();
   form.append("file", file);
 
@@ -216,8 +216,8 @@ async function enqueueUpload(file: File): Promise<UploadJob> {
   return res.json();
 }
 
-/** All of the caller's upload jobs (queued/processing/done/failed). */
-async function listUploadJobs(): Promise<{ jobs: UploadJob[] }> {
+/** The caller's recent pipeline documents with live status/progress. */
+async function listUploadJobs(): Promise<{ documents: DocumentStatus[] }> {
   const res = await fetch(`${BACKEND_URL}/upload-jobs`, {
     headers: { ...(await authHeader()) },
   });
@@ -225,9 +225,10 @@ async function listUploadJobs(): Promise<{ jobs: UploadJob[] }> {
   return res.json();
 }
 
-/** Remove the caller's finished (done/failed/cancelled) jobs from the view. */
-async function clearFinishedJobs(): Promise<{ removed: number }> {
-  const res = await fetch(`${BACKEND_URL}/upload-jobs/clear-finished`, {
+/** Request cancellation of a document (stops after the current page; keeps
+ * anything already extracted). */
+async function cancelDocument(docId: string): Promise<DocumentStatus> {
+  const res = await fetch(`${BACKEND_URL}/upload-jobs/${docId}/cancel`, {
     method: "POST",
     headers: { ...(await authHeader()) },
   });
@@ -235,25 +236,12 @@ async function clearFinishedJobs(): Promise<{ removed: number }> {
   return res.json();
 }
 
-/** Cancel every active (queued/paused/processing) job in one shot. */
-async function cancelAllJobs(): Promise<{ cancelled: number }> {
-  const res = await fetch(`${BACKEND_URL}/upload-jobs/cancel-all`, {
+/** Re-queue a failed/cancelled document; the worker resumes at its first
+ * incomplete page. */
+async function restartDocument(docId: string): Promise<DocumentStatus> {
+  const res = await fetch(`${BACKEND_URL}/upload-jobs/${docId}/restart`, {
     method: "POST",
     headers: { ...(await authHeader()) },
-  });
-  if (!res.ok) throw new Error(await extractError(res));
-  return res.json();
-}
-
-/** Apply a control action to one upload job (pause/resume/cancel/restart/remove). */
-async function jobAction(
-  jobId: string,
-  action: JobAction,
-): Promise<{ job?: UploadJob; removed?: boolean }> {
-  const res = await fetch(`${BACKEND_URL}/upload-jobs/${jobId}/action`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...(await authHeader()) },
-    body: JSON.stringify({ action }),
   });
   if (!res.ok) throw new Error(await extractError(res));
   return res.json();
@@ -414,9 +402,8 @@ export const api = {
   suggest,
   enqueueUpload,
   listUploadJobs,
-  clearFinishedJobs,
-  cancelAllJobs,
-  jobAction,
+  cancelDocument,
+  restartDocument,
   listUploadHistory,
   getUploadListings,
   listSuppliers,

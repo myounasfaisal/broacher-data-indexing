@@ -1,31 +1,37 @@
 import { Loader2 } from "lucide-react";
-import type { JobAction, UploadJob } from "@/types/chemical";
+import type { DocumentStatus } from "@/types/chemical";
 import { UploadJobRow } from "./UploadJobRow";
 
-/** A file that is still being sent from the browser (before it has a job). */
+/** A file that is still being sent from the browser (before it has a document). */
 export interface UploadingItem {
   tempId: string;
   name: string;
 }
 
 /**
- * The upload queue: one row PER FILE, each with its own animated progress bar
- * and control buttons. Files still being sent from the browser show as
- * "Uploading…" placeholders until the server returns their job.
+ * The upload progress list: one row per document, each tracking its real
+ * pages-done progress from the DB status machine. Files still being sent from
+ * the browser show as "Uploading…" placeholders until the server returns them.
  */
 export function UploadQueue({
-  jobs,
+  documents,
   uploading = [],
-  onAction,
+  onCancel,
+  onRestart,
 }: {
-  jobs: UploadJob[];
+  documents: DocumentStatus[];
   uploading?: UploadingItem[];
-  onAction: (id: string, action: JobAction) => Promise<void> | void;
+  onCancel: (id: string) => Promise<void> | void;
+  onRestart: (id: string) => Promise<void> | void;
 }) {
-  if (jobs.length === 0 && uploading.length === 0) return null;
+  if (documents.length === 0 && uploading.length === 0) return null;
 
-  const active = jobs.filter(
-    (j) => j.status === "queued" || j.status === "processing" || j.status === "paused",
+  const active = documents.filter(
+    (d) =>
+      d.status === "pending" ||
+      d.status === "splitting" ||
+      d.status === "split" ||
+      d.status === "extracting",
   ).length;
 
   return (
@@ -37,8 +43,13 @@ export function UploadQueue({
         </p>
       )}
       <ul className="divide-y divide-line">
-        {jobs.map((job) => (
-          <UploadJobRow key={job.id} job={job} onAction={onAction} />
+        {documents.map((doc) => (
+          <UploadJobRow
+            key={doc.id}
+            doc={doc}
+            onCancel={onCancel}
+            onRestart={onRestart}
+          />
         ))}
         {uploading.map((u) => (
           <li key={u.tempId} className="py-3">
@@ -50,8 +61,6 @@ export function UploadQueue({
                 <Loader2 className="h-3 w-3 animate-spin" /> Uploading…
               </span>
             </div>
-            {/* Indeterminate: the file is still being sent, so there is no real
-                percentage — omit aria-valuenow rather than assert a fake one. */}
             <div
               className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
               role="progressbar"

@@ -1,14 +1,15 @@
 """
-Upload endpoints — admin/manager brochure extraction via a server-side queue.
+Upload endpoints — admin/manager brochure extraction via the DB-worker pipeline.
 
-POST /upload-jobs           enqueue one validated PDF (returns the job)
-GET  /upload-jobs           list the caller's jobs (drives the progress UI;
-                            also how a reloaded page restores its queue)
-POST /upload-jobs/clear-finished   remove the caller's done/failed jobs
+POST /upload-jobs   accept one validated PDF: create a `documents` row, split it
+                    to page images in Storage, and return its status. The
+                    standalone worker process (app.worker) then extracts it.
+GET  /upload-jobs   the caller's recent documents with live status/progress
+                    (drives the progress UI; survives reloads — state is in the DB).
 
-The PDF is validated here (type, size, magic bytes), read fully into memory
-(never to disk) and handed to the job queue, which processes files one at a
-time in the background. See services/jobs.py.
+The PDF is validated here (type, size, magic bytes) and read fully into memory
+(never to disk). Splitting runs in a background task; extraction is the worker's
+job. There is no in-memory queue any more — all state lives in Postgres.
 """
 
 import logging
@@ -18,6 +19,7 @@ from typing import Literal
 
 from fastapi import (
     APIRouter,
+    BackgroundTasks,
     Depends,
     File,
     HTTPException,
@@ -32,15 +34,14 @@ from app.dependencies import require_admin, require_uploader
 from app.rate_limit import limiter
 from app.schemas.chemical import (
     DocumentListingsResponse,
-    JobActionRequest,
+    DocumentStatusListResponse,
+    DocumentStatusOut,
     ListingOut,
     UndoUploadResult,
     UploadHistoryItem,
     UploadHistoryResponse,
-    UploadJobOut,
-    UploadJobsResponse,
 )
-from app.services import database, jobs
+from app.services import database, pipeline_db, splitter
 
 logger = logging.getLogger(__name__)
 
@@ -50,17 +51,49 @@ router = APIRouter(tags=["upload"])
 _PDF_MAGIC = b"%PDF-"
 
 
+def _split_in_background(doc_id: str, pdf_bytes: bytes) -> None:
+    """Split a just-created document; on failure mark it failed so the UI shows
+    it rather than a document stuck in 'splitting' forever."""
+    try:
+        splitter.split_document(doc_id, pdf_bytes)
+    except Exception:  # noqa: BLE001
+        logger.exception("Split failed for document %s", doc_id)
+        try:
+            pipeline_db.set_document(doc_id, status="failed")
+        except Exception:  # noqa: BLE001
+            logger.exception("Could not mark document %s failed", doc_id)
+
+
+def _status_from_doc(doc: dict, *, duplicate: bool = False) -> DocumentStatusOut:
+    status_val = doc.get("status") or "pending"
+    return DocumentStatusOut(
+        id=str(doc.get("id") or ""),
+        content_hash=doc.get("content_hash") or "",
+        filename=doc.get("filename") or "",
+        status=status_val,
+        page_count=doc.get("page_count") or 0,
+        pages_done=doc.get("pages_done")
+        if doc.get("pages_done") is not None
+        else (doc.get("page_count") or 0 if status_val == "done" else 0),
+        product_count=doc.get("product_count") or 0,
+        company_name=doc.get("company_name"),
+        duplicate=duplicate,
+        created_at=str(doc.get("created_at") or ""),
+    )
+
+
 @router.post(
     "/upload-jobs",
-    response_model=UploadJobOut,
+    response_model=DocumentStatusOut,
     status_code=status.HTTP_202_ACCEPTED,
 )
-@limiter.limit("120/minute")  # enqueueing is cheap; the worker paces AI calls
+@limiter.limit("120/minute")  # accepting is cheap; the worker paces AI calls
 async def enqueue_brochure(
     request: Request,  # required by slowapi's limiter
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     uploader_id: str = Depends(require_uploader),
-) -> UploadJobOut:
+) -> DocumentStatusOut:
     # --- Validate content type (don't trust the extension alone) ---
     if file.content_type not in ("application/pdf", "application/x-pdf"):
         raise HTTPException(
@@ -87,62 +120,76 @@ async def enqueue_brochure(
             detail="File does not look like a valid PDF.",
         )
 
-    try:
-        job = await jobs.enqueue(
-            user_id=uploader_id,
-            filename=file.filename or "unknown.pdf",
-            pdf_bytes=pdf_bytes,
+    import hashlib
+
+    content_hash = hashlib.sha256(pdf_bytes).hexdigest()
+
+    # Dedup: an identical PDF already in the ledger is a no-op (no split, no AI).
+    existing = database.find_document(content_hash)
+    if existing is not None:
+        return _status_from_doc(
+            {**existing, "status": "done", "content_hash": content_hash},
+            duplicate=True,
         )
-    except jobs.QueueFullError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(exc),
-        ) from exc
 
-    return UploadJobOut(**job.to_dict())
+    # Create the work-queue row, then split (to Storage + pages) in the
+    # background so the request returns immediately. The worker takes it from
+    # there once it is 'split'.
+    doc = pipeline_db.create_document(
+        content_hash, file.filename or "unknown.pdf", uploader_id
+    )
+    background_tasks.add_task(_split_in_background, str(doc["id"]), pdf_bytes)
+    return _status_from_doc(doc)
 
 
-@router.get("/upload-jobs", response_model=UploadJobsResponse)
+@router.get("/upload-jobs", response_model=DocumentStatusListResponse)
 async def list_upload_jobs(
     uploader_id: str = Depends(require_uploader),
-) -> UploadJobsResponse:
-    return UploadJobsResponse(
-        jobs=[UploadJobOut(**j.to_dict()) for j in jobs.jobs_for_user(uploader_id)]
-    )
+) -> DocumentStatusListResponse:
+    rows = pipeline_db.list_documents_status(uploader_id)
+    return DocumentStatusListResponse(documents=[_status_from_doc(r) for r in rows])
 
 
-@router.post("/upload-jobs/clear-finished")
-async def clear_finished_jobs(
+def _owned_doc_or_403(doc_id: str, uploader_id: str) -> dict:
+    """Fetch a document the caller may act on (its own, or any if admin)."""
+    doc = pipeline_db.get_document(doc_id)
+    if doc is None:
+        raise HTTPException(status_code=404, detail="Upload not found.")
+    owner = str(doc["uploaded_by"]) if doc.get("uploaded_by") else None
+    if owner != uploader_id and database.get_user_role(uploader_id) != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only act on your own uploads.",
+        )
+    return doc
+
+
+@router.post("/upload-jobs/{doc_id}/cancel", response_model=DocumentStatusOut)
+async def cancel_document(
+    doc_id: str,
     uploader_id: str = Depends(require_uploader),
-) -> dict[str, int]:
-    return {"removed": jobs.clear_finished(uploader_id)}
+) -> DocumentStatusOut:
+    """Request cancellation of a document still splitting/queued/extracting. The
+    worker stops at the next page boundary — anything already extracted is kept."""
+    _owned_doc_or_403(doc_id, uploader_id)
+    updated = pipeline_db.request_cancel(doc_id)
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Upload not found.")
+    return _status_from_doc(updated)
 
 
-@router.post("/upload-jobs/cancel-all")
-async def cancel_all_jobs(
+@router.post("/upload-jobs/{doc_id}/restart", response_model=DocumentStatusOut)
+async def restart_document(
+    doc_id: str,
     uploader_id: str = Depends(require_uploader),
-) -> dict[str, int]:
-    """Cancel all of the caller's active (queued/paused/processing) jobs."""
-    return {"cancelled": jobs.cancel_all(uploader_id)}
-
-
-@router.post("/upload-jobs/{job_id}/action")
-async def job_action(
-    job_id: str,
-    body: JobActionRequest,
-    uploader_id: str = Depends(require_uploader),
-) -> dict[str, object]:
-    """
-    Apply a control action (pause/resume/cancel/restart/remove) to one of the
-    caller's upload jobs. Returns the updated job, or {"removed": true}.
-    """
-    try:
-        job = jobs.apply_action(uploader_id, job_id, body.action)
-    except jobs.ActionError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    if job is None:
-        return {"removed": True}
-    return {"job": UploadJobOut(**job.to_dict()).model_dump()}
+) -> DocumentStatusOut:
+    """Re-queue a failed/cancelled document; the worker resumes at its first
+    incomplete page (pages already done are not reprocessed)."""
+    _owned_doc_or_403(doc_id, uploader_id)
+    updated = pipeline_db.restart_document(doc_id)
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Upload not found.")
+    return _status_from_doc(updated)
 
 
 # ---------------------------------------------------------------------

@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { AlertTriangle, Ban, Check, X } from "lucide-react";
+import { AlertTriangle, X } from "lucide-react";
 import { api } from "@/lib/api";
-import type { JobAction } from "@/types/chemical";
 import { useRole } from "@/hooks/useRole";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FolderPicker } from "@/components/upload/FolderPicker";
 import { UploadReview } from "@/components/upload/UploadReview";
@@ -21,7 +19,9 @@ import { PageHeader } from "@/components/layout/PageHeader";
 // in sync with MAX_UPLOAD_SIZE_MB in the backend .env.
 const MAX_SIZE_BYTES = 20 * 1024 * 1024;
 
-/** A file that never entered the server queue, kept visible with its reason. */
+const ACTIVE_STATUSES = ["pending", "splitting", "split", "extracting"] as const;
+
+/** A file that never entered the pipeline, kept visible with its reason. */
 interface RejectedFile {
   id: string;
   name: string;
@@ -29,11 +29,11 @@ interface RejectedFile {
 }
 
 /**
- * Admin/manager page: pick brochure PDFs and hand them to the SERVER-side
- * queue, which processes them one at a time and exposes per-file status + a
- * live stage line. Each file has its own progress bar and controls (pause /
- * resume / cancel / restart / remove). Because the queue lives on the server,
- * a page reload loses nothing — jobs keep processing and reappear on return.
+ * Admin/manager page: pick brochure PDFs and hand them to the DB-worker
+ * pipeline. Each upload creates a `documents` row, is split into page images in
+ * Storage, and is extracted by the background worker. Progress (splitting →
+ * extracting → done, with a real pages-done bar) is read from the DB, so a page
+ * reload — or even a backend restart — loses nothing.
  */
 export default function AdminUploadPage() {
   const queryClient = useQueryClient();
@@ -44,34 +44,26 @@ export default function AdminUploadPage() {
   // stray folder selection can be caught before a single byte is uploaded.
   const [staged, setStaged] = useState<File[]>([]);
   const [isSending, setIsSending] = useState(false);
-  // Files that never became a job — too large, or the enqueue call failed.
-  // These persist in the surface (not just a toast) so a user who looked away
-  // still sees which files didn't make it, and why.
+  // Files that never entered the pipeline — too large, or the upload call failed.
   const [rejected, setRejected] = useState<RejectedFile[]>([]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["uploadJobs"],
     queryFn: api.listUploadJobs,
-    // Poll while anything is queued/processing; stop when the queue is idle.
+    // Poll while anything is still splitting/extracting; stop when all terminal.
     refetchInterval: (query) => {
-      const jobs = query.state.data?.jobs;
-      return jobs?.some(
-        (j) => j.status === "queued" || j.status === "processing",
-      )
-        ? 1200
+      const docs = query.state.data?.documents;
+      return docs?.some((d) => ACTIVE_STATUSES.includes(d.status as never))
+        ? 1500
         : false;
     },
   });
-  const jobs = data?.jobs ?? [];
-  const active = jobs.some(
-    (j) => j.status === "queued" || j.status === "processing",
-  );
-  const hasFinished = jobs.some(
-    (j) =>
-      j.status === "done" || j.status === "failed" || j.status === "cancelled",
+  const documents = data?.documents ?? [];
+  const active = documents.some((d) =>
+    ACTIVE_STATUSES.includes(d.status as never),
   );
 
-  // When the queue finishes processing, refresh the persistent history so the
+  // When the batch finishes processing, refresh the persistent history so the
   // just-completed uploads show up without a manual reload.
   const wasActive = useRef(active);
   useEffect(() => {
@@ -81,62 +73,29 @@ export default function AdminUploadPage() {
     wasActive.current = active;
   }, [active, queryClient]);
 
-  const clearMutation = useMutation({
-    mutationFn: api.clearFinishedJobs,
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["uploadJobs"] }),
-  });
-
-  const cancelAllMutation = useMutation({
-    mutationFn: api.cancelAllJobs,
-    onSuccess: ({ cancelled }) => {
-      queryClient.invalidateQueries({ queryKey: ["uploadJobs"] });
-      toast.success(
-        cancelled > 0
-          ? `Cancelled ${cancelled} file(s).`
-          : "Nothing left to cancel.",
-      );
-    },
-    onError: (err) =>
-      toast.error(err instanceof Error ? err.message : "Cancel failed"),
-  });
-
-  // Two-step confirm for the bulk stop — it kills every active job, so one
-  // stray click shouldn't. First click arms; a second within 3s commits.
-  const [confirmCancelAll, setConfirmCancelAll] = useState(false);
-  const cancelAllTimer = useRef<number | null>(null);
-  useEffect(
-    () => () => {
-      if (cancelAllTimer.current) window.clearTimeout(cancelAllTimer.current);
-    },
-    [],
-  );
-  function handleCancelAll() {
-    if (cancelAllTimer.current) window.clearTimeout(cancelAllTimer.current);
-    if (!confirmCancelAll) {
-      setConfirmCancelAll(true);
-      cancelAllTimer.current = window.setTimeout(
-        () => setConfirmCancelAll(false),
-        3000,
-      );
-      return;
-    }
-    setConfirmCancelAll(false);
-    cancelAllMutation.mutate();
-  }
-
-  /** Apply a control action to one job, then refresh the queue. */
-  async function handleAction(id: string, action: JobAction) {
+  /** Cancel a document (worker stops after the current page; keeps what's saved). */
+  async function handleCancel(id: string) {
     try {
-      await api.jobAction(id, action);
+      await api.cancelDocument(id);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Action failed");
+      toast.error(err instanceof Error ? err.message : "Cancel failed");
     } finally {
       queryClient.invalidateQueries({ queryKey: ["uploadJobs"] });
     }
   }
 
-  /** Record a file that couldn't be queued, in the surface and as a toast. */
+  /** Restart a failed/cancelled document from its first incomplete page. */
+  async function handleRestart(id: string) {
+    try {
+      await api.restartDocument(id);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Restart failed");
+    } finally {
+      queryClient.invalidateQueries({ queryKey: ["uploadJobs"] });
+    }
+  }
+
+  /** Record a file that couldn't be uploaded, in the surface and as a toast. */
   function reject(name: string, reason: string) {
     setRejected((prev) => [
       ...prev,
@@ -147,7 +106,6 @@ export default function AdminUploadPage() {
 
   /**
    * A selection (browse or drop) STAGES files for review — it does not upload.
-   * New files are appended to the review list.
    */
   function stageFiles(files: File[]) {
     if (files.length === 0) {
@@ -157,11 +115,10 @@ export default function AdminUploadPage() {
     setStaged((prev) => [...prev, ...files]);
   }
 
-  /** Validate client-side, then enqueue every STAGED file on the server. */
+  /** Validate client-side, then upload every STAGED file. */
   async function startUpload() {
     const files = staged;
     if (files.length === 0) return;
-    // A fresh upload supersedes the previous batch's rejections.
     setRejected([]);
     setIsSending(true);
     let queued = 0;
@@ -183,22 +140,21 @@ export default function AdminUploadPage() {
     }
     setStaged([]);
     setIsSending(false);
-    // One refresh after the batch, not one per file.
     if (queued > 0) {
       queryClient.invalidateQueries({ queryKey: ["uploadJobs"] });
       toast.success(
-        `${queued} file(s) queued — processing continues even if you reload or leave this page.`,
+        `${queued} file(s) uploaded — the worker extracts them in the background; progress keeps updating even if you reload or leave.`,
       );
     }
   }
 
-  const showCard = jobs.length > 0 || uploading.length > 0 || isLoading;
+  const showCard = documents.length > 0 || uploading.length > 0 || isLoading;
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Upload brochures"
-        description="Drop or pick brochures, review the list, then upload — each is processed in memory and never stored."
+        description="Drop or pick brochures, review the list, then upload — each is split into pages and extracted by the background worker."
       />
 
       <Card>
@@ -219,15 +175,13 @@ export default function AdminUploadPage() {
           <p className="text-xs text-fg-muted">
             Drop a <strong className="font-medium text-fg">folder</strong> or{" "}
             <strong className="font-medium text-fg">PDF files</strong>, review the
-            list, then upload. Each file is queued on the server and shows its own
-            progress; you can <strong className="font-medium text-fg">pause,
-            resume, cancel, restart or remove</strong> any file, or{" "}
-            <strong className="font-medium text-fg">cancel everything at once</strong>.
-            The queue <strong className="font-medium text-fg">survives page
-            reloads</strong>. Only{" "}
-            <code className="rounded bg-muted px-1 font-mono text-[0.9em] text-fg">.pdf</code> files
-            are processed; each is sent to the AI model in memory and never
-            stored.
+            list, then upload. Each file is split into page images and handed to
+            the background worker, which extracts it page by page. Progress is
+            stored in the database, so it{" "}
+            <strong className="font-medium text-fg">survives page reloads</strong>{" "}
+            and backend restarts. Only{" "}
+            <code className="rounded bg-muted px-1 font-mono text-[0.9em] text-fg">.pdf</code>{" "}
+            files are processed.
           </p>
         </CardContent>
       </Card>
@@ -237,7 +191,7 @@ export default function AdminUploadPage() {
           <div className="mb-2 flex items-center justify-between gap-3">
             <p className="flex items-center gap-2 text-sm font-medium text-danger-text">
               <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
-              {rejected.length} file{rejected.length === 1 ? "" : "s"} weren&rsquo;t queued
+              {rejected.length} file{rejected.length === 1 ? "" : "s"} weren&rsquo;t uploaded
             </p>
             <button
               type="button"
@@ -275,50 +229,22 @@ export default function AdminUploadPage() {
       {showCard && (
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between gap-2">
-              <CardTitle>Progress</CardTitle>
-              <div className="flex items-center gap-2">
-                {active && (
-                  <Button
-                    variant={confirmCancelAll ? "destructive" : "outline"}
-                    size="sm"
-                    onClick={handleCancelAll}
-                    disabled={cancelAllMutation.isPending}
-                  >
-                    {confirmCancelAll ? (
-                      <Check className="h-4 w-4" aria-hidden />
-                    ) : (
-                      <Ban className="h-4 w-4" aria-hidden />
-                    )}
-                    {confirmCancelAll ? "Click again to cancel all" : "Cancel all"}
-                  </Button>
-                )}
-                {hasFinished && !active && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => clearMutation.mutate()}
-                    disabled={clearMutation.isPending}
-                  >
-                    Clear finished
-                  </Button>
-                )}
-              </div>
-            </div>
+            <CardTitle>Progress</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {isLoading && jobs.length === 0 ? (
+            {isLoading && documents.length === 0 ? (
               <p className="py-4 text-center text-sm text-fg-muted">
-                Loading queue…
+                Loading…
               </p>
             ) : (
               <>
                 <UploadQueue
-                  jobs={jobs}
+                  documents={documents}
                   uploading={uploading}
-                  onAction={handleAction}
+                  onCancel={handleCancel}
+                  onRestart={handleRestart}
                 />
-                <UploadSummary jobs={jobs} />
+                <UploadSummary documents={documents} />
               </>
             )}
           </CardContent>

@@ -13,28 +13,32 @@ export type UploadJobStatus =
   | "failed"
   | "cancelled";
 
-export type JobAction = "pause" | "resume" | "cancel" | "restart" | "remove";
+/**
+ * One document in the DB-worker pipeline (backend documents/pages tables).
+ * Replaces the old in-memory UploadJob — progress is derived from the
+ * documents/pages status machine, so it survives reloads and backend restarts.
+ */
+export type DocumentStatusValue =
+  | "pending"
+  | "splitting"
+  | "split"
+  | "extracting"
+  | "done"
+  | "failed"
+  | "cancelled";
 
-/** One server-side upload job (see backend services/jobs.py). */
-export interface UploadJob {
+export interface DocumentStatus {
   id: string;
+  content_hash: string;
   filename: string;
-  status: UploadJobStatus;
-  stage: string; // human-readable "what is happening right now"
+  status: DocumentStatusValue;
+  page_count: number;
+  pages_done: number;
+  product_count: number;
   company_name: string | null;
-  products_found: number;
-  listings_inserted: number;
-  needs_review: number;
   duplicate: boolean; // skipped because this exact PDF was already processed
   error: string | null;
-  created_at: number;
-  updated_at: number;
-  // Which controls are valid right now (from the server).
-  can_pause: boolean;
-  can_resume: boolean;
-  can_cancel: boolean;
-  can_restart: boolean;
-  can_remove: boolean;
+  created_at: string;
 }
 
 /** Date-range filter for the upload history. */
