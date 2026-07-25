@@ -178,7 +178,7 @@ def set_user_role(user_id: str, role: str) -> None:
 # Admin dashboard aggregates
 # ---------------------------------------------------------------------
 @_db_op
-def dashboard_summary() -> dict[str, int]:
+def dashboard_summary() -> dict[str, Any]:
     """
     Aggregate counts for the admin/manager dashboard, built from the existing
     tables via PostgREST exact-count queries (count reflects ALL matching rows;
@@ -194,16 +194,75 @@ def dashboard_summary() -> dict[str, int]:
 
     cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
 
+    total_listings = _count("listings", "id")
+    needs_review = _count("listings", "id", lambda q: q.eq("needs_review", True))
+
+    # Three DISJOINT quality slices that sum to total_listings. needs_review
+    # wins over missing-price so a flagged listing is counted once; missing
+    # price is then the priced-null remainder, and complete is whatever's left.
+    missing_price = _count(
+        "listings",
+        "id",
+        lambda q: q.eq("needs_review", False).is_("price", "null"),
+    )
+    complete = max(total_listings - needs_review - missing_price, 0)
+
     return {
-        "total_listings": _count("listings", "id"),
+        "total_listings": total_listings,
         "total_suppliers": _count("companies", "id"),
         "uploads_last_7d": _count(
             "documents", "content_hash", lambda q: q.gte("created_at", cutoff)
         ),
-        "needs_review": _count(
-            "listings", "id", lambda q: q.eq("needs_review", True)
-        ),
+        "needs_review": needs_review,
+        "status_distribution": {
+            "complete": complete,
+            "needs_review": needs_review,
+            "missing_price": missing_price,
+        },
+        "top_suppliers": _top_suppliers_by_listings(client, limit=4),
     }
+
+
+def _top_suppliers_by_listings(client: Any, limit: int = 4) -> list[dict[str, Any]]:
+    """
+    The suppliers with the most listings, for the dashboard bar panel.
+
+    PostgREST has no GROUP BY, so — exactly as list_suppliers() does for its
+    per-page counts — we pull the single company_id column for every listing
+    and tally in Python. It's one narrow column and the result is admin-only
+    and client-cached, so the cost is acceptable at catalog scale. Names are
+    resolved in one follow-up query bounded to just the top `limit` companies.
+    """
+    resp = client.table("listings").select("company_id").execute()
+    tally: dict[int, int] = {}
+    for row in resp.data or []:
+        cid = row.get("company_id")
+        if cid is not None:
+            tally[cid] = tally.get(cid, 0) + 1
+    if not tally:
+        return []
+
+    top = sorted(tally.items(), key=lambda kv: kv[1], reverse=True)[:limit]
+    top_ids = [cid for cid, _ in top]
+
+    name_resp = (
+        client.table("companies")
+        .select("id, company_name, company_name_en")
+        .in_("id", top_ids)
+        .execute()
+    )
+    names: dict[int, str] = {}
+    for c in name_resp.data or []:
+        names[c["id"]] = (
+            (c.get("company_name_en") or "").strip()
+            or (c.get("company_name") or "").strip()
+            or "Unknown supplier"
+        )
+
+    return [
+        {"company_id": cid, "name": names.get(cid, "Unknown supplier"), "count": count}
+        for cid, count in top
+    ]
 
 
 # ---------------------------------------------------------------------
@@ -331,27 +390,51 @@ def resolve_company(
 
 @_db_op
 def list_suppliers(
-    page: int = 1, page_size: int = 10
+    page: int = 1,
+    page_size: int = 10,
+    q: str | None = None,
+    direction: str = "asc",
 ) -> tuple[list[dict[str, Any]], int]:
     """
     Suppliers directory: one row per company with every extracted detail we
     hold (names, email, phone) plus derived fields — listing count and the
     distinct printed websites aggregated from that supplier's listings
     (website is stored per-listing, since that's where extraction sees it).
-    Server-paginated; ordered by English name (Postgres puts the null
-    English names last on ASC), then original name.
+    Server-paginated; ordered by English name then original name, ascending or
+    descending per `direction`.
+
+    Suppliers with no English name are pinned last in BOTH directions
+    (`nullsfirst=False`). Postgres would otherwise float them to the top on
+    DESC, so flipping the sort would open the directory on a block of rows
+    that look blank — a sort toggle shouldn't change *which* rows lead, only
+    their order.
+
+    `q` filters on either name or the email — the fields a user has in hand
+    when looking a supplier up. Filtering is server-side because the directory
+    is paginated: narrowing only the current page would search 10 rows out of
+    the whole set and quietly hide every other match.
     """
     client = get_client()
     offset = (page - 1) * page_size
+    query = client.table("companies").select(
+        "id, company_name, company_name_en, email, contact_number, created_at",
+        count="exact",
+    )
+    if q:
+        # Same sanitizer as /search: , ( ) are structural in a PostgREST or()
+        # string and % _ are ilike wildcards, so raw input could otherwise
+        # change the filter's meaning.
+        safe = _sanitize_filter_value(q)
+        if safe:
+            query = query.or_(
+                f"company_name.ilike.*{safe}*,"
+                f"company_name_en.ilike.*{safe}*,"
+                f"email.ilike.*{safe}*"
+            )
+    desc = direction == "desc"
     resp = (
-        client.table("companies")
-        .select(
-            "id, company_name, company_name_en, email, contact_number, "
-            "created_at",
-            count="exact",
-        )
-        .order("company_name_en", desc=False)
-        .order("company_name", desc=False)
+        query.order("company_name_en", desc=desc, nullsfirst=False)
+        .order("company_name", desc=desc, nullsfirst=False)
         .range(offset, offset + page_size - 1)
         .execute()
     )
@@ -830,6 +913,7 @@ def get_listing(listing_id: str) -> dict[str, Any] | None:
 def search_listings(
     *,
     q: str | None = None,
+    supplier: str | None = None,
     cas_number: str | None = None,
     min_price: float | None = None,
     max_price: float | None = None,
@@ -850,6 +934,14 @@ def search_listings(
     query path.
 
     - q: case-insensitive match against name_en, name_raw, or cas_number.
+    - supplier: case-insensitive substring match against the supplier's
+      bilingual names ONLY. `q` already folds supplier names into its broad
+      search_text surface, so on its own it cannot express "this product, from
+      this supplier" — that needs a separate axis. Resolved as
+      companies -> ids -> `company_id IN (...)` rather than a PostgREST
+      embedded-resource filter, because `.in_("company_id", ...)` is a pattern
+      this module already uses and it needs no `!inner` rewrite of
+      SEARCH_COLUMNS. No supplier match short-circuits to an empty page.
     - cas_number: case-insensitive substring match against cas_number only.
     - min_price / max_price: bounds in USD, compared against the normalized
       price_usd column so mixed-currency listings are comparable. Rows whose
@@ -884,6 +976,31 @@ def search_listings(
         safe = _sanitize_filter_value(q)
         if safe:
             query = query.ilike("search_text", f"*{safe}*")
+
+    if supplier:
+        safe_sup = _sanitize_filter_value(supplier)
+        if safe_sup:
+            # Resolve the name to company ids first, then constrain listings by
+            # company_id. Two round-trips, but it keeps the listings query on
+            # patterns already proven against this Supabase edge (see the
+            # Cloudflare 1101 note above) instead of introducing an embedded
+            # `companies!inner(...)` filter.
+            comp = (
+                get_client()
+                .table("companies")
+                .select("id")
+                .or_(
+                    f"company_name.ilike.*{safe_sup}*,"
+                    f"company_name_en.ilike.*{safe_sup}*"
+                )
+                .execute()
+            )
+            company_ids = [c["id"] for c in (comp.data or [])]
+            if not company_ids:
+                # No supplier matched: the result set is empty by definition.
+                # Return early rather than issuing an unconstrained query.
+                return [], 0
+            query = query.in_("company_id", company_ids)
 
     if cas_number:
         safe_cas = _sanitize_filter_value(cas_number)

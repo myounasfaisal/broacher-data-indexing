@@ -16,6 +16,10 @@ export const Checkbox = React.forwardRef<
     type="checkbox"
     className={cn(
       "h-4 w-4 cursor-pointer rounded border-line accent-brand",
+      // 16px is the right visual size in a dense table but far too small for a
+      // thumb — `touch-target` grows the tappable area to 44px on coarse
+      // pointers without shifting anything on screen.
+      "touch-target",
       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/70",
       className,
     )}

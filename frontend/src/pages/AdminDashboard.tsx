@@ -1,22 +1,27 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { Boxes, Building2, FileWarning, Upload } from "lucide-react";
+import { FileWarning, Upload } from "lucide-react";
 import { api } from "@/lib/api";
 import { useRole } from "@/hooks/useRole";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
-import { PageHeader } from "@/components/layout/PageHeader";
+import { DashboardMasthead } from "@/components/dashboard/DashboardMasthead";
+import { ListingStatusDonut } from "@/components/dashboard/ListingStatusDonut";
+import { TopSuppliersBars } from "@/components/dashboard/TopSuppliersBars";
 import { UploadHistory } from "@/components/upload/UploadHistory";
 import { UsersTable } from "@/components/admin/UsersTable";
 
 /**
- * Admin/manager landing page: a dense overview of the whole database.
+ * Admin/manager landing page: a briefing on the whole database.
  *
- * - Stat cards (total listings, suppliers, uploads in 7 days, needs review)
- *   from one aggregate endpoint.
- * - Recent uploads (admin + manager) — reuses <UploadHistory>, so the per-row
- *   "View listings" and Undo actions come for free.
- * - Users table (admin only) — reuses <UsersTable> with its role editor.
+ * Reads top to bottom as scale → attention → distribution → activity, and no
+ * number is shown twice (DESIGN.md → The Briefing Order Rule):
+ * - Masthead — the catalog's headline totals (listings, suppliers).
+ * - Stat row — the two operational numbers: recent uploads and the review
+ *   backlog (the one card that is a real link into the queue).
+ * - Insight row — the status donut and top-suppliers bars, from the same
+ *   aggregate endpoint.
+ * - Recent uploads (<UploadHistory>) and, for admins, <UsersTable>.
  */
 export default function AdminDashboard() {
   const { data: role } = useRole();
@@ -32,9 +37,10 @@ export default function AdminDashboard() {
 
   return (
     <div>
-      <PageHeader
-        title="Dashboard"
-        description="An overview of the chemical database — listings, suppliers, and recent activity."
+      <DashboardMasthead
+        listings={data?.total_listings}
+        suppliers={data?.total_suppliers}
+        loading={isLoading}
       />
 
       {isError && (
@@ -43,24 +49,15 @@ export default function AdminDashboard() {
         </p>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Total listings"
-          value={fmt(data?.total_listings)}
-          icon={Boxes}
-          tone="brand"
-          loading={isLoading}
-        />
-        <StatCard
-          label="Suppliers"
-          value={fmt(data?.total_suppliers)}
-          icon={Building2}
-          loading={isLoading}
-        />
+      <div className="grid gap-4 sm:grid-cols-2">
         <StatCard
           label="Uploads · 7 days"
           value={fmt(data?.uploads_last_7d)}
           icon={Upload}
+          tone="sky"
+          hint={
+            data ? `${fmt(data.status_distribution?.complete)} listings complete` : undefined
+          }
           loading={isLoading}
         />
         {/* The "Review" button: the whole card links into the review queue. */}
@@ -82,6 +79,11 @@ export default function AdminDashboard() {
             loading={isLoading}
           />
         </Link>
+      </div>
+
+      <div className="mt-6 grid gap-4 lg:grid-cols-[1.1fr_1fr]">
+        <ListingStatusDonut dist={data?.status_distribution} loading={isLoading} />
+        <TopSuppliersBars suppliers={data?.top_suppliers} loading={isLoading} />
       </div>
 
       <div className="mt-6 space-y-6">

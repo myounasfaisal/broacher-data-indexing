@@ -34,6 +34,12 @@ export type SortOption = "name_asc" | "name_desc" | "price_asc" | "price_desc";
 
 export interface SearchParams {
   q?: string;
+  /**
+   * Supplier name substring. A separate axis from `q` on purpose: `q` already
+   * matches supplier names, so it can't express "this product, from this
+   * supplier". Set both to do exactly that.
+   */
+  supplier?: string;
   cas?: string;
   minPrice?: number;
   maxPrice?: number;
@@ -81,6 +87,7 @@ export interface AISearchResponse extends SearchResponse {
 async function search(params: SearchParams): Promise<SearchResponse> {
   const qs = new URLSearchParams();
   if (params.q) qs.set("q", params.q);
+  if (params.supplier) qs.set("supplier", params.supplier);
   if (params.cas) qs.set("cas", params.cas);
   if (params.minPrice != null) qs.set("min_price", String(params.minPrice));
   if (params.maxPrice != null) qs.set("max_price", String(params.maxPrice));
@@ -228,6 +235,16 @@ async function clearFinishedJobs(): Promise<{ removed: number }> {
   return res.json();
 }
 
+/** Cancel every active (queued/paused/processing) job in one shot. */
+async function cancelAllJobs(): Promise<{ cancelled: number }> {
+  const res = await fetch(`${BACKEND_URL}/upload-jobs/cancel-all`, {
+    method: "POST",
+    headers: { ...(await authHeader()) },
+  });
+  if (!res.ok) throw new Error(await extractError(res));
+  return res.json();
+}
+
 /** Apply a control action to one upload job (pause/resume/cancel/restart/remove). */
 async function jobAction(
   jobId: string,
@@ -285,15 +302,26 @@ async function getUploadListings(
 // Suppliers directory (all roles)
 // ---------------------------------------------------------------------
 
-/** Paginated suppliers directory: extracted company details + listing counts. */
+/**
+ * Paginated suppliers directory: extracted company details + listing counts.
+ * `q` filters server-side on company name (either script) or email;
+ * `direction` sorts by supplier name ("asc" default, or "desc").
+ */
 async function listSuppliers(
   page = 1,
   pageSize = 10,
+  q?: string,
+  direction: "asc" | "desc" = "asc",
 ): Promise<SuppliersResponse> {
   const qs = new URLSearchParams({
     page: String(page),
     page_size: String(pageSize),
   });
+  // Omitted entirely when blank, so the unfiltered request stays byte-identical
+  // to what it was before search existed.
+  if (q?.trim()) qs.set("q", q.trim());
+  // Only send a non-default direction, keeping the default request unchanged.
+  if (direction === "desc") qs.set("direction", "desc");
   const res = await fetch(`${BACKEND_URL}/suppliers?${qs.toString()}`, {
     headers: { ...(await authHeader()) },
   });
@@ -387,6 +415,7 @@ export const api = {
   enqueueUpload,
   listUploadJobs,
   clearFinishedJobs,
+  cancelAllJobs,
   jobAction,
   listUploadHistory,
   getUploadListings,

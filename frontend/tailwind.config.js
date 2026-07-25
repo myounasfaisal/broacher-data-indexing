@@ -89,11 +89,19 @@ export default {
         panel: "18px",
       },
       boxShadow: {
-        // Soft elevation for cards/panels; deeper "pop" for overlays.
-        card: "0 1px 2px 0 rgb(16 24 40 / 0.04), 0 1px 3px 0 rgb(16 24 40 / 0.06)",
+        // Override Tailwind's stock `shadow-sm` (pure-black) so the micro-
+        // elevation on buttons, inputs, and selects belongs to the same
+        // teal-black family as the cards — a premium surface shouldn't mix
+        // shadow temperatures.
+        sm: "0 1px 2px 0 rgb(13 27 24 / 0.06)",
+        // Layered elevation on a teal-black (13 27 24) rather than blue-black,
+        // so shadows belong to the brand's own hue. Each token stacks a tight
+        // contact shadow under a softer, wider ambient one — the difference
+        // between "a box with a drop shadow" and depth that reads as considered.
+        card: "0 1px 1px 0 rgb(13 27 24 / 0.04), 0 2px 5px -1px rgb(13 27 24 / 0.06)",
         "card-hover":
-          "0 4px 12px -2px rgb(16 24 40 / 0.10), 0 2px 6px -2px rgb(16 24 40 / 0.06)",
-        pop: "0 12px 32px -8px rgb(16 24 40 / 0.20), 0 4px 12px -4px rgb(16 24 40 / 0.12)",
+          "0 2px 4px -1px rgb(13 27 24 / 0.06), 0 10px 26px -6px rgb(13 27 24 / 0.13)",
+        pop: "0 2px 6px -2px rgb(13 27 24 / 0.10), 0 18px 44px -12px rgb(13 27 24 / 0.26)",
       },
       keyframes: {
         "fade-in": {

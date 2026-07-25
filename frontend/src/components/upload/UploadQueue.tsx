@@ -43,12 +43,21 @@ export function UploadQueue({
         {uploading.map((u) => (
           <li key={u.tempId} className="py-3">
             <div className="mb-1 flex items-center justify-between gap-3">
-              <p className="truncate text-sm font-medium text-fg">{u.name}</p>
+              <p className="truncate text-sm font-medium text-fg" title={u.name}>
+                {u.name}
+              </p>
               <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-fg-muted">
                 <Loader2 className="h-3 w-3 animate-spin" /> Uploading…
               </span>
             </div>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            {/* Indeterminate: the file is still being sent, so there is no real
+                percentage — omit aria-valuenow rather than assert a fake one. */}
+            <div
+              className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
+              role="progressbar"
+              aria-label={`${u.name} uploading`}
+              aria-valuetext="Uploading"
+            >
               <div className="h-full w-1/3 animate-pulse rounded-full bg-fg-subtle" />
             </div>
           </li>

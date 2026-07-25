@@ -47,6 +47,14 @@ async def search(
             "inside the listing's details/description"
         ),
     ),
+    supplier: str | None = Query(
+        default=None,
+        max_length=200,
+        description=(
+            "Supplier name substring — matches the company's bilingual names "
+            "only. Combine with `q` to search a product within one supplier"
+        ),
+    ),
     cas: str | None = Query(
         default=None, max_length=50, description="CAS number substring"
     ),
@@ -85,6 +93,7 @@ async def search(
 ) -> SearchResponse:
     rows, total = search_listings(
         q=q,
+        supplier=supplier,
         cas_number=cas,
         min_price=min_price,
         max_price=max_price,

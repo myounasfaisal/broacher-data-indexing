@@ -2,8 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { ExternalLink, Mail, Phone, Search as SearchIcon } from "lucide-react";
 import { api } from "@/lib/api";
+import { formatDate, websiteHref } from "@/lib/format";
 import { SidePanel } from "@/components/ui/side-panel";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MonoChip } from "@/components/ui/mono-chip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatPrice } from "@/components/search/ResultsTable";
@@ -45,7 +45,7 @@ export function SupplierPanel({
       headerActions={
         supplier ? (
           <Link
-            to={`/search?q=${encodeURIComponent(supplierSearchQuery(supplier))}`}
+            to={`/search?supplier=${encodeURIComponent(supplierSearchQuery(supplier))}`}
             className="inline-flex h-8 items-center gap-1.5 rounded-btn px-2.5 text-xs font-medium text-brand-text hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/70"
             title="Search all of this supplier's products"
           >
@@ -62,6 +62,11 @@ export function SupplierPanel({
   );
 }
 
+/**
+ * The drawer is already an elevated surface, so the content inside it is laid
+ * out with plain sections and a rule between them rather than Cards — cards
+ * inside a card add elevation without adding information.
+ */
 function SupplierBody({
   supplier: s,
   onOpenProduct,
@@ -76,96 +81,129 @@ function SupplierBody({
       : null;
 
   // First page of this supplier's products, through the normal search.
-  const { data, isPending } = useQuery({
+  const { data, isPending, isError, error, refetch } = useQuery({
     queryKey: ["supplierProducts", s.id],
     queryFn: () => api.search({ q: supplierSearchQuery(s), pageSize: 15 }),
     staleTime: 30_000,
   });
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-xl">{primary}</CardTitle>
-          {secondary && <p className="mt-1 text-sm text-fg-muted">{secondary}</p>}
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <dl className="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
-            <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-fg-subtle">
-                Products
-              </dt>
-              <dd className="mt-1">
-                <MonoChip tone="neutral">{s.listing_count}</MonoChip>
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-fg-subtle">
-                First seen
-              </dt>
-              <dd className="mt-0.5 text-sm font-medium text-fg">
-                {formatDate(s.created_at)}
-              </dd>
-            </div>
-          </dl>
+    <div className="divide-y divide-line">
+      <section className="pb-6">
+        {/* break-words: extracted company names can be a single unbroken
+            token long enough to push the drawer into horizontal scroll. */}
+        <h3 className="break-words text-xl font-medium tracking-tight text-fg">
+          {primary}
+        </h3>
+        {secondary && (
+          <p className="mt-1 break-words text-sm text-fg-muted">{secondary}</p>
+        )}
 
-          <div className="flex flex-col gap-1.5 text-sm">
-            {s.email && (
-              <a
-                href={`mailto:${s.email}`}
-                className="inline-flex items-center gap-1.5 font-medium text-brand-text hover:underline"
-              >
-                <Mail className="h-3.5 w-3.5 shrink-0" />
-                {s.email}
-              </a>
-            )}
-            {s.contact_number && (
-              <span className="inline-flex items-center gap-1.5 text-fg">
-                <Phone className="h-3.5 w-3.5 shrink-0 text-fg-subtle" />
-                <span className="font-mono text-xs">{s.contact_number}</span>
-              </span>
-            )}
-            {s.websites.map((site) => (
-              <a
-                key={site}
-                href={websiteHref(site)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 font-medium text-brand-text hover:underline"
-              >
-                <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{site}</span>
-              </a>
-            ))}
-            {!s.email && !s.contact_number && s.websites.length === 0 && (
-              <p className="text-xs text-fg-subtle">
-                No contact details printed on this supplier's brochures (email
-                and phone are captured from uploads going forward when
-                printed).
-              </p>
-            )}
+        <dl className="mt-4 grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
+          <div>
+            <dt className="text-xs font-medium uppercase tracking-wide text-fg-subtle">
+              Products
+            </dt>
+            <dd className="mt-1">
+              <MonoChip tone="neutral">{s.listing_count}</MonoChip>
+            </dd>
           </div>
-        </CardContent>
-      </Card>
+          <div>
+            <dt className="text-xs font-medium uppercase tracking-wide text-fg-subtle">
+              First seen
+            </dt>
+            <dd className="mt-0.5 text-sm font-medium text-fg">
+              {formatDate(s.created_at)}
+            </dd>
+          </div>
+        </dl>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Products</CardTitle>
-          <p className="mt-1 text-xs text-fg-subtle">
-            Found via the normal search — open one for full details.
-          </p>
-        </CardHeader>
-        <CardContent>
+        <div className="mt-4 flex flex-col items-start gap-1.5 text-sm">
+          {s.email && (
+            <a
+              href={`mailto:${s.email}`}
+              className="inline-flex max-w-full items-center gap-1.5 font-medium text-brand-text hover:underline"
+            >
+              <Mail className="h-3.5 w-3.5 shrink-0" />
+              <span className="min-w-0 truncate">{s.email}</span>
+            </a>
+          )}
+          {s.contact_number && (
+            <span className="inline-flex max-w-full items-center gap-1.5 text-fg">
+              <Phone className="h-3.5 w-3.5 shrink-0 text-fg-subtle" />
+              <span className="min-w-0 truncate font-mono text-xs">
+                {s.contact_number}
+              </span>
+            </span>
+          )}
+          {s.websites.map((site) => (
+            <a
+              key={site}
+              href={websiteHref(site)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex max-w-full items-center gap-1.5 font-medium text-brand-text hover:underline"
+            >
+              <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+              <span className="min-w-0 truncate">{site}</span>
+            </a>
+          ))}
+          {!s.email && !s.contact_number && s.websites.length === 0 && (
+            <p className="text-xs text-fg-subtle">
+              No contact details printed on this supplier's brochures (email and
+              phone are captured from uploads going forward when printed).
+            </p>
+          )}
+        </div>
+      </section>
+
+      <section className="pt-6">
+        <h3 className="text-base font-medium tracking-tight text-fg">
+          Products
+        </h3>
+        <p className="mt-1 text-xs text-fg-subtle">
+          Found via the normal search — open one for full details.
+        </p>
+
+        <div className="mt-3">
           {isPending && (
-            <div aria-hidden className="space-y-2 py-1">
-              {Array.from({ length: 5 }, (_, i) => (
-                <Skeleton key={i} className="h-5 w-full" />
-              ))}
+            <>
+              <div aria-hidden className="space-y-2 py-1">
+                {Array.from({ length: 5 }, (_, i) => (
+                  <Skeleton key={i} className="h-5 w-full" />
+                ))}
+              </div>
+              {/* The skeleton bars are decorative and hidden; without this the
+                  wait is silent for screen readers. */}
+              <span className="sr-only" role="status">
+                Loading this supplier's products…
+              </span>
+            </>
+          )}
+
+          {isError && (
+            <div role="alert" className="py-2">
+              <p className="text-sm text-danger-text">
+                {error instanceof Error
+                  ? error.message
+                  : "Could not load this supplier's products."}
+              </p>
+              <button
+                type="button"
+                onClick={() => refetch()}
+                className="mt-2 inline-flex h-8 items-center rounded-btn border border-line px-2.5 text-xs font-medium text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/70"
+              >
+                Try again
+              </button>
             </div>
           )}
+
           {data && data.results.length === 0 && (
-            <p className="py-2 text-sm text-fg-muted">No products found.</p>
+            <p className="py-2 text-sm text-fg-muted">
+              No products matched this supplier's name in the search index.
+            </p>
           )}
+
           {data && data.results.length > 0 && (
             <>
               <ul className="divide-y divide-line">
@@ -201,7 +239,7 @@ function SupplierBody({
               </ul>
               {data.count > data.results.length && (
                 <Link
-                  to={`/search?q=${encodeURIComponent(supplierSearchQuery(s))}`}
+                  to={`/search?supplier=${encodeURIComponent(supplierSearchQuery(s))}`}
                   className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-brand-text hover:underline"
                 >
                   View all {data.count} in search
@@ -210,20 +248,8 @@ function SupplierBody({
               )}
             </>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
     </div>
   );
-}
-
-function websiteHref(url: string): string {
-  const trimmed = url.trim();
-  if (/^https?:\/\//i.test(trimmed)) return trimmed;
-  return `https://${trimmed}`;
-}
-
-function formatDate(iso: string): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString();
 }

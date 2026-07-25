@@ -53,22 +53,47 @@
   --color-warn-text: var(--warn-text);
   --color-ok-soft: var(--ok-soft);
   --color-ok-text: var(--ok-text);
+
+  /* Categorical hues (Dashboard insight panels + Activity badges). */
+  --color-c-teal: var(--c-teal);
+  --color-c-teal-soft: var(--c-teal-soft);
+  --color-c-indigo: var(--c-indigo);
+  --color-c-indigo-soft: var(--c-indigo-soft);
+  --color-c-violet: var(--c-violet);
+  --color-c-violet-soft: var(--c-violet-soft);
+  --color-c-amber: var(--c-amber);
+  --color-c-amber-soft: var(--c-amber-soft);
+  --color-c-rose: var(--c-rose);
+  --color-c-rose-soft: var(--c-rose-soft);
+  --color-c-green: var(--c-green);
+  --color-c-green-soft: var(--c-green-soft);
+  --color-c-sky: var(--c-sky);
+  --color-c-sky-soft: var(--c-sky-soft);
 }
 
 @layer base {
   :root {
     color-scheme: light;
 
-    --app: #f6f7f9;
-    --surface: #ffffff;
+    /* Neutrals carry a whisper of the brand's own teal (hue ~175, chroma
+       ~0.008) instead of a dead cool grey — the single change that makes the
+       surface read as chosen rather than defaulted. Luminance is held so the
+       AA-tuned text ratios below still hold. */
+    --app: #eef2f1;
+    --surface: #fbfdfc;
     --elevated: #ffffff;
-    --muted: #eceef2;
-    --hover: #e7eaef;
-    --fg: #171b24;
-    --fg-muted: #6b7688;
-    --fg-subtle: #98a2b1;
-    --line: #dde1e8;
-    --line-strong: #c4cbd5;
+    --muted: #e6ecea;
+    --hover: #dde6e3;
+    --fg: #17201e;
+    /* Both muted tiers clear WCAG AA body text (4.5:1) on --surface. The old
+       values (#6b7688 / #98a2b1) measured 4.6:1 and 2.6:1 — the subtle tier
+       failed even the 3:1 large-text floor, and it carries every 11px label,
+       em-dash, and converted price in the app. Teal-tinted here at matched
+       luminance, so the ratios are preserved. */
+    --fg-muted: #515c58; /* ~6.8:1 on --surface */
+    --fg-subtle: #636e69; /* 5.2:1 on --surface, 4.7:1 on --app */
+    --line: #d7e0dc;
+    --line-strong: #bfcac6;
 
     --brand: #0f7a72;
     --brand-hover: #0b615a;
@@ -88,25 +113,48 @@
     --ok-soft: #e9f7ef;
     --ok-text: #0e6d4a;
 
+    /* Categorical hue set — distinguishes unordered categories on the
+       Dashboard's insight panels (donut, supplier bars, stat-card tiles) and
+       Activity badges. NOT chrome: never a border, heading, or background.
+       Green/Amber/Rose are the reserved status trio (Complete / Needs review /
+       Missing price) and are not reused as a general category alongside status. */
+    --c-teal: #0f7a72;
+    --c-teal-soft: #e2f4f2;
+    --c-indigo: #4f5bd5;
+    --c-indigo-soft: #eaecfb;
+    --c-violet: #8b3fd4;
+    --c-violet-soft: #f3e9fc;
+    --c-amber: #a6720f;
+    --c-amber-soft: #fbf1dd;
+    --c-rose: #c14b74;
+    --c-rose-soft: #fceaf1;
+    --c-green: #0e6d4a;
+    --c-green-soft: #e4f5ec;
+    --c-sky: #1f7bb8;
+    --c-sky-soft: #e3f1fb;
+
     --selection: 15 122 114; /* brand-600 */
-    --scrim: 15 18 25 / 0.32;
-    --glass: 255 255 255 / 0.72;
-    --glass-strong: 255 255 255 / 0.85;
+    --scrim: 12 24 22 / 0.34; /* teal-black, a touch deeper for premium depth */
+    --glass: 251 253 252 / 0.72;
+    --glass-strong: 251 253 252 / 0.85;
   }
 
   .dark {
     color-scheme: dark;
 
-    --app: #0e1116;
-    --surface: #161a21;
-    --elevated: #1c212a;
-    --muted: #232935;
-    --hover: #2a3140;
-    --fg: #e7eaf0;
-    --fg-muted: #99a3b2;
-    --fg-subtle: #6b7686;
-    --line: #262d39;
-    --line-strong: #384152;
+    /* Dark neutrals turned off the blue-grey and toward a teal-charcoal that
+       echoes the brand, deepened at the base for a richer, more premium ground.
+       Luminance held at the --surface tier so the text ratios below hold. */
+    --app: #0a0f0d;
+    --surface: #141a18;
+    --elevated: #1b221f;
+    --muted: #232b28;
+    --hover: #2a332f;
+    --fg: #e6ebe8;
+    --fg-muted: #98a3a0; /* ~6.9:1 on --surface */
+    --fg-subtle: #7c8784; /* ~4.8:1 on --surface — was #6b7686 at 3.75:1 */
+    --line: #252d2a;
+    --line-strong: #384540;
 
     /* Brighter teal fill + near-black text reads clearly on a dark surface
        (deep teal + white text would sink into the background). */
@@ -128,10 +176,68 @@
     --ok-soft: #103026;
     --ok-text: #63d19e;
 
+    /* Dark-mode categorical set. Each hue is a separate value, never the
+       light fill reused. The status trio (Green/Amber/Rose) sits inside the
+       6–8 CVD floor for Green↔Amber under protanopia, so every consumer MUST
+       add secondary encoding — the donut does, via 2px segment gaps + a
+       labeled legend. Do not render these as color-alone. */
+    --c-teal: #46d0c2;
+    --c-teal-soft: #123734;
+    --c-indigo: #8b9bfb;
+    --c-indigo-soft: #1c2350;
+    --c-violet: #c58cf5;
+    --c-violet-soft: #2c1f47;
+    --c-amber: #e6b968;
+    --c-amber-soft: #33270f;
+    --c-rose: #ef8fae;
+    --c-rose-soft: #3a1826;
+    --c-green: #63d19e;
+    --c-green-soft: #103026;
+    --c-sky: #63b6ea;
+    --c-sky-soft: #0f2a3d;
+
     --selection: 70 208 194; /* brand-text */
-    --scrim: 3 5 8 / 0.55;
-    --glass: 22 26 33 / 0.72;
-    --glass-strong: 28 33 42 / 0.85;
+    --scrim: 3 7 6 / 0.58;
+    --glass: 20 26 24 / 0.72;
+    --glass-strong: 26 33 30 / 0.85;
+  }
+
+  /*
+   * ACCENT AXIS — orthogonal to the light/dark axis above.
+   *
+   * `:root` / `.dark` carry Teal as the default accent. Setting
+   * `data-accent="ember"` on <html> overrides ONLY the six --brand-* tokens
+   * (plus --selection), so every component that already draws from those
+   * semantic tokens re-themes with zero component changes. This is what makes
+   * DESIGN.md's Two Accents Rule real rather than aspirational.
+   *
+   * Specificity is deliberate: `[data-accent="ember"]` (0,1,0) ties with
+   * `:root` and wins on source order (it comes later); `.dark[data-accent]`
+   * (0,2,0) outranks both, so dark+ember always resolves to the dark values.
+   * Ember carries separate light and dark values per the Two-Value Accent
+   * Rule — the light fill is deepened so white text clears 4.5:1, the dark
+   * fill is brightened with near-black text. Every pairing was contrast-checked.
+   */
+  [data-accent="ember"] {
+    --brand: #bf5010; /* white text 4.8:1 */
+    --brand-hover: #a8440a; /* white text 6.0:1 */
+    --on-brand: #ffffff;
+    --brand-text: #9a3f08; /* 6.8:1 on surface, 6.3:1 on app */
+    --brand-soft: #fdece0;
+    --brand-soft-text: #8f3d08; /* 6.4:1 on --brand-soft */
+    --selection: 191 80 16; /* brand */
+  }
+
+  .dark[data-accent="ember"] {
+    /* Deep ember sinks into a near-black surface, so dark mode uses the bright
+       prototype ember (#f5842f) with near-black text — mirrors how Teal flips. */
+    --brand: #f5842f; /* near-black text 7.0:1 */
+    --brand-hover: #ff9a4d; /* near-black text 8.5:1 */
+    --on-brand: #2a1002;
+    --brand-text: #ffab5e; /* 9.3:1 on --surface */
+    --brand-soft: #3a1e0a;
+    --brand-soft-text: #ffc487; /* 9.9:1 on --brand-soft */
+    --selection: 245 132 47; /* brand */
   }
 
   html {
@@ -192,6 +298,155 @@
     backdrop-filter: blur(2px);
     -webkit-backdrop-filter: blur(2px);
   }
+
+  /* The one caption label — the small uppercase text that titles a group of
+     controls or chips ("Understood as", "Supplier", "Browse by letter"). Was
+     hand-typed at three sizes / two weights / two trackings across the search
+     surface; this is the single source of truth. 11px/600/+0.06em is the
+     system's label step. */
+  .label-caption {
+    font-size: 11px;
+    line-height: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--fg-subtle);
+  }
+
+  /* Expands a small control's HIT area to the 44px touch minimum without
+     changing its visual size or the layout around it. Only applies on coarse
+     pointers — mouse users keep the tight, dense spacing the tool wants. */
+  .touch-target {
+    position: relative;
+  }
+  @media (pointer: coarse) {
+    .touch-target::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: max(100%, 44px);
+      height: max(100%, 44px);
+      transform: translate(-50%, -50%);
+    }
+  }
+
+  /*
+   * The live search field's rotating neon accent. When the box is focused or
+   * holds a query, a conic-gradient ring is masked to the field's perimeter and
+   * spun continuously — one bright brand arc fading to a dim brand arc on the
+   * opposite side, so half the ring glows while half rests, and the bright half
+   * travels around the loop. A blurred second copy is the soft glow bloom.
+   *
+   * The whole effect draws from `--brand`, so it follows the active accent
+   * (Teal / Ember) and flips with light/dark for free. It is a STATE signal,
+   * not decoration — it exists only while the field is actively searching.
+   */
+  .search-neon::before,
+  .search-neon::after {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    z-index: 0;
+    border-radius: 12px; /* input's 10px radius + the 2px the ring sits outside */
+    padding: 1.5px; /* ring thickness (mask carves out the centre) */
+    background: conic-gradient(
+      from var(--neon-angle),
+      var(--brand) 0deg,
+      color-mix(in oklch, var(--brand), transparent 84%) 150deg,
+      color-mix(in oklch, var(--brand), transparent 84%) 210deg,
+      var(--brand) 360deg
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 220ms ease-out;
+  }
+  /* The bloom: a wider, blurred copy of the same ring. */
+  .search-neon::after {
+    inset: -3px;
+    padding: 2.5px;
+    filter: blur(7px);
+  }
+  .search-neon.is-active::before {
+    opacity: 1;
+    animation: neon-spin 4.5s linear infinite;
+  }
+  .search-neon.is-active::after {
+    opacity: 0.5;
+    animation: neon-spin 4.5s linear infinite;
+  }
+
+  /* Horizontal strip that scrolls on small screens (the A–Z bar). Scrollbar
+     is hidden because the edge fade already signals overflow; snap keeps
+     letters from stopping half-clipped. */
+  .scroll-strip {
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+    /* Fade the trailing edge so it reads as "more to the right". */
+    mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+    -webkit-mask-image: linear-gradient(
+      to right,
+      #000 calc(100% - 28px),
+      transparent
+    );
+  }
+  .scroll-strip::-webkit-scrollbar {
+    display: none;
+  }
+  .scroll-strip > * {
+    scroll-snap-align: start;
+  }
+  /* Once the strip fits its container there is nothing to scroll — drop the
+     fade so it doesn't dim a perfectly complete row. */
+  @media (min-width: 1024px) {
+    .scroll-strip {
+      mask-image: none;
+      -webkit-mask-image: none;
+    }
+  }
+}
+
+/* Respect the notch / home indicator on phones. Paired with
+   viewport-fit=cover in index.html. */
+@layer base {
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* The indeterminate sliver above the results while a new page is fetched.
+   It replaced dimming the whole result block, which pulled contrast off the
+   prices a user was actively comparing. */
+@keyframes results-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+/* Registering the angle as a real typed custom property is what lets it be
+   interpolated — a plain `--neon-angle` var would jump, not sweep. Drives the
+   live search field's rotating neon ring (see `.search-neon`). */
+@property --neon-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+@keyframes neon-spin {
+  to {
+    --neon-angle: 360deg;
+  }
 }
 
 /* Respect reduced-motion — kill transitions/animations for those who ask. */
@@ -203,6 +458,25 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
+  }
+
+  /* A frozen one-third sliver reads as a stalled bar, so the static
+     alternative is a full, quiet track — still "busy", without the travel. */
+  .animate-\[results-progress_1\.1s_ease-in-out_infinite\] {
+    width: 100% !important;
+    opacity: 0.55;
+  }
+
+  /* The neon ring is a STATE signal, so it must still mark the live field — it
+     just holds still at a fixed angle instead of sweeping, and the bloom quiets
+     so a motionless glow doesn't shout. */
+  .search-neon.is-active::before,
+  .search-neon.is-active::after {
+    animation: none !important;
+    --neon-angle: 135deg;
+  }
+  .search-neon.is-active::after {
+    opacity: 0.35;
   }
 }
 

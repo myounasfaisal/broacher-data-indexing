@@ -1,0 +1,651 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-20T20:30:04.930Z",
+  "title": "Design System: BrochureDB",
+  "extensions": {
+    "colorMeta": {
+      "brand-teal": {
+        "role": "primary",
+        "displayName": "Teal",
+        "canonical": "#0F7A72",
+        "tonalRamp": [
+          "#0C403B",
+          "#0B4E48",
+          "#0B615A",
+          "#0F7A72",
+          "#158C82",
+          "#33A79C",
+          "#66C0B7",
+          "#9CD8D1"
+        ]
+      },
+      "brand-teal-dark": {
+        "role": "primary",
+        "displayName": "Teal (dark mode fill)",
+        "canonical": "#21B6A8",
+        "tonalRamp": [
+          "#052623",
+          "#093F3A",
+          "#0F5A52",
+          "#158C82",
+          "#21B6A8",
+          "#33C6B8",
+          "#46D0C2",
+          "#5FDDCF"
+        ]
+      },
+      "brand-ember": {
+        "role": "primary",
+        "displayName": "Ember",
+        "canonical": "#C9560C",
+        "tonalRamp": [
+          "#4A1F04",
+          "#6B2D06",
+          "#8F3D08",
+          "#C9560C",
+          "#E76A17",
+          "#F5842F",
+          "#FFAB5E",
+          "#FFD0A6"
+        ]
+      },
+      "app": {
+        "role": "neutral",
+        "displayName": "App Field",
+        "canonical": "#F6F7F9",
+        "tonalRamp": [
+          "#0F1219",
+          "#171B24",
+          "#262C38",
+          "#3A4150",
+          "#6B7688",
+          "#C4CBD5",
+          "#ECEEF2",
+          "#F6F7F9"
+        ]
+      },
+      "fg": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#171B24",
+        "tonalRamp": [
+          "#0F1219",
+          "#171B24",
+          "#262C38",
+          "#3A4150",
+          "#525C6E",
+          "#697485",
+          "#98A2B1",
+          "#C4CBD5"
+        ]
+      },
+      "ok": {
+        "role": "tertiary",
+        "displayName": "Complete",
+        "canonical": "#0E6D4A",
+        "tonalRamp": [
+          "#062B1D",
+          "#0A4630",
+          "#0E6D4A",
+          "#12855A",
+          "#3FA97C",
+          "#7CC9A4",
+          "#CDEBD9",
+          "#E9F7EF"
+        ]
+      },
+      "warn": {
+        "role": "tertiary",
+        "displayName": "Needs Review",
+        "canonical": "#8F5E12",
+        "tonalRamp": [
+          "#2E1D04",
+          "#5C3B0A",
+          "#8F5E12",
+          "#B4791A",
+          "#D19A3C",
+          "#E6B968",
+          "#F7E2BF",
+          "#FCF3E6"
+        ]
+      },
+      "danger": {
+        "role": "tertiary",
+        "displayName": "Missing Price",
+        "canonical": "#C6413B",
+        "tonalRamp": [
+          "#3A1613",
+          "#6B241F",
+          "#A5322D",
+          "#C6413B",
+          "#E0655F",
+          "#E87A74",
+          "#F6D2D2",
+          "#FCECEC"
+        ]
+      },
+      "c-indigo": {
+        "role": "tertiary",
+        "displayName": "Indigo",
+        "canonical": "#4F5BD5",
+        "tonalRamp": [
+          "#171a3f",
+          "#232a63",
+          "#333c8c",
+          "#4453b8",
+          "#4F5BD5",
+          "#7d86e2",
+          "#a9afee",
+          "#eaecfb"
+        ]
+      },
+      "c-violet": {
+        "role": "tertiary",
+        "displayName": "Violet",
+        "canonical": "#8B3FD4",
+        "tonalRamp": [
+          "#2b1243",
+          "#411a67",
+          "#58248b",
+          "#7132b3",
+          "#8B3FD4",
+          "#aa74e2",
+          "#c9a5ef",
+          "#f3e9fc"
+        ]
+      },
+      "c-amber": {
+        "role": "status",
+        "displayName": "Amber",
+        "canonical": "#A6720F",
+        "tonalRamp": [
+          "#2e1f04",
+          "#4a3308",
+          "#68470c",
+          "#875c0e",
+          "#A6720F",
+          "#c99b45",
+          "#e0c084",
+          "#fbf1dd"
+        ]
+      },
+      "c-rose": {
+        "role": "status",
+        "displayName": "Rose",
+        "canonical": "#C14B74",
+        "tonalRamp": [
+          "#380f1e",
+          "#57182f",
+          "#761f41",
+          "#9c3358",
+          "#C14B74",
+          "#d47f9c",
+          "#e6b1c4",
+          "#fceaf1"
+        ]
+      },
+      "c-green": {
+        "role": "status",
+        "displayName": "Green",
+        "canonical": "#0E6D4A",
+        "tonalRamp": [
+          "#042317",
+          "#073a26",
+          "#0a5136",
+          "#0c6141",
+          "#0E6D4A",
+          "#4a9c78",
+          "#8bc2a8",
+          "#e4f5ec"
+        ]
+      },
+      "c-sky": {
+        "role": "tertiary",
+        "displayName": "Sky",
+        "canonical": "#1F7BB8",
+        "tonalRamp": [
+          "#07202f",
+          "#0c3549",
+          "#124a68",
+          "#186287",
+          "#1F7BB8",
+          "#5aa3d2",
+          "#98c8e6",
+          "#e3f1fb"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Page titles only. One per screen."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Panel and card titles, section headers."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Row headings, supplier names, form group labels."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "The default. Prose, table cells, controls."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Sidebar section labels and stat-card captions. The only uppercase in the system."
+      },
+      "data": {
+        "displayName": "Data",
+        "purpose": "Prices, CAS numbers, counts, timestamps. Every number that appears in a column."
+      }
+    },
+    "shadows": [
+      {
+        "name": "card",
+        "value": "0 1px 2px 0 rgb(16 24 40 / 0.04), 0 1px 3px 0 rgb(16 24 40 / 0.06)",
+        "purpose": "Barely-there seating for solid buttons. Reads as a crisp edge, not a shadow."
+      },
+      {
+        "name": "card-hover",
+        "value": "0 4px 12px -2px rgb(16 24 40 / 0.10), 0 2px 6px -2px rgb(16 24 40 / 0.06)",
+        "purpose": "The lift on hover for interactive cards. The only shadow the user consciously sees."
+      },
+      {
+        "name": "pop",
+        "value": "0 12px 32px -8px rgb(16 24 40 / 0.20), 0 4px 12px -4px rgb(16 24 40 / 0.12)",
+        "purpose": "Modals, popovers, command palette, dropdowns. True overlays only."
+      },
+      {
+        "name": "masthead-glow",
+        "value": "0 18px 40px -18px rgba(245,132,47,0.55)",
+        "purpose": "The Dashboard masthead's accent-tinted glow. Tint follows the active accent; this value is the Ember instance. The only glow in the product."
+      }
+    ],
+    "motion": [
+      {
+        "name": "duration-state",
+        "value": "150ms",
+        "purpose": "All hover/focus/active state transitions."
+      },
+      {
+        "name": "ease-out-expo",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Entrance easing for pop-in and slide-in overlays. No bounce, no overshoot."
+      },
+      {
+        "name": "fade-in",
+        "value": "fade-in 150ms ease-out",
+        "purpose": "Content appearing in place."
+      },
+      {
+        "name": "pop-in",
+        "value": "pop-in 160ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Popovers and dropdowns."
+      },
+      {
+        "name": "slide-in-right",
+        "value": "slide-in-right 220ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Detail panel and mobile sheet entrance."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px — results table switches to cards below this"
+      },
+      {
+        "name": "xl",
+        "value": "1280px"
+      }
+    ],
+    "dataviz": {
+      "statusPalette": {
+        "order": [
+          "Complete",
+          "Needs review",
+          "Missing price"
+        ],
+        "light": {
+          "complete": "#0E6D4A",
+          "needsReview": "#A6720F",
+          "missingPrice": "#C14B74",
+          "surface": "#FFFFFF"
+        },
+        "dark": {
+          "complete": "#63D19E",
+          "needsReview": "#E6B968",
+          "missingPrice": "#EF8FAE",
+          "surface": "#161A21"
+        },
+        "validation": {
+          "tool": "impeccable dataviz scripts/validate_palette.js",
+          "light": "ALL PASS — worst adjacent CVD dE 9.3 (protan), normal-vision 16.9, contrast >= 3:1",
+          "dark": "FAIL lightness band (L 0.759-0.809 vs 0.43-0.77); WARN CVD dE 6.6 protan (Green<->Amber), inside the 6-8 floor band",
+          "remedy": "The dark trio is legal ONLY with secondary encoding: a 2px surface gap between adjacent donut segments plus a labeled legend restating every segment. Both are mandatory, not stylistic."
+        }
+      },
+      "rules": [
+        "Color follows the entity, never its rank.",
+        "Ranked single-measure panels use one hue; length carries the comparison.",
+        "Status hues (Green/Amber/Rose) are reserved and never reused as a general category.",
+        "No total in the donut hole; the legend carries the numbers."
+      ]
+    }
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The single primary action on a view. Accent fill, restrained at rest, immediate on contact.",
+      "html": "<button class=\"ds-btn-primary\">Ask AI</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 16px; border: none; border-radius: 10px; background: var(--brand, #0F7A72); color: var(--on-brand, #fff); font-family: Geist, ui-sans-serif, system-ui, sans-serif; font-size: 14px; font-weight: 500; letter-spacing: -0.006em; box-shadow: 0 1px 2px 0 rgb(16 24 40 / 0.04), 0 1px 3px 0 rgb(16 24 40 / 0.06); transition: background-color 150ms, box-shadow 150ms; cursor: pointer; } .ds-btn-primary:hover { background: var(--brand-hover, #0B615A); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--app, #F6F7F9), 0 0 0 4px color-mix(in srgb, var(--brand, #0F7A72) 70%, transparent); } .ds-btn-primary:active { background: var(--brand-hover, #0B615A); }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Secondary actions sitting beside a primary — Filters, Export.",
+      "html": "<button class=\"ds-btn-outline\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polygon points=\"22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3\"/></svg>Filters</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 16px; border: 1px solid var(--line, #DDE1E8); border-radius: 10px; background: var(--surface, #fff); color: var(--fg, #171B24); font-family: Geist, ui-sans-serif, system-ui, sans-serif; font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px 0 rgb(16 24 40 / 0.04); transition: background-color 150ms, border-color 150ms; cursor: pointer; } .ds-btn-outline:hover { background: var(--muted, #ECEEF2); border-color: var(--line-strong, #C4CBD5); } .ds-btn-outline:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--app, #F6F7F9), 0 0 0 4px color-mix(in srgb, var(--brand, #0F7A72) 70%, transparent); }"
+    },
+    {
+      "name": "AI Search Field",
+      "kind": "input",
+      "refersTo": "input-text",
+      "description": "The Inspector's search entry. Sparkle icon in accent text; ring hugs the field on focus.",
+      "html": "<div class=\"ds-field-wrap\"><svg class=\"ds-field-icon\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 3l1.9 5.8L20 10.7l-5.8 1.9L12 18.4l-1.9-5.8L4 10.7l6.1-1.9z\"/></svg><input class=\"ds-input-search\" placeholder=\"Search chemicals, suppliers, CAS…\"/></div>",
+      "css": ".ds-field-wrap { position: relative; display: block; max-width: 440px; } .ds-field-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--brand-text, #0B615A); pointer-events: none; } .ds-input-search { box-sizing: border-box; width: 100%; height: 40px; padding: 0 12px 0 36px; border: 1px solid var(--line-strong, #C4CBD5); border-radius: 10px; background: var(--app, #F6F7F9); color: var(--fg, #171B24); font-family: Geist, ui-sans-serif, system-ui, sans-serif; font-size: 14px; transition: border-color 150ms, box-shadow 150ms; } .ds-input-search::placeholder { color: var(--fg-subtle, #697485); } .ds-input-search:focus-visible { outline: none; border-color: var(--brand, #0F7A72); box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand, #0F7A72) 30%, transparent); }"
+    },
+    {
+      "name": "Status Chip",
+      "kind": "chip",
+      "refersTo": "badge-warning",
+      "description": "Needs-review status. Always carries its label — never color alone.",
+      "html": "<span class=\"ds-chip-warn\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\"><path d=\"M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z\"/></svg>Needs review</span>",
+      "css": ".ds-chip-warn { display: inline-flex; align-items: center; gap: 5px; padding: 2px 10px; border-radius: 9999px; background: var(--warn-soft, #FCF3E6); color: var(--warn-text, #8F5E12); font-family: Geist, ui-sans-serif, system-ui, sans-serif; font-size: 12px; font-weight: 500; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warn-text, #8F5E12) 20%, transparent); }"
+    },
+    {
+      "name": "Mono Data Chip",
+      "kind": "chip",
+      "refersTo": "badge-brand",
+      "description": "Precise data — prices and CAS numbers. Tabular figures so columns align.",
+      "html": "<span class=\"ds-chip-mono\">$2,480.00 / MT</span>",
+      "css": ".ds-chip-mono { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 7px; background: var(--brand-soft, #E8F6F4); color: var(--brand-soft-text, #0B615A); font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum' 1, 'cv01' 1; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand, #0F7A72) 20%, transparent); }"
+    },
+    {
+      "name": "Upload Job Row",
+      "kind": "custom",
+      "refersTo": "progress-fill-active",
+      "description": "One file in the server-side upload queue: filename, stage text, status chip, state-dependent controls, and an estimated progress bar colored by status.",
+      "html": "<li class=\"ds-job\">\n  <div class=\"ds-job-head\">\n    <div class=\"ds-job-id\">\n      <p class=\"ds-job-name\">acme-fine-chemicals-2024-catalogue.pdf</p>\n      <p class=\"ds-job-stage\" aria-live=\"polite\">Saving product 12 / 31</p>\n    </div>\n    <div class=\"ds-job-controls\">\n      <span class=\"ds-job-chip ds-job-chip--processing\">Processing</span>\n      <button class=\"ds-icon-btn ds-touch\" type=\"button\" aria-label=\"Pause\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><line x1=\"9\" y1=\"4\" x2=\"9\" y2=\"20\"/><line x1=\"15\" y1=\"4\" x2=\"15\" y2=\"20\"/></svg></button>\n      <button class=\"ds-icon-btn ds-touch ds-icon-btn--danger\" type=\"button\" aria-label=\"Cancel\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><line x1=\"5.6\" y1=\"5.6\" x2=\"18.4\" y2=\"18.4\"/></svg></button>\n    </div>\n  </div>\n  <div class=\"ds-progress\" role=\"progressbar\" aria-valuenow=\"67\" aria-valuemin=\"0\" aria-valuemax=\"100\" aria-label=\"acme-fine-chemicals-2024-catalogue.pdf upload progress\">\n    <div class=\"ds-progress-fill ds-progress-fill--processing\" style=\"width:67%\"></div>\n  </div>\n</li>",
+      "css": ".ds-job { list-style: none; padding: 12px 0; font-family: Geist, ui-sans-serif, system-ui, sans-serif; }\n.ds-job-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }\n.ds-job-id { min-width: 0; }\n.ds-job-name { margin: 0; font-size: 14px; font-weight: 500; letter-spacing: -0.006em; color: var(--fg, #171B24); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\n.ds-job-stage { margin: 2px 0 0; font-size: 12px; color: var(--fg-muted, #525C6E); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\n.ds-job-controls { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }\n.ds-job-chip { border-radius: 9999px; padding: 2px 8px; font-size: 11px; font-weight: 500; white-space: nowrap; }\n.ds-job-chip--processing { background: var(--brand-soft, #E8F6F4); color: var(--brand-soft-text, #0B615A); }\n.ds-progress { height: 6px; width: 100%; overflow: hidden; border-radius: 9999px; background: var(--muted, #ECEEF2); }\n.ds-progress-fill { height: 100%; border-radius: 9999px; transition: width 200ms cubic-bezier(0.22, 1, 0.36, 1); }\n.ds-progress-fill--processing { background: var(--brand, #0F7A72); }\n.ds-icon-btn { display: inline-flex; align-items: center; justify-content: center; height: 28px; width: 28px; border-radius: 10px; border: 1px solid var(--line, #DDE1E8); background: var(--surface, #fff); color: var(--fg-muted, #525C6E); cursor: pointer; transition: background-color 150ms, border-color 150ms, color 150ms; }\n.ds-icon-btn:hover { background: var(--hover, #E7EAEF); color: var(--fg, #171B24); }\n.ds-icon-btn:focus-visible { outline: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand, #0F7A72) 70%, transparent); }\n.ds-icon-btn--danger { border-color: color-mix(in srgb, var(--danger, #C6413B) 30%, transparent); color: var(--danger-text, #A5322D); }\n.ds-icon-btn--danger:hover { background: var(--danger-soft, #FCECEC); color: var(--danger-text, #A5322D); }\n.ds-touch { position: relative; }\n@media (pointer: coarse) { .ds-touch::after { content: \"\"; position: absolute; top: 50%; left: 50%; width: max(100%, 44px); height: max(100%, 44px); transform: translate(-50%, -50%); } }\n@media (prefers-reduced-motion: reduce) { .ds-progress-fill { transition: none; } }"
+    },
+    {
+      "name": "Progress Bar (status colors)",
+      "kind": "custom",
+      "refersTo": "progress-track",
+      "description": "The full status vocabulary. Fill length answers 'how far'; fill color answers 'in what state'. Cancelled and failed both fill completely — completion is not success.",
+      "html": "<div class=\"ds-bars\">\n  <div class=\"ds-bar-row\"><span class=\"ds-bar-label\">Queued</span><div class=\"ds-progress\"><div class=\"ds-progress-fill ds-f-queued\" style=\"width:6%\"></div></div></div>\n  <div class=\"ds-bar-row\"><span class=\"ds-bar-label\">Processing</span><div class=\"ds-progress\"><div class=\"ds-progress-fill ds-f-processing\" style=\"width:67%\"></div></div></div>\n  <div class=\"ds-bar-row\"><span class=\"ds-bar-label\">Paused</span><div class=\"ds-progress\"><div class=\"ds-progress-fill ds-f-paused\" style=\"width:34%\"></div></div></div>\n  <div class=\"ds-bar-row\"><span class=\"ds-bar-label\">Done</span><div class=\"ds-progress\"><div class=\"ds-progress-fill ds-f-done\" style=\"width:100%\"></div></div></div>\n  <div class=\"ds-bar-row\"><span class=\"ds-bar-label\">Failed</span><div class=\"ds-progress\"><div class=\"ds-progress-fill ds-f-failed\" style=\"width:100%\"></div></div></div>\n  <div class=\"ds-bar-row\"><span class=\"ds-bar-label\">Cancelled</span><div class=\"ds-progress\"><div class=\"ds-progress-fill ds-f-cancelled\" style=\"width:100%\"></div></div></div>\n  <div class=\"ds-bar-row\"><span class=\"ds-bar-label\">Uploading</span><div class=\"ds-progress\"><div class=\"ds-progress-fill ds-f-indeterminate\" style=\"width:33%\"></div></div></div>\n</div>",
+      "css": ".ds-bars { display: flex; flex-direction: column; gap: 10px; font-family: Geist, ui-sans-serif, system-ui, sans-serif; }\n.ds-bar-row { display: grid; grid-template-columns: 88px 1fr; align-items: center; gap: 12px; }\n.ds-bar-label { font-size: 11px; font-weight: 500; color: var(--fg-muted, #525C6E); }\n.ds-progress { height: 6px; width: 100%; overflow: hidden; border-radius: 9999px; background: var(--muted, #ECEEF2); }\n.ds-progress-fill { height: 100%; border-radius: 9999px; transition: width 200ms cubic-bezier(0.22, 1, 0.36, 1); }\n.ds-f-queued { background: var(--fg-subtle, #697485); }\n.ds-f-processing { background: var(--brand, #0F7A72); }\n.ds-f-paused { background: var(--warn-text, #8F5E12); }\n.ds-f-done { background: var(--ok-text, #0E6D4A); }\n.ds-f-failed { background: var(--danger, #C6413B); }\n.ds-f-cancelled { background: var(--line-strong, #C4CBD5); }\n.ds-f-indeterminate { background: var(--fg-subtle, #697485); animation: ds-pulse 1.6s ease-in-out infinite; }\n@keyframes ds-spin { to { transform: rotate(360deg); } } @keyframes ds-pulse { 0%,100% { opacity: 1; } 50% { opacity: .45; } }\n@media (prefers-reduced-motion: reduce) { .ds-progress-fill { transition: none; animation: none; } }"
+    },
+    {
+      "name": "Job Status Chip",
+      "kind": "chip",
+      "refersTo": "badge-status-processing",
+      "description": "Status chips for the upload queue. Every chip carries its word, never hue alone — The Never Color Alone Rule.",
+      "html": "<div class=\"ds-chips\">\n  <span class=\"ds-chip ds-chip--idle\">Queued</span>\n  <span class=\"ds-chip ds-chip--brand\"><svg class=\"ds-chip-spin\" width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\"><path d=\"M21 12a9 9 0 1 1-6.2-8.6\"/></svg>Processing</span>\n  <span class=\"ds-chip ds-chip--warn\">Paused</span>\n  <span class=\"ds-chip ds-chip--ok\">Done</span>\n  <span class=\"ds-chip ds-chip--danger\">Failed</span>\n  <span class=\"ds-chip ds-chip--idle\">Cancelled</span>\n  <span class=\"ds-chip ds-chip--idle\">Duplicate</span>\n</div>",
+      "css": ".ds-chips { display: flex; flex-wrap: wrap; gap: 6px; font-family: Geist, ui-sans-serif, system-ui, sans-serif; }\n.ds-chip { display: inline-flex; align-items: center; gap: 4px; border-radius: 9999px; padding: 2px 8px; font-size: 11px; font-weight: 500; white-space: nowrap; }\n.ds-chip--idle { background: var(--muted, #ECEEF2); color: var(--fg-muted, #525C6E); }\n.ds-chip--brand { background: var(--brand-soft, #E8F6F4); color: var(--brand-soft-text, #0B615A); }\n.ds-chip--warn { background: var(--warn-soft, #FCF3E6); color: var(--warn-text, #8F5E12); }\n.ds-chip--ok { background: var(--ok-soft, #E9F7EF); color: var(--ok-text, #0E6D4A); }\n.ds-chip--danger { background: var(--danger-soft, #FCECEC); color: var(--danger-text, #A5322D); }\n.ds-chip-spin { animation: ds-spin 900ms linear infinite; }\n@keyframes ds-spin { to { transform: rotate(360deg); } } @keyframes ds-pulse { 0%,100% { opacity: 1; } 50% { opacity: .45; } }\n@media (prefers-reduced-motion: reduce) { .ds-chip-spin { animation: none; } }"
+    },
+    {
+      "name": "Folder / File Picker",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Two peer Outline actions for choosing a folder or individual PDFs. Neither holds a persistent active state — the OS dialog can be dismissed without a selection.",
+      "html": "<div class=\"ds-picker\">\n  <button class=\"ds-pick-btn\" type=\"button\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 20h13.5a2 2 0 0 0 1.9-1.4L21 13H8a2 2 0 0 0-1.9 1.4L4 20Z\"/><path d=\"M4 20V6a2 2 0 0 1 2-2h3.6a2 2 0 0 1 1.6.8l1.2 1.6a2 2 0 0 0 1.6.8H18a2 2 0 0 1 2 2v1.5\"/></svg>Select folder</button>\n  <button class=\"ds-pick-btn\" type=\"button\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7l-5-5Z\"/><path d=\"M14 2v5h5\"/><path d=\"M9 13h6\"/><path d=\"M9 17h4\"/></svg>Select PDF(s)</button>\n</div>",
+      "css": ".ds-picker { display: flex; flex-wrap: wrap; gap: 8px; font-family: Geist, ui-sans-serif, system-ui, sans-serif; }\n.ds-pick-btn { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--line, #DDE1E8); background: var(--surface, #fff); color: var(--fg, #171B24); font-family: inherit; font-size: 14px; font-weight: 500; letter-spacing: -0.006em; cursor: pointer; transition: background-color 150ms, border-color 150ms; }\n.ds-pick-btn:hover { border-color: var(--line-strong, #C4CBD5); background: var(--hover, #E7EAEF); }\n.ds-pick-btn:focus-visible { outline: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand, #0F7A72) 70%, transparent); }\n.ds-pick-btn:disabled { opacity: .5; pointer-events: none; }"
+    },
+    {
+      "name": "Dashboard Masthead",
+      "kind": "custom",
+      "refersTo": "dashboard-masthead",
+      "description": "The product's only gradient surface. A sentence is the hero; KPI tiles support at 28px. Renders in whichever accent is active.",
+      "html": "<div class=\"ds-masthead\">\n  <div class=\"ds-masthead-texture\"></div>\n  <div class=\"ds-masthead-inner\">\n    <div class=\"ds-masthead-copy\">\n      <span class=\"ds-masthead-pill\"><span class=\"ds-masthead-dot\"></span>Live catalog</span>\n      <h2 class=\"ds-masthead-title\">Every supplier's brochure, priced and searchable.</h2>\n      <p class=\"ds-masthead-sub\">Ask in plain language, compare trade names, and export the cheapest match in seconds.</p>\n    </div>\n    <div class=\"ds-masthead-kpis\">\n      <div class=\"ds-kpi\"><div class=\"ds-kpi-value\">12,481</div><div class=\"ds-kpi-label\">Listings</div></div>\n      <div class=\"ds-kpi\"><div class=\"ds-kpi-value\">312</div><div class=\"ds-kpi-label\">Suppliers</div></div>\n    </div>\n  </div>\n</div>",
+      "css": ".ds-masthead { position: relative; overflow: hidden; border-radius: 14px; padding: 26px 28px; font-family: Geist, ui-sans-serif, system-ui, sans-serif; background: linear-gradient(105deg, #C9560C 0%, #F5842F 46%, #FFAB5E 100%); box-shadow: 0 18px 40px -18px rgba(245,132,47,0.55); }\n.ds-masthead-texture { position: absolute; inset: 0; background-image: radial-gradient(rgba(255,255,255,0.16) 1px, transparent 1px); background-size: 16px 16px; opacity: .5; }\n.ds-masthead-inner { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; }\n.ds-masthead-copy { max-width: 560px; }\n.ds-masthead-pill { display: inline-flex; align-items: center; gap: 7px; height: 24px; padding: 0 10px; border-radius: 9999px; background: rgba(0,0,0,0.22); color: #fff; font-size: 11px; font-weight: 600; line-height: 1; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px; }\n.ds-masthead-dot { width: 6px; height: 6px; border-radius: 9999px; background: #fff; }\n.ds-masthead-title { margin: 0; font-size: 24px; line-height: 29px; font-weight: 600; letter-spacing: -0.02em; color: #fff; text-wrap: balance; }\n.ds-masthead-sub { margin: 8px 0 0; font-size: 13px; line-height: 19px; color: rgba(255,255,255,0.82); }\n.ds-masthead-kpis { display: flex; gap: 12px; flex-shrink: 0; }\n.ds-kpi { text-align: center; padding: 14px 20px; border-radius: 12px; background: rgba(0,0,0,0.2); }\n.ds-kpi-value { font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 28px; line-height: 1; font-weight: 600; color: #fff; font-variant-numeric: tabular-nums; }\n.ds-kpi-label { margin-top: 6px; font-size: 11px; line-height: 1; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255,255,255,0.8); }"
+    },
+    {
+      "name": "Stat Card (dashboard)",
+      "kind": "card",
+      "refersTo": "stat-card",
+      "description": "One headline metric. Every card carries a sub-line supplying a denominator or a destination. The alert variant is a real control, not a readout.",
+      "html": "<div class=\"ds-stats\">\n  <div class=\"ds-stat\">\n    <div class=\"ds-stat-top\"><span class=\"ds-stat-label\">Total listings</span><span class=\"ds-stat-tile ds-tile-brand\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M7.97 4.42A2 2 0 0 0 7 6.13v4.37l5 3 5-3V6.13a2 2 0 0 0-.97-1.71l-3-1.8a2 2 0 0 0-2.06 0Z\"/><path d=\"M12 8 7.26 5.15\"/><path d=\"m12 8 4.74-2.85\"/><path d=\"M12 13.5V8\"/></svg></span></div>\n    <div class=\"ds-stat-value\">12,481</div>\n    <div class=\"ds-stat-sub\">across 312 suppliers</div>\n  </div>\n  <button type=\"button\" class=\"ds-stat ds-stat--alert\">\n    <div class=\"ds-stat-top\"><span class=\"ds-stat-label\">Needs review</span><span class=\"ds-stat-tile ds-tile-warn\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z\"/><path d=\"M14 2v4a2 2 0 0 0 2 2h4\"/><path d=\"M12 9v4\"/><path d=\"M12 17h.01\"/></svg></span></div>\n    <div class=\"ds-stat-value ds-stat-value--warn\">37</div>\n    <div class=\"ds-stat-sub\">Open the review queue &rarr;</div>\n  </button>\n</div>",
+      "css": ".ds-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; font-family: Geist, ui-sans-serif, system-ui, sans-serif; }\n.ds-stat { text-align: left; border-radius: 14px; border: 1px solid var(--line, #DDE1E8); background: var(--surface, #fff); padding: 20px; }\n.ds-stat--alert { border-color: color-mix(in srgb, var(--warn-text, #8F5E12) 30%, var(--line, #DDE1E8)); cursor: pointer; font-family: inherit; transition: background-color 150ms; }\n.ds-stat--alert:hover { background: var(--muted, #ECEEF2); }\n.ds-stat--alert:focus-visible { outline: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand, #0F7A72) 70%, transparent); }\n.ds-stat-top { display: flex; align-items: flex-start; justify-content: space-between; }\n.ds-stat-label { font-size: 12px; line-height: 1; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; color: var(--fg-subtle, #697485); }\n.ds-stat-tile { display: flex; height: 32px; width: 32px; align-items: center; justify-content: center; border-radius: 9px; }\n.ds-tile-brand { background: var(--brand-soft, #E8F6F4); color: var(--brand-text, #0B615A); }\n.ds-tile-warn { background: var(--warn-soft, #FCF3E6); color: var(--warn-text, #8F5E12); }\n.ds-stat-value { margin-top: 10px; font-size: 30px; line-height: 36px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--fg, #171B24); }\n.ds-stat-value--warn { color: var(--warn-text, #8F5E12); }\n.ds-stat-sub { margin-top: 4px; font-size: 12px; line-height: 1; color: var(--fg-subtle, #697485); }"
+    },
+    {
+      "name": "Listing Status Donut",
+      "kind": "custom",
+      "refersTo": "insight-panel",
+      "description": "Three-slice status distribution. The 2px surface gap between segments is the secondary encoding that makes the dark palette legal under The Validated-Palette Rule — not styling.",
+      "html": "<div class=\"ds-panel\">\n  <div class=\"ds-panel-head\"><span class=\"ds-panel-tile\"><svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><path d=\"M21 12a9 9 0 1 1-6.219-8.56\"/></svg></span><h3 class=\"ds-panel-title\">Listing status</h3></div>\n  <div class=\"ds-donut-row\">\n    <svg class=\"ds-donut\" width=\"140\" height=\"140\" viewBox=\"0 0 128 128\" role=\"img\" aria-label=\"Listing status: 62% complete, 15% needs review, 23% missing price\">\n      <circle cx=\"64\" cy=\"64\" r=\"52\" fill=\"none\" stroke=\"var(--muted, #ECEEF2)\" stroke-width=\"18\"/>\n      <circle cx=\"64\" cy=\"64\" r=\"52\" fill=\"none\" stroke=\"var(--c-green, #0E6D4A)\" stroke-width=\"18\" stroke-dasharray=\"200.6 328.7\" stroke-dashoffset=\"0\"/>\n      <circle cx=\"64\" cy=\"64\" r=\"52\" fill=\"none\" stroke=\"var(--c-amber, #A6720F)\" stroke-width=\"18\" stroke-dasharray=\"47 330.7\" stroke-dashoffset=\"-202.6\"/>\n      <circle cx=\"64\" cy=\"64\" r=\"52\" fill=\"none\" stroke=\"var(--c-rose, #C14B74)\" stroke-width=\"18\" stroke-dasharray=\"73.1 328.7\" stroke-dashoffset=\"-251.6\"/>\n    </svg>\n    <div class=\"ds-legend\">\n      <div class=\"ds-legend-row\"><span class=\"ds-sw\" style=\"background:var(--c-green,#0E6D4A)\"></span><span class=\"ds-legend-label\">Complete</span><span class=\"ds-legend-val\">7,742</span><span class=\"ds-legend-pct\">62%</span></div>\n      <div class=\"ds-legend-row\"><span class=\"ds-sw\" style=\"background:var(--c-amber,#A6720F)\"></span><span class=\"ds-legend-label\">Needs review</span><span class=\"ds-legend-val\">1,872</span><span class=\"ds-legend-pct\">15%</span></div>\n      <div class=\"ds-legend-row\"><span class=\"ds-sw\" style=\"background:var(--c-rose,#C14B74)\"></span><span class=\"ds-legend-label\">Missing price</span><span class=\"ds-legend-val\">2,867</span><span class=\"ds-legend-pct\">23%</span></div>\n    </div>\n  </div>\n</div>",
+      "css": ".ds-panel { border-radius: 14px; border: 1px solid var(--line, #DDE1E8); background: var(--surface, #fff); padding: 20px 24px; font-family: Geist, ui-sans-serif, system-ui, sans-serif; }\n.ds-panel-head { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }\n.ds-panel-tile { display: flex; height: 28px; width: 28px; align-items: center; justify-content: center; border-radius: 8px; background: var(--c-violet-soft, #F3E9FC); color: var(--c-violet, #8B3FD4); }\n.ds-panel-title { margin: 0; font-size: 15px; line-height: 1; font-weight: 500; color: var(--fg, #171B24); }\n.ds-donut-row { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }\n.ds-donut { flex-shrink: 0; transform: rotate(-90deg); }\n.ds-legend { flex: 1; min-width: 180px; display: flex; flex-direction: column; gap: 12px; }\n.ds-legend-row { display: flex; align-items: center; gap: 10px; }\n.ds-sw { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }\n.ds-legend-label { flex: 1; font-size: 13px; color: var(--fg-muted, #525C6E); }\n.ds-legend-val { font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--fg, #171B24); }\n.ds-legend-pct { width: 44px; text-align: right; font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--fg-subtle, #697485); }"
+    },
+    {
+      "name": "Top Suppliers Bars",
+      "kind": "custom",
+      "refersTo": "insight-panel",
+      "description": "Ranked single-measure list. One hue for every bar — length carries the comparison, so per-rank color would violate The Entity-Not-Rank Rule. Percentages are relative to the leader.",
+      "html": "<div class=\"ds-panel\">\n  <div class=\"ds-panel-head\"><span class=\"ds-panel-tile ds-panel-tile--sky\"><svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><path d=\"M3 3v16a2 2 0 0 0 2 2h16\"/><path d=\"m19 9-5 5-4-4-3 3\"/></svg></span><h3 class=\"ds-panel-title\">Top suppliers by listings</h3></div>\n  <p class=\"ds-panel-sub\">Share of the leader's total, not of the catalog.</p>\n  <div class=\"ds-bars\">\n    <div class=\"ds-barrow\"><div class=\"ds-barhead\"><span class=\"ds-barname\" title=\"Qingdao Echemi\">Qingdao Echemi</span><span class=\"ds-barcount\">412</span></div><div class=\"ds-bartrack\"><div class=\"ds-barfill\" style=\"width:100%\"></div></div></div>\n    <div class=\"ds-barrow\"><div class=\"ds-barhead\"><span class=\"ds-barname\" title=\"Tianjin Bohai\">Tianjin Bohai</span><span class=\"ds-barcount\">268</span></div><div class=\"ds-bartrack\"><div class=\"ds-barfill\" style=\"width:65%\"></div></div></div>\n    <div class=\"ds-barrow\"><div class=\"ds-barhead\"><span class=\"ds-barname\" title=\"Bostech\">Bostech</span><span class=\"ds-barcount\">97</span></div><div class=\"ds-bartrack\"><div class=\"ds-barfill\" style=\"width:24%\"></div></div></div>\n    <div class=\"ds-barrow\"><div class=\"ds-barhead\"><span class=\"ds-barname\" title=\"Jiangsu Hai'an\">Jiangsu Hai'an</span><span class=\"ds-barcount\">64</span></div><div class=\"ds-bartrack\"><div class=\"ds-barfill\" style=\"width:16%\"></div></div></div>\n  </div>\n</div>",
+      "css": ".ds-panel { border-radius: 14px; border: 1px solid var(--line, #DDE1E8); background: var(--surface, #fff); padding: 20px 24px; font-family: Geist, ui-sans-serif, system-ui, sans-serif; }\n.ds-panel-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }\n.ds-panel-tile--sky { background: var(--c-sky-soft, #E3F1FB); color: var(--c-sky, #1F7BB8); }\n.ds-panel-sub { margin: 0 0 16px; font-size: 12px; color: var(--fg-subtle, #697485); }\n.ds-bars { display: flex; flex-direction: column; gap: 14px; }\n.ds-barhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; gap: 12px; }\n.ds-barname { font-size: 13px; color: var(--fg, #171B24); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\n.ds-barcount { font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--fg-muted, #525C6E); flex-shrink: 0; }\n.ds-bartrack { height: 6px; border-radius: 9999px; background: var(--muted, #ECEEF2); overflow: hidden; }\n.ds-barfill { height: 100%; border-radius: 9999px; background: var(--brand, #0F7A72); transition: width 200ms cubic-bezier(0.22, 1, 0.36, 1); }\n@media (prefers-reduced-motion: reduce) { .ds-barfill { transition: none; } }"
+    },
+    {
+      "name": "Sidebar Nav Item",
+      "kind": "nav",
+      "refersTo": "nav-item-active",
+      "description": "Active state carries a 3px accent rail pinned left — the tint alone is not enough signal.",
+      "html": "<a class=\"ds-nav-item ds-nav-item--active\" href=\"#\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"11\" cy=\"11\" r=\"8\"/><path d=\"M21 21l-4.3-4.3\"/></svg>Search</a>",
+      "css": ".ds-nav-item { position: relative; display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px; color: var(--fg-muted, #6B7688); font-family: Geist, ui-sans-serif, system-ui, sans-serif; font-size: 14px; text-decoration: none; transition: background-color 150ms, color 150ms; } .ds-nav-item:hover { background: var(--hover, #E7EAEF); color: var(--fg, #171B24); } .ds-nav-item--active { background: var(--brand-soft, #E8F6F4); color: var(--brand-soft-text, #0B615A); font-weight: 500; } .ds-nav-item--active::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 3px; height: 20px; border-radius: 0 3px 3px 0; background: var(--brand, #0F7A72); } .ds-nav-item:focus-visible { outline: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand, #0F7A72) 70%, transparent); }"
+    },
+    {
+      "name": "Stat Card",
+      "kind": "card",
+      "refersTo": "card-surface",
+      "description": "Dashboard KPI surface. Flat at rest with a hairline border; lifts only when interactive. Tone tints the icon chip, not the number — except `warning`, which colors the value while the count is non-zero.",
+      "html": "<div class=\"ds-card-stat\"><div class=\"ds-card-stat__top\"><span class=\"ds-card-stat__label\">Total listings</span><span class=\"ds-card-stat__icon\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 3v18h18\"/><path d=\"M18 17V9M13 17V5M8 17v-3\"/></svg></span></div><div class=\"ds-card-stat__value\">12,481</div><div class=\"ds-card-stat__sub\">across 312 suppliers</div></div>",
+      "css": ".ds-card-stat { box-sizing: border-box; padding: 20px; border: 1px solid var(--line, #DDE1E8); border-radius: 14px; background: var(--surface, #fff); font-family: Geist, ui-sans-serif, system-ui, sans-serif; } .ds-card-stat__top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; } .ds-card-stat__label { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--fg-subtle, #697485); } .ds-card-stat__icon { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 9px; background: var(--brand-soft, #E8F6F4); color: var(--brand-text, #0B615A); } .ds-card-stat__value { font-size: 30px; font-weight: 600; letter-spacing: -0.02em; color: var(--fg, #171B24); font-variant-numeric: tabular-nums; } .ds-card-stat__sub { margin-top: 4px; font-size: 13px; color: var(--fg-subtle, #697485); } .ds-card-stat--link { display: block; cursor: pointer; text-decoration: none; transition: box-shadow 150ms cubic-bezier(0.16,1,0.3,1); } .ds-card-stat--link:hover { box-shadow: 0 4px 12px -2px rgb(16 24 40 / 0.10), 0 2px 6px -2px rgb(16 24 40 / 0.06); } .ds-card-stat--link:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--app, #F6F7F9), 0 0 0 4px color-mix(in srgb, var(--brand, #0F7A72) 70%, transparent); } @media (prefers-reduced-motion: reduce) { .ds-card-stat--link { transition: none; } }"
+    },
+    {
+      "name": "Section Panel",
+      "kind": "card",
+      "refersTo": "card-surface",
+      "description": "Titled panel wrapping a table. The dashboard and admin pages are a stack of these.",
+      "html": "<section class=\"ds-panel\"><header class=\"ds-panel__head\"><h2 class=\"ds-panel__title\">Recent uploads</h2><p class=\"ds-panel__desc\">Every upload across the team — expand a row to see its listings, or undo it.</p></header><div class=\"ds-panel__body\">…</div></section>",
+      "css": ".ds-panel { box-sizing: border-box; border: 1px solid var(--line, #DDE1E8); border-radius: 14px; background: var(--surface, #fff); font-family: Geist, ui-sans-serif, system-ui, sans-serif; } .ds-panel__head { padding: 24px 24px 12px; } .ds-panel__title { margin: 0; font-size: 15px; font-weight: 500; letter-spacing: -0.01em; color: var(--fg, #171B24); } .ds-panel__desc { margin: 4px 0 0; font-size: 14px; line-height: 20px; color: var(--fg-muted, #525C6E); } .ds-panel__body { padding: 12px 24px 24px; color: var(--fg-muted, #525C6E); font-size: 14px; }"
+    },
+    {
+      "name": "Skeleton",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "The one loading vocabulary. Shaped like the content it replaces so nothing shifts on arrival.",
+      "html": "<div class=\"ds-skel-group\" aria-busy=\"true\"><div class=\"ds-skel\" style=\"height:20px;width:38%\"></div><div class=\"ds-skel\" style=\"height:32px;width:100%\"></div><div class=\"ds-skel\" style=\"height:32px;width:100%\"></div><div class=\"ds-skel\" style=\"height:32px;width:72%\"></div></div>",
+      "css": ".ds-skel-group { display: flex; flex-direction: column; gap: 12px; } .ds-skel { border-radius: 6px; background: var(--muted, #ECEEF2); animation: ds-pulse 2s cubic-bezier(0.4,0,0.6,1) infinite; } @keyframes ds-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } } @media (prefers-reduced-motion: reduce) { .ds-skel { animation: none; opacity: 0.75; } }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Shortlist",
+    "overview": "Every screen in BrochureDB exists to narrow many suppliers down to one choice. That is the whole job. A user arrives with a chemical in mind and leaves knowing who to buy it from and what it should cost. The interface is not a database browser that happens to show prices — it is an instrument for reaching a verdict, and every visual decision is judged by whether it makes that verdict arrive faster and with more confidence.\n\nThis produces a system that is calm on its surfaces and precise in its data. Chrome recedes: neutral backgrounds, hairline borders, one restrained accent. The data does not recede: monospaced tabular figures, aligned columns, unrounded numbers, status carried in labeled chips rather than implied by color. The tension between those two registers is the design. Where a lesser tool would decorate the frame and flatten the numbers, this one flattens the frame so the numbers can carry weight.\n\nThe system explicitly rejects stock admin-template UI — the bootstrap dashboard, the generic card grid, the SaaS hero-metric layout with a big gradient number. It rejects consumer-analytics theatre: no confetti on a drained review queue, no trend arrows implying a narrative the catalog does not support. And it rejects the expert-only terminal. Density here is earned through information, never through withholding labels or hiding function behind memorized shortcuts.",
+    "keyCharacteristics": [
+      "One superfamily (Geist + Geist Mono) across the entire UI; no display face anywhere",
+      "Fixed rem/px type scale, never fluid — this is product UI, not a landing page",
+      "Two first-class accents (Teal, Ember), both correct in light and dark",
+      "Flat at rest; elevation is a response to state, not a permanent property",
+      "Tabular figures on every number that appears in a column",
+      "Status always labeled, never color-only"
+    ],
+    "rules": [
+      {
+        "name": "The Two Accents Rule",
+        "body": "Teal and Ember are equal citizens. No component, screen, or snippet may hardcode either one. Every accent reference goes through the semantic token (--brand, --brand-text, --brand-soft, --on-brand). If a screen renders correctly in only one accent, that screen is broken.",
+        "section": "colors"
+      },
+      {
+        "name": "The Accent Scarcity Rule",
+        "body": "The accent marks primary action, current selection, and state. It is never a decoration, never a section divider, never a background for emphasis. On a typical Search screen the accent should cover well under 10% of pixels.",
+        "section": "colors"
+      },
+      {
+        "name": "The Never Color Alone Rule",
+        "body": "Complete, Needs review, and Missing price must each carry a label or icon alongside their hue. This binds the status donut, its legend, every status chip, and every table cell. A user with deuteranopia reads the same catalog.",
+        "section": "colors"
+      },
+      {
+        "name": "The Two-Value Accent Rule",
+        "body": "Every accent defines separate light and dark values, and --on-brand flips with them. A fill that passes contrast on white will not pass on #0E1116, and the reverse. Test both before committing either.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Rule",
+        "body": "Any number that can appear stacked above another number is monospaced with tabular figures. Prices, CAS numbers, listing counts, dates. Columns of digits must align on the decimal or the comparison the whole product exists for gets harder.",
+        "section": "typography"
+      },
+      {
+        "name": "The One Uppercase Rule",
+        "body": "Uppercase appears in exactly two places: sidebar section labels and stat-card captions, both at 11px/600/+0.06em. Uppercase is forbidden on buttons, table headers, chips, nav items, and headings.",
+        "section": "typography"
+      },
+      {
+        "name": "The Fixed Scale Rule",
+        "body": "No clamp() on UI type. Users sit at consistent DPI and a heading that shrinks inside a narrow panel looks broken, not responsive. Responsive behavior in this system is structural, never typographic.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-At-Rest Rule",
+        "body": "A surface that has not been interacted with has a border, not a shadow. If a static screenshot shows shadows under resting elements, the elevation is wrong.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Overlay-Only Pop Rule",
+        "body": "shadow-pop belongs exclusively to things that float above the page and can be dismissed. A card is not an overlay. A table row is not an overlay.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Progress-Is-Not-Status Rule",
+        "body": "A progress indicator carries two independent signals and must not conflate them. Fill length answers \"how far along\"; fill color answers \"in what state\". A bar at 100% is not necessarily a success — a cancelled and a failed job both fill completely, in --line-strong and --danger respectively. Color is assigned from status alone: queued --fg-subtle, processing --brand, paused --warn-text, done --ok-text, failed --danger, cancelled and duplicate --line-strong. Never render a terminal state in the accent, and never let a green bar mean \"finished\" when it only means \"done successfully\".",
+        "section": "colors"
+      },
+      {
+        "name": "The Survives-Reload Rule",
+        "body": "The queue lives on the server, so the UI must never imply otherwise: no \"don't close this tab\" warnings, no beforeunload prompt, no client-held state that a refresh would lose. Say so once, in the confirmation, and then behave like it is true.",
+        "section": "components"
+      },
+      {
+        "name": "The Announced-Progress Rule",
+        "body": "A progress bar that exists only as a styled div does not exist for a screen-reader user, and this is the one surface where the user is most likely to be doing something else. Every bar carries role=\"progressbar\" with aria-valuenow (omitted when indeterminate) and a label naming its file; the stage line sits in a polite live region.",
+        "section": "components"
+      },
+      {
+        "name": "The Actionable Stat Rule",
+        "body": "A stat card that links somewhere must be visibly interactive: card hover elevation, pointer cursor, and its destination named in the hint line. A title tooltip is not an affordance — it does not exist on touch.",
+        "section": "components"
+      },
+      {
+        "name": "The One Wait Rule",
+        "body": "A single screen shows one loading vocabulary. If the stat cards skeleton and the table beneath them says “Loading…”, one of the two is wrong — and it is always the text.",
+        "section": "components"
+      },
+      {
+        "name": "The Entity-Not-Rank Rule",
+        "body": "A categorical hue belongs to the thing, never to its position in a sorted list. If the top-suppliers panel paints first place Teal and second place Indigo, then a supplier that moves up changes color and the reader sees a change that did not happen. Either bind the hue to a stable identity, or — for a panel that ranks a single measure — use one hue for every bar and let length carry the comparison. Ranked magnitude is not categorical data.",
+        "section": "colors"
+      },
+      {
+        "name": "The Validated-Palette Rule",
+        "body": "Any set of hues that must be told apart is validated with a colorblind-separation check before it ships, never judged by eye. The dark-mode status trio measures dE 6.6 between Green and Amber under protanopia — inside the 6-8 floor band, which is legal only because every segment is separated by a 2px surface gap and restated in a labeled legend. Remove either and the chart becomes unreadable for a protan viewer.",
+        "section": "colors"
+      },
+      {
+        "name": "The Masthead-Not-Metric Rule",
+        "body": "The Dashboard banner is a masthead: a sentence is the hero and the numbers are supporting at 28px. The anti-reference PRODUCT.md names — the SaaS hero-metric layout with a big gradient number — is the inversion, where a giant number is the hero and the sentence is a caption. Blow the KPI value up, drop the sentence, or move the gradient onto the type, and this becomes the exact thing the product rejects. The gradient is a surface, never a text fill.",
+        "section": "components"
+      },
+      {
+        "name": "The One Gradient Rule",
+        "body": "Exactly one gradient surface exists in the entire product, on one screen, above the fold. There is no second one — not on Search, not on a card, not on a button, not on an empty state.",
+        "section": "components"
+      },
+      {
+        "name": "The Briefing Order Rule",
+        "body": "The Dashboard reads top to bottom as headline, totals, distribution, activity: masthead, stat row, insight row, recent uploads. Each band answers a narrower question than the one above it. Nothing is added to this screen that does not answer a question a user would actually arrive with.",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "Do route every accent through the semantic tokens (--brand, --brand-text, --brand-soft, --on-brand) so Teal and Ember both render correctly.",
+      "Do give every accent a separate dark-mode value. Teal proves the pattern: #0F7A72 with white text in light, #21B6A8 with #052623 text in dark.",
+      "Do set monospace with tabular figures on every number that can stack in a column.",
+      "Do pair every status color with a label or icon — Complete, Needs review, Missing price — in the donut, its legend, and every chip.",
+      "Do keep transitions at 150ms and limited to background, border, color, and shadow.",
+      "Do give every interactive component all seven states: default, hover, focus, active, disabled, loading, error.",
+      "Do use skeleton states for loading, sized to the content they replace.",
+      "Do write empty states that teach the interface rather than announcing emptiness.",
+      "Do treat responsive behavior as structural — collapse the sidebar, reflow the table, move the panel to a sheet.",
+      "Do hold the Search Inspector to a higher responsive standard than any other screen.",
+      "Do apply .touch-target to every control under 40px, including the upload queue's 28px icon buttons. The utility exists precisely so density and thumbs can coexist.",
+      "Do give every progress bar role=\"progressbar\", a file-naming label, and a polite live region for its stage text.",
+      "Do keep a failed or rejected file visible in the surface that owns it, with its reason, after the toast has gone.",
+      "Do confirm Cancel and Remove on an in-flight upload, matching how Upload history already treats undo and bulk delete.",
+      "Do pair every skeleton with aria-busy and every status line with role=\"status\". A wait that is drawn but not announced is not a loading state.",
+      "Do make a linked stat card look linked — hover elevation, pointer cursor, and its destination named in the hint. Tooltips do not survive touch.",
+      "Do step panel titles as h2 under the page h1. If the heading outline reads h1 → h3, the primitive's default won and the page lost.",
+      "Do run a colorblind-separation check on any hue set that must be told apart, before it ships. Compute it; never judge it by eye.",
+      "Do separate adjacent donut segments with a 2px surface gap and restate every segment in a labeled legend.",
+      "Do give every stat card a sub-line that supplies a denominator or a destination.",
+      "Do render the Dashboard masthead in whichever accent is active. It belongs to the screen, not to the Ember variant.",
+      "Do bind a categorical hue to a stable entity, or use a single hue when the panel ranks one measure."
+    ],
+    "donts": [
+      "Don't ship stock admin-template UI: the bootstrap dashboard, the generic card grid, or the SaaS hero-metric layout with a big gradient number.",
+      "Don't build consumer-analytics theatre — no confetti on a drained review queue, no trend arrows implying a narrative the catalog does not support.",
+      "Don't build an expert-only terminal. Density is earned through information, never through withholding labels or hiding function behind memorized shortcuts.",
+      "Don't visually privilege BosTech's own listings. The catalog is neutral; all suppliers render identically.",
+      "Don't hardcode a hex accent anywhere in a component.",
+      "Don't use clamp() or any fluid sizing on UI type.",
+      "Don't nest a card inside a card.",
+      "Don't apply a resting shadow to a non-interactive surface.",
+      "Don't use border-left or border-right above 1px as a colored accent stripe on cards, rows, or callouts. The 3px nav rail is a separate pinned element, not a border.",
+      "Don't use background-clip: text with a gradient. The Ember hero gradient is a background, never type.",
+      "Don't use glassmorphism decoratively. It belongs to overlays and the floating sidebar and nowhere else.",
+      "Don't uppercase buttons, table headers, chips, nav items, or headings.",
+      "Don't let muted gray text carry body copy — if contrast is close, move toward fg.",
+      "Don't reach for a modal first. Exhaust inline and progressive alternatives.",
+      "Don't solve small screens by horizontally scrolling the results table.",
+      "Don't collapse a multi-file upload into one aggregate progress bar. The row is the unit, because the failure is per-file.",
+      "Don't print a numeric percentage next to an estimated bar. The fill may imply precision the underlying signal doesn't have; a numeral asserts it.",
+      "Don't color a progress fill by completion instead of by status — a cancelled job and a successful one both reach 100%.",
+      "Don't leave a destructive control at its visual size as its hit size.",
+      "Don't use emoji as iconography. Lucide, at currentColor, everywhere.",
+      "Don't let a toast be the only record of a failure on an unattended surface.",
+      "Don't warn the user against leaving or reloading the upload page. The queue is on the server; implying fragility contradicts the product's actual guarantee.",
+      "Don't wrap a two-button toolbar in its own Card, or repeat the PageHeader's title as the CardTitle directly beneath it.",
+      "Don't mix loading vocabularies on one screen. Skeletons everywhere or nowhere; a centered “Loading…” beside a skeleton grid is the tell that a component was written in isolation.",
+      "Don't leave a stat card's warning tone on at zero. A permanently orange metric is decoration, and the next real alert reads as more of the same.",
+      "Don't add a second gradient surface anywhere. The Dashboard masthead is the only one in the product.",
+      "Don't enlarge the masthead's KPI values or drop its headline sentence. That inversion is precisely the SaaS hero-metric layout with a big gradient number the product rejects.",
+      "Don't put a total in the donut's hole, or label its arcs directly. The legend carries the numbers.",
+      "Don't color bars by rank. A supplier that moves up must not change color.",
+      "Don't add a fourth slice to the status donut. Three categories, fixed order.",
+      "Don't reuse Green, Amber, or Rose as a general category color on a panel that also shows listing status.",
+      "Don't render 0 in a stat card while its data is loading. Use a skeleton.",
+      "Don't show a count of problems that the user cannot click through to fix."
+    ]
+  }
+}

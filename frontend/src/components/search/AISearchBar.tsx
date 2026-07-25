@@ -99,6 +99,9 @@ export function FilterChips({
     } else {
       next[key] = null;
     }
+    // A non-default sort is still an active chip, so it keeps the search
+    // alive: removing the last DATA filter shouldn't also silently drop a
+    // sort chip the user didn't click.
     const empty =
       !next.name_query &&
       !next.cas_number &&
@@ -106,16 +109,15 @@ export function FilterChips({
       next.max_price == null &&
       next.min_purity == null &&
       next.max_purity == null &&
-      !next.details_query;
+      !next.details_query &&
+      next.sort === "price_asc";
     if (empty) onClear();
     else onChange(next);
   }
 
   return (
     <div className="flex flex-wrap items-center gap-2 text-sm">
-      <span className="text-xs font-medium uppercase tracking-wide text-fg-subtle">
-        Understood as
-      </span>
+      <span className="label-caption">Understood as</span>
       {chips.map((c) => (
         <button
           key={c.key}

@@ -14,6 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { UserRole } from "@/types/chemical";
+import { formatDate } from "@/lib/format";
 
 const ROLE_OPTIONS: { value: UserRole; label: string; hint: string }[] = [
   { value: "admin", label: "Admin", hint: "search + upload + manage users" },
@@ -130,8 +131,3 @@ export function UsersTable() {
   );
 }
 
-function formatDate(value: string | null): string {
-  if (!value) return "—";
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString();
-}

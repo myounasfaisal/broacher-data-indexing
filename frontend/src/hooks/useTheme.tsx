@@ -9,17 +9,26 @@ import {
 } from "react";
 
 /**
- * Theme system — light / dark / system, persisted to localStorage.
+ * Appearance system — two independent axes, both persisted to localStorage
+ * and both mirrored by the inline pre-paint script in index.html so neither
+ * flashes the wrong value before React mounts.
  *
- * `theme` is the user's choice (may be "system"); `resolvedTheme` is what's
- * actually applied ("light" | "dark"). A `.dark` class is toggled on <html>;
- * the same logic runs as an inline script in index.html to avoid a flash of
- * the wrong theme before React mounts.
+ *   1. THEME  — light / dark / system. Toggles the `.dark` class on <html>.
+ *   2. ACCENT — teal / ember. Sets `data-accent` on <html>. Teal is the
+ *      default and needs no attribute; ember writes `data-accent="ember"`,
+ *      which index.css uses to override the --brand-* tokens. The two accents
+ *      are equal citizens (DESIGN.md's Two Accents Rule).
+ *
+ * The axes are orthogonal: every accent defines correct values for BOTH
+ * themes, so any of the four combinations renders correctly.
  */
 type Theme = "light" | "dark" | "system";
 type Resolved = "light" | "dark";
+type Accent = "teal" | "ember";
 
 const STORAGE_KEY = "theme";
+const ACCENT_KEY = "accent";
+const ACCENTS: readonly Accent[] = ["teal", "ember"];
 
 interface ThemeContextValue {
   theme: Theme;
@@ -27,6 +36,8 @@ interface ThemeContextValue {
   setTheme: (t: Theme) => void;
   /** Flip between light and dark (sets an explicit choice). */
   toggle: () => void;
+  accent: Accent;
+  setAccent: (a: Accent) => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
@@ -40,6 +51,13 @@ function resolve(theme: Theme): Resolved {
   return theme;
 }
 
+/** Teal is the default; only ember is an explicit stored value. */
+function applyAccent(a: Accent) {
+  const el = document.documentElement;
+  if (a === "ember") el.setAttribute("data-accent", "ember");
+  else el.removeAttribute("data-accent");
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
     if (typeof window === "undefined") return "system";
@@ -48,6 +66,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [resolvedTheme, setResolvedTheme] = useState<Resolved>(() =>
     resolve(theme),
   );
+  const [accent, setAccentState] = useState<Accent>(() => {
+    if (typeof window === "undefined") return "teal";
+    const stored = localStorage.getItem(ACCENT_KEY) as Accent | null;
+    return stored && ACCENTS.includes(stored) ? stored : "teal";
+  });
 
   // Apply the resolved theme to <html> and keep it in sync with the choice.
   useEffect(() => {
@@ -82,9 +105,23 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setTheme(resolve(theme) === "dark" ? "light" : "dark");
   }, [theme, setTheme]);
 
+  // Keep <html data-accent> in sync with the choice.
+  useEffect(() => {
+    applyAccent(accent);
+  }, [accent]);
+
+  const setAccent = useCallback((a: Accent) => {
+    setAccentState(a);
+    try {
+      localStorage.setItem(ACCENT_KEY, a);
+    } catch {
+      /* storage unavailable — accent still applies for the session */
+    }
+  }, []);
+
   const value = useMemo(
-    () => ({ theme, resolvedTheme, setTheme, toggle }),
-    [theme, resolvedTheme, setTheme, toggle],
+    () => ({ theme, resolvedTheme, setTheme, toggle, accent, setAccent }),
+    [theme, resolvedTheme, setTheme, toggle, accent, setAccent],
   );
 
   return (

@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><style>input,select,textarea{box-sizing:border-box;}
+/* Table primitives as custom elements: the HTML parser foster-parents non-table
+   tags (like <sc-for>) out of <t-tbody>, which silently emptied the results table. */
+t-table{display:table;width:100%;border-collapse:collapse;}
+t-thead{display:table-header-group;}
+t-tbody{display:table-row-group;}
+t-tr{display:table-row;}
+t-th,t-td{display:table-cell;vertical-align:middle;}</style></helmet>
+<div style="{{ rootStyle }}">
+  <sc-if value="{{ showBadge }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 20px;background:var(--surface);border-bottom:1px solid var(--line);">
+      <span style="display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:999px;background:var(--brand);color:var(--on-brand);font:600 12px/1 Geist;">{{ badge }}</span>
+      <span style="font:500 13px/1 Geist;color:var(--fg);">{{ label }}</span>
+      <span style="font:400 12px/1 Geist;color:var(--fg-subtle);">{{ sub }}</span>
+    </div>
+  </sc-if>
+
+  <div style="background:var(--surface);border-bottom:1px solid var(--line);">
+    <div style="display:flex;align-items:center;gap:12px;padding:16px 20px 12px;">
+      <sc-if value="{{ showTitle }}" hint-placeholder-val="{{ true }}"><h1 style="margin:0;font:600 18px/22px Geist;letter-spacing:-0.01em;color:var(--fg);">Search chemicals</h1></sc-if>
+      <div style="position:relative;flex:1;min-width:0;max-width:440px;">
+        <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--brand-text);" viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
+        <input aria-label="AI search" placeholder='Ask AI — "cheapest sodium hydroxide over 99%"' style="height:40px;width:100%;border-radius:var(--r-btn);border:1px solid var(--line-strong);background:var(--app);padding:0 12px 0 36px;font:400 14px Geist;color:var(--fg);" />
+      </div>
+      <button type="button" style="height:40px;padding:0 16px;border:0;border-radius:var(--r-btn);background:var(--brand);color:var(--on-brand);font:600 14px/1 Geist;cursor:pointer;flex-shrink:0;" style-hover="background:var(--brand-hover)">Ask AI</button>
+      <button type="button" onClick="{{ toggleFilters }}" style="height:40px;padding:0 14px;border:1px solid var(--line);border-radius:var(--r-btn);background:var(--app);color:var(--fg);font:500 14px/1 Geist;cursor:pointer;display:inline-flex;align-items:center;gap:8px;flex-shrink:0;" style-hover="background:var(--muted)">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16"/><path d="M7 12h10"/><path d="M10 18h4"/></svg>
+        Filters
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{{ chevronDownStyle }}"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      <button type="button" onClick="{{ exportCsv }}" style="height:40px;padding:0 14px;border:1px solid var(--line);border-radius:var(--r-btn);background:var(--app);color:var(--fg);font:500 14px/1 Geist;cursor:pointer;display:inline-flex;align-items:center;gap:8px;flex-shrink:0;margin-left:auto;" style-hover="background:var(--muted)">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>
+        Export
+      </button>
+    </div>
+    <sc-if value="{{ filtersOpen }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px 18px;margin:0 20px 16px;padding:14px 16px;border:1px solid var(--line);border-radius:var(--r-card);background:var(--app);">
+        <div style="display:flex;flex-direction:column;gap:5px;min-width:200px;flex:1;max-width:280px;">
+          <label style="font:500 11px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);">Keyword</label>
+          <input placeholder="name, CAS, supplier" style="height:36px;border-radius:var(--r-btn);border:1px solid var(--line);background:var(--app);padding:0 10px;font:400 13px Geist;color:var(--fg);" />
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;width:180px;">
+          <div style="display:flex;justify-content:space-between;"><label style="font:500 11px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);">Max price</label><span style="font:400 11px 'Geist Mono',monospace;color:var(--fg-muted);">≤ $500</span></div>
+          <input type="range" min="0" max="1000" value="500" style="width:100%;accent-color:var(--brand);" />
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;width:180px;">
+          <div style="display:flex;justify-content:space-between;"><label style="font:500 11px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);">Min purity</label><span style="font:400 11px 'Geist Mono',monospace;color:var(--fg-muted);">≥ 90%</span></div>
+          <input type="range" min="0" max="100" value="90" style="width:100%;accent-color:var(--brand);" />
+        </div>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          <label style="font:500 11px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);">Starts with</label>
+          <div style="position:relative;">
+            <select value="{{ letter }}" onChange="{{ onLetterChange }}" style="appearance:none;height:36px;border-radius:var(--r-btn);border:1px solid var(--line);background:var(--app);padding:0 30px 0 12px;font:400 13px Geist;color:var(--fg);cursor:pointer;">
+              <sc-for list="{{ letterOptions }}" as="o" hint-placeholder-count="5"><option value="{{ o }}">{{ o }}</option></sc-for>
+            </select>
+            <svg style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--fg-subtle);pointer-events:none;" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </div>
+        </div>
+        <div style="width:1px;height:36px;background:var(--line);"></div>
+        <div style="display:flex;align-items:center;gap:16px;height:36px;">
+          <label style="display:flex;align-items:center;gap:7px;font:400 13px Geist;color:var(--fg-muted);cursor:pointer;"><input type="checkbox" checked style="width:15px;height:15px;accent-color:var(--brand);" /> Has price</label>
+          <label style="display:flex;align-items:center;gap:7px;font:400 13px Geist;color:var(--fg-muted);cursor:pointer;"><input type="checkbox" style="width:15px;height:15px;accent-color:var(--brand);" /> Needs review</label>
+        </div>
+        <button type="button" onClick="{{ resetFilters }}" style="height:36px;margin-left:auto;border:0;background:none;color:var(--fg-muted);font:500 13px/1 Geist;cursor:pointer;display:inline-flex;align-items:center;gap:6px;" style-hover="color:var(--fg)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>Reset</button>
+      </div>
+    </sc-if>
+  </div>
+
+  <div style="{{ gridStyle }}">
+    <div style="display:flex;flex-direction:column;min-width:0;min-height:0;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--line);">
+        <span style="font:400 13px Geist;color:var(--fg-muted);"><b style="color:var(--fg);font-weight:600;">683</b> results · <b style="color:var(--fg);font-weight:600;">"sodium"</b></span>
+        <sc-if value="{{ hasSelection }}" hint-placeholder-val="{{ true }}">
+          <span style="display:inline-flex;align-items:center;gap:8px;font:500 13px Geist;color:var(--brand-soft-text);">{{ count }} selected
+            <button type="button" onClick="{{ clearSelection }}" style="border:0;background:none;color:var(--fg-muted);font:500 12px/1 Geist;cursor:pointer;">clear</button>
+          </span>
+        </sc-if>
+      </div>
+      <div style="flex:1;min-height:0;overflow:auto;">
+        <t-table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <t-thead>
+            <t-tr>
+              <t-th style="width:38px;padding:10px 12px;position:sticky;top:0;background:var(--surface);border-bottom:1px solid var(--line-strong);z-index:1;"><input type="checkbox" onChange="{{ selectAll }}" style="width:15px;height:15px;accent-color:var(--brand);" /></t-th>
+              <t-th style="padding:10px 12px;text-align:left;font:600 11px/1 Geist;text-transform:uppercase;letter-spacing:0.06em;color:var(--fg-muted);position:sticky;top:0;background:var(--surface);border-bottom:1px solid var(--line-strong);z-index:1;">Name</t-th>
+              <t-th style="padding:10px 12px;text-align:left;font:600 11px/1 Geist;text-transform:uppercase;letter-spacing:0.06em;color:var(--fg-muted);position:sticky;top:0;background:var(--surface);border-bottom:1px solid var(--line-strong);z-index:1;">CAS</t-th>
+              <t-th style="padding:10px 12px;text-align:right;font:600 11px/1 Geist;text-transform:uppercase;letter-spacing:0.06em;color:var(--fg-muted);position:sticky;top:0;background:var(--surface);border-bottom:1px solid var(--line-strong);z-index:1;">Price</t-th>
+              <t-th style="padding:10px 12px;text-align:left;font:600 11px/1 Geist;text-transform:uppercase;letter-spacing:0.06em;color:var(--fg-muted);position:sticky;top:0;background:var(--surface);border-bottom:1px solid var(--line-strong);z-index:1;width:150px;">Purity</t-th>
+            </t-tr>
+          </t-thead>
+          <t-tbody>
+            <sc-for list="{{ rows }}" as="r" hint-placeholder-count="7">
+              <t-tr onClick="{{ r.onActivate }}" style="{{ r.inspectRowStyle }}" style-hover="{{ r.hoverStyle }}">
+                <t-td style="padding:13px 12px;"><input type="checkbox" checked="{{ r.checked }}" onChange="{{ r.onToggle }}" onClick="{{ stop }}" style="width:15px;height:15px;accent-color:var(--brand);cursor:pointer;" /></t-td>
+                <t-td style="padding:13px 12px;">
+                  <div style="display:flex;align-items:center;gap:6px;">
+                    <span style="font:500 13px Geist;color:var(--fg);">{{ r.name_en }}</span>
+                    <sc-if value="{{ r.review }}" hint-placeholder-val="{{ false }}"><span title="Needs review" style="width:7px;height:7px;border-radius:999px;background:var(--warn-text);"></span></sc-if>
+                  </div>
+                  <sc-if value="{{ r.showRaw }}" hint-placeholder-val="{{ false }}"><div style="font:400 11px Geist;color:var(--fg-subtle);margin-top:2px;">{{ r.name_raw }}</div></sc-if>
+                </t-td>
+                <t-td style="padding:13px 12px;font:400 12px 'Geist Mono',monospace;font-variant-numeric:tabular-nums;color:var(--fg-muted);white-space:nowrap;">
+                  <sc-if value="{{ r.hasCas }}" hint-placeholder-val="{{ true }}">{{ r.cas }}</sc-if>
+                  <sc-if value="{{ r.noCas }}" hint-placeholder-val="{{ false }}"><span style="color:var(--fg-subtle);">—</span></sc-if>
+                </t-td>
+                <t-td style="padding:13px 12px;text-align:right;white-space:nowrap;">
+                  <sc-if value="{{ r.hasPrice }}" hint-placeholder-val="{{ true }}"><span style="display:inline-block;padding:2px 8px;border-radius:var(--r-chip);background:var(--brand-soft);color:var(--brand-soft-text);font:500 12px 'Geist Mono',monospace;font-variant-numeric:tabular-nums;">{{ r.price }}</span></sc-if>
+                  <sc-if value="{{ r.noPrice }}" hint-placeholder-val="{{ false }}"><span style="color:var(--fg-subtle);">—</span></sc-if>
+                </t-td>
+                <t-td style="padding:13px 12px;">
+                  <sc-if value="{{ r.hasPurity }}" hint-placeholder-val="{{ true }}">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                      <div style="flex:1;height:5px;border-radius:999px;background:var(--muted);overflow:hidden;"><div style="{{ r.barStyle }}"></div></div>
+                      <span style="font:400 12px 'Geist Mono',monospace;font-variant-numeric:tabular-nums;color:var(--fg-muted);white-space:nowrap;">{{ r.purity }}</span>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ r.noPurity }}" hint-placeholder-val="{{ false }}"><span style="color:var(--fg-subtle);">—</span></sc-if>
+                </t-td>
+              </t-tr>
+            </sc-for>
+          </t-tbody>
+        </t-table>
+      </div>
+    </div>
+
+    <div style="border-left:1px solid var(--line);background:var(--surface);padding:20px;display:flex;flex-direction:column;gap:16px;overflow:auto;min-height:0;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
+        <div>
+          <div style="font:500 11px/1 Geist;text-transform:uppercase;letter-spacing:0.06em;color:var(--fg-subtle);margin-bottom:6px;">Supplier detail</div>
+          <div style="font:600 18px/24px Geist;color:var(--fg);letter-spacing:-0.01em;">{{ activeRow.name_en }}</div>
+          <sc-if value="{{ activeRow.showRaw }}" hint-placeholder-val="{{ true }}"><div style="font:400 13px Geist;color:var(--fg-subtle);margin-top:2px;">{{ activeRow.name_raw }}</div></sc-if>
+        </div>
+        <sc-if value="{{ activeRow.review }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:999px;background:var(--warn-soft);color:var(--warn-text);font:500 11px/1 Geist;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--warn-text) 20%,transparent);white-space:nowrap;">needs review</span></sc-if>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:10px;padding:14px;border-radius:var(--r-card);background:var(--brand-soft);border:1px solid color-mix(in srgb,var(--brand) 25%,transparent);">
+        <div style="flex:1;">
+          <div style="font:500 11px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:color-mix(in srgb,var(--brand-soft-text) 80%,transparent);margin-bottom:4px;">Best price</div>
+          <div style="font:600 22px/1 'Geist Mono',monospace;color:var(--brand-soft-text);">{{ activeRow.priceOrDash }}</div>
+          <sc-if value="{{ activeRow.hasConverted }}" hint-placeholder-val="{{ true }}"><div style="font:400 12px 'Geist Mono',monospace;color:color-mix(in srgb,var(--brand-soft-text) 75%,transparent);margin-top:2px;">{{ activeRow.converted }}</div></sc-if>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px 16px;">
+        <div><div style="font:500 11px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);margin-bottom:5px;">CAS</div><div style="font:400 13px 'Geist Mono',monospace;color:var(--fg);">{{ activeRow.casOrDash }}</div></div>
+        <div><div style="font:500 11px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);margin-bottom:5px;">Purity</div><div style="font:400 13px 'Geist Mono',monospace;color:var(--fg);">{{ activeRow.purityOrDash }}</div></div>
+        <div><div style="font:500 11px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);margin-bottom:5px;">Form</div><div style="font:400 13px Geist;color:var(--fg);">{{ activeRow.form }}</div></div>
+        <div><div style="font:500 11px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);margin-bottom:5px;">MOQ</div><div style="font:400 13px Geist;color:var(--fg);">{{ activeRow.moq }}</div></div>
+      </div>
+
+      <div style="padding-top:16px;border-top:1px solid var(--line);">
+        <div style="font:500 11px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);margin-bottom:6px;">Supplier</div>
+        <div style="font:500 14px Geist;color:var(--fg);">{{ activeRow.supplierEn }}</div>
+        <sc-if value="{{ activeRow.showSupplierRaw }}" hint-placeholder-val="{{ true }}"><div style="font:400 12px Geist;color:var(--fg-subtle);margin-top:2px;">{{ activeRow.supplierRaw }}</div></sc-if>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:8px;font:400 13px Geist;color:var(--fg-muted);">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+          {{ activeRow.country }}
+        </div>
+      </div>
+
+      <sc-if value="{{ activeRow.review }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:12px 14px;border-radius:var(--r-card);background:var(--warn-soft);border:1px solid color-mix(in srgb,var(--warn-text) 20%,transparent);font:400 12px/1.5 Geist;color:var(--warn-text);">
+          The AI matched this listing by name similarity (no exact CAS or name hit) — verify before trusting the mapping.
+        </div>
+      </sc-if>
+
+      <div style="margin-top:auto;display:flex;gap:8px;padding-top:8px;">
+        <button type="button" onClick="{{ editActive }}" style="flex:1;height:40px;border:0;border-radius:var(--r-btn);background:var(--brand);color:var(--on-brand);font:600 14px/1 Geist;cursor:pointer;" style-hover="background:var(--brand-hover)">Edit listing</button>
+        <button type="button" onClick="{{ viewActive }}" style="height:40px;padding:0 14px;border:1px solid var(--line);border-radius:var(--r-btn);background:var(--app);color:var(--fg);font:500 14px/1 Geist;cursor:pointer;" style-hover="background:var(--muted)">View</button>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1180,&quot;height&quot;:720},&quot;palette&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;Record&lt;string,string&gt;&quot;},&quot;embedded&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;badge&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;label&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;sub&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;onView&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(row:any)=&gt;void&quot;},&quot;onEdit&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(row:any)=&gt;void&quot;}}">
+const DATA = [
+  { name_en:"Sodium Hydroxide", name_raw:"氢氧化钠", cas:"1310-73-2", supplierEn:"Qingdao Echemi Technology Co., Ltd.", supplierRaw:"青岛易享化工科技有限公司", price:"420 USD", converted:"≈ ₨116,760", purity:"99%", form:"Flakes / pearls", moq:"1 MT", country:"Shandong, China", review:false },
+  { name_en:"Sodium Carbonate (Soda Ash Light)", name_raw:"碳酸钠", cas:"497-19-8", supplierEn:"Tianjin Bohai Chemical Industry Group", supplierRaw:"天津渤海化工集团", price:"285 USD", converted:"≈ ₨79,230", purity:"99.2%", form:"Powder", moq:"5 MT", country:"Tianjin, China", review:false },
+  { name_en:"Sodium Bicarbonate", name_raw:"Sodium Bicarbonate", cas:"144-55-8", supplierEn:"Bostech Polymer Co., Ltd.", supplierRaw:"", price:"310 USD", converted:"≈ ₨86,180", purity:null, form:"Powder", moq:"2 MT", country:"Jiangsu, China", review:false },
+  { name_en:"Sodium Lauryl Sulfate", name_raw:"K12 / SLS", cas:"151-21-3", supplierEn:"Jiangsu Hai'an Petrochemical Plant", supplierRaw:"江苏海安石油化工厂", price:"1,250 CNY", converted:"≈ $172 · ₨47,820", purity:"92% min", form:"Needles", moq:"500 kg", country:"Jiangsu, China", review:true },
+  { name_en:"Sodium Metabisulfite", name_raw:"偏重亚硫酸钠", cas:"7681-57-4", supplierEn:"Hubei Xingfa Chemicals Group Co., Ltd.", supplierRaw:"湖北兴发化工集团股份有限公司", price:null, converted:"", purity:"97%", form:"Powder", moq:"1 MT", country:"Hubei, China", review:false },
+  { name_en:"Sodium Silicate", name_raw:"硅酸钠 (水玻璃)", cas:null, supplierEn:"Shandong Yourui Chemical Co., Ltd.", supplierRaw:"山东优瑞化工有限公司", price:"198 USD", converted:"≈ ₨55,040", purity:null, form:"Liquid", moq:"3 MT", country:"Shandong, China", review:true },
+  { name_en:"Sodium Tripolyphosphate", name_raw:"STPP", cas:"7758-29-4", supplierEn:"Yunnan Nanlin Chemical Co., Ltd.", supplierRaw:"云南南磷化工有限公司", price:"845 USD", converted:"≈ ₨234,910", purity:"94% min", form:"Powder", moq:"1 MT", country:"Yunnan, China", review:false },
+  { name_en:"Sodium Hypochlorite 10%", name_raw:"次氯酸钠", cas:"7681-52-9", supplierEn:"Tianjin Bohai Chemical Industry Group", supplierRaw:"天津渤海化工集团", price:"165 USD", converted:"≈ ₨45,870", purity:"10% avail. Cl", form:"Liquid", moq:"5 MT", country:"Tianjin, China", review:false },
+  { name_en:"Sodium Benzoate", name_raw:"苯甲酸钠", cas:"532-32-1", supplierEn:"Henan Tianfu Chemical Co., Ltd.", supplierRaw:"河南天孚化工有限公司", price:"1,180 USD", converted:"≈ ₨328,040", purity:"99.5%", form:"Granular", moq:"500 kg", country:"Henan, China", review:false },
+  { name_en:"Sodium Nitrite", name_raw:"亚硝酸钠", cas:"7632-00-0", supplierEn:"Hebei Chengxin Group", supplierRaw:"河北诚信集团", price:"340 USD", converted:"≈ ₨94,520", purity:"99%", form:"Crystal", moq:"1 MT", country:"Hebei, China", review:true },
+  { name_en:"Sodium Sulphate Anhydrous", name_raw:"无水硫酸钠 (元明粉)", cas:"7757-82-6", supplierEn:"Jiangxi Selon Industrial Stock Co., Ltd.", supplierRaw:"江西世龙实业股份有限公司", price:"98 USD", converted:"≈ ₨27,240", purity:"99% min", form:"Powder", moq:"10 MT", country:"Jiangxi, China", review:false },
+  { name_en:"Sodium Chloride (Industrial)", name_raw:"工业盐", cas:"7647-14-5", supplierEn:"Tianjin Bohai Chemical Industry Group", supplierRaw:"天津渤海化工集团", price:null, converted:"", purity:"99.1%", form:"Crystal", moq:"20 MT", country:"Tianjin, China", review:true },
+  { name_en:"Sodium Citrate Dihydrate", name_raw:"柠檬酸钠", cas:"6132-04-3", supplierEn:"Anhui Jinhe Industrial Co., Ltd.", supplierRaw:"安徽金禾实业股份有限公司", price:"920 USD", converted:"≈ ₨255,760", purity:"99%", form:"Granular", moq:"1 MT", country:"Anhui, China", review:false },
+  { name_en:"Sodium Percarbonate", name_raw:"过碳酸钠", cas:"15630-89-4", supplierEn:"Jiangxi Selon Industrial Stock Co., Ltd.", supplierRaw:"江西世龙实业股份有限公司", price:"760 CNY", converted:"≈ $105 · ₨29,190", purity:"13% AO", form:"Granular", moq:"2 MT", country:"Jiangxi, China", review:false },
+  { name_en:"Sodium Dodecylbenzene Sulfonate", name_raw:"十二烷基苯磺酸钠 LAS", cas:"25155-30-0", supplierEn:"Qingdao Echemi Technology Co., Ltd.", supplierRaw:"青岛易享化工科技有限公司", price:"1,420 USD", converted:"≈ ₨394,760", purity:"90%", form:"Powder", moq:"1 MT", country:"Shandong, China", review:false },
+  { name_en:"Sodium Formate", name_raw:"甲酸钠", cas:"141-53-7", supplierEn:"Shandong Yourui Chemical Co., Ltd.", supplierRaw:"山东优瑞化工有限公司", price:"245 USD", converted:"≈ ₨68,110", purity:"95% min", form:"Powder", moq:"5 MT", country:"Shandong, China", review:false },
+  { name_en:"Sodium Gluconate", name_raw:"葡萄糖酸钠", cas:"527-07-1", supplierEn:"Qingdao Hisea Chem Co., Ltd.", supplierRaw:"青岛海之源化学有限公司", price:"680 USD", converted:"≈ ₨189,040", purity:"98%", form:"Powder", moq:"1 MT", country:"Shandong, China", review:true },
+  { name_en:"Sodium Thiosulphate", name_raw:"硫代硫酸钠 (大苏打)", cas:"7772-98-7", supplierEn:"Weifang Menjie Chemical Co., Ltd.", supplierRaw:"潍坊蒙杰化工有限公司", price:null, converted:"", purity:null, form:"Crystal", moq:"2 MT", country:"Shandong, China", review:true },
+  { name_en:"Sodium Alginate (Food Grade)", name_raw:"海藻酸钠", cas:"9005-38-3", supplierEn:"Shanghai Aladdin Biochemical", supplierRaw:"上海阿拉丁生化科技", price:"3,850 USD", converted:"≈ ₨1,070,300", purity:"99%", form:"Powder", moq:"200 kg", country:"Shanghai, China", review:false },
+  { name_en:"Sodium Acetate Trihydrate", name_raw:"三水醋酸钠", cas:"6131-90-4", supplierEn:"Nantong Acetic Acid Chemical Co., Ltd.", supplierRaw:"南通醋酸化工股份有限公司", price:"390 USD", converted:"≈ ₨108,420", purity:"99%", form:"Crystal", moq:"1 MT", country:"Jiangsu, China", review:false },
+];
+const ALPHA = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
+class Component extends DCLogic {
+  state = { selected: { 0:true, 1:true }, activeId: 0, letter: "All", filtersOpen: true };
+  toggle(i){ this.setState(s => ({ selected: { ...s.selected, [i]: !s.selected[i] } })); }
+  exportCsv = () => {
+    const esc = v => '"' + String(v ?? "").replace(/"/g,'""') + '"';
+    const lines = [["Name (EN)","As printed","CAS","Supplier","Price","Purity"].map(esc).join(",")].concat(
+      DATA.map(r => [r.name_en, r.name_raw, r.cas||"", r.supplierEn, r.price||"", r.purity||""].map(esc).join(",")));
+    const url = URL.createObjectURL(new Blob([lines.join("\n")], { type:"text/csv" }));
+    const a = document.createElement("a"); a.href = url; a.download = "chemicals.csv";
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  };
+  renderVals(){
+    const p = this.props.palette || {};
+    const embedded = !!this.props.embedded;
+    const fill = !!this.props.fill;
+    const rootStyle = fill
+      ? { ...p, "--r-chip":"7px", "--r-btn":"10px", "--r-card":"14px", width:"100%", height:"100%", display:"flex", flexDirection:"column", background:"var(--app)", overflow:"hidden", fontFamily:"Geist, ui-sans-serif, system-ui, sans-serif" }
+      : embedded
+      ? { ...p, "--r-chip":"7px", "--r-btn":"10px", "--r-card":"14px", width:"100%", background:"var(--app)", border:"1px solid var(--line)", borderRadius:"14px", overflow:"hidden", fontFamily:"Geist, ui-sans-serif, system-ui, sans-serif" }
+      : { ...p, "--r-chip":"7px", "--r-btn":"10px", "--r-card":"14px", width:"1180px", background:"var(--app)", border:"1px solid var(--line)", borderRadius:"18px", overflow:"hidden", boxShadow:"0 24px 60px -20px rgba(0,0,0,0.55)", fontFamily:"Geist, ui-sans-serif, system-ui, sans-serif" };
+    const rows = DATA.map((r, i) => {
+      const checked = !!this.state.selected[i];
+      const isActive = this.state.activeId === i;
+      const pct = r.purity ? Math.min(100, parseFloat(String(r.purity).replace(/[^0-9.]/g, "")) || 0) : 0;
+      const zebra = i % 2 === 1;
+      return { ...r, i, checked,
+        showRaw: !!(r.name_raw && r.name_raw !== r.name_en),
+        hasCas: !!r.cas, noCas: !r.cas,
+        showSupplierRaw: !!(r.supplierRaw && r.supplierRaw !== r.supplierEn),
+        hasPrice: !!r.price, noPrice: !r.price, hasConverted: !!r.converted,
+        hasPurity: !!r.purity, noPurity: !r.purity,
+        barStyle: { width: pct + "%", height: "100%", borderRadius: "999px", background: pct >= 99 ? "var(--c-green)" : pct >= 95 ? "var(--brand)" : "var(--c-amber)" },
+        inspectRowStyle: "cursor:pointer;border-bottom:1px solid color-mix(in srgb,var(--line) 55%,transparent);transition:background-color 120ms;" + (isActive ? "background:var(--brand-soft);box-shadow:inset 2px 0 0 var(--brand);" : zebra ? "background:color-mix(in srgb,var(--muted) 35%,transparent);" : ""),
+        hoverStyle: isActive ? "background:var(--brand-soft)" : "background:var(--hover)",
+        onToggle: () => this.toggle(i), onActivate: () => this.setState({ activeId: i }) };
+    });
+    const count = Object.values(this.state.selected).filter(Boolean).length;
+    const active = DATA[this.state.activeId] || DATA[0];
+    const activeRow = { ...active,
+      showRaw: !!(active.name_raw && active.name_raw !== active.name_en),
+      showSupplierRaw: !!(active.supplierRaw && active.supplierRaw !== active.supplierEn),
+      hasConverted: !!active.converted, priceOrDash: active.price || "—",
+      casOrDash: active.cas || "—", purityOrDash: active.purity || "—" };
+    const mkLetter = (label) => {
+      const on = this.state.letter === label;
+      const styleSm = "height:26px;min-width:26px;border-radius:7px;border:1px solid var(--line);font:500 11px/1 Geist;cursor:pointer;" + (on ? "background:var(--brand);border-color:var(--brand);color:var(--on-brand);" : "background:var(--app);color:var(--fg-muted);");
+      return { label, styleSm, onClick: () => this.setState({ letter: label }) };
+    };
+    const onView = this.props.onView, onEdit = this.props.onEdit;
+    const fo = this.state.filtersOpen;
+    return { rootStyle, embedded, showTitle: !embedded, showBadge: !embedded && !!this.props.badge,
+      filtersOpen: fo,
+      toggleFilters: () => this.setState({ filtersOpen: !fo }),
+      filtersTitle: fo ? "Collapse filters" : "Expand filters",
+      chevronStyle: { transition:"transform 160ms", transform: fo ? "rotate(0deg)" : "rotate(180deg)" },
+      chevronDownStyle: { transition:"transform 160ms", transform: fo ? "rotate(180deg)" : "rotate(0deg)" },
+      letter: this.state.letter,
+      letterOptions: ["All"].concat(ALPHA),
+      onLetterChange: (e) => this.setState({ letter: e.target.value }),
+      resetFilters: () => this.setState({ letter: "All" }),
+      gridStyle: fill
+        ? { display:"grid", gridTemplateColumns:"minmax(320px,1fr) 340px", flex:"1", minHeight:"0" }
+        : { display:"grid", gridTemplateColumns:"minmax(320px,1fr) 320px", minHeight:"600px" },
+      badge: this.props.badge || "", label: this.props.label || "", sub: this.props.sub || "",
+      editActive: () => onEdit && onEdit(active),
+      viewActive: () => onView && onView(active),
+      rows, count, hasSelection: count > 0, activeRow,
+      letters: [mkLetter("All")].concat(ALPHA.map(mkLetter)),
+      exportCsv: this.exportCsv, stop: (e) => e.stopPropagation(),
+      clearSelection: () => this.setState({ selected: {} }),
+      selectAll: () => { const m = {}; DATA.forEach((_, i) => m[i] = true); this.setState({ selected: m }); } };
+  }
+}
+</script>
+</body>
+</html>

@@ -239,6 +239,32 @@ def clear_finished(user_id: str) -> int:
     return len(finished)
 
 
+def cancel_all(user_id: str) -> int:
+    """
+    Cancel every one of a user's still-active (queued/paused/processing) jobs in
+    one shot — the bulk "stop everything" the queue's per-row cancel can't give.
+
+    Queued/paused jobs flip straight to cancelled; a processing job can't have
+    its in-flight AI call interrupted, so it is flagged (cancel_requested) and
+    the worker drops its result and stops saving further products — the same
+    semantics as a single cancel. Returns how many jobs were affected.
+    """
+    affected = 0
+    for job in _jobs.values():
+        if job.user_id != user_id or not job.can_cancel:
+            continue
+        if job.status == "processing":
+            job.cancel_requested = True
+            job.set_stage("Cancelling…")
+        else:
+            job.status = "cancelled"
+            job.set_stage("Cancelled")
+            if job.content_hash:
+                _inflight_hashes.discard(job.content_hash)
+        affected += 1
+    return affected
+
+
 class ActionError(Exception):
     """Raised when a control action is invalid for the job's current state."""
 

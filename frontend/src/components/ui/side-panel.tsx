@@ -2,11 +2,20 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
+/** Everything focusable we care about trapping, in DOM order. */
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 /**
  * Generic right-side slide-in drawer — the shell shared by the product panel
  * and the supplier panel so every "details from the right" surface behaves
- * identically: glass drawer in a portal over a scrim, closes on Escape,
- * scrim click, or the X; locks body scroll; moves focus in on open.
+ * identically: drawer in a portal over a scrim, closes on Escape, scrim click,
+ * or the X; locks body scroll.
+ *
+ * Because it declares `aria-modal`, it has to earn that: focus moves in on
+ * open, is trapped while open, and returns to whatever opened it on close,
+ * and the rest of the app is marked `inert` so it stays out of the tab order
+ * and the accessibility tree rather than just being visually dimmed.
  */
 export function SidePanel({
   open,
@@ -22,18 +31,63 @@ export function SidePanel({
   headerActions?: ReactNode;
   children: ReactNode;
 }) {
+  const panelRef = useRef<HTMLElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+
+    // Remember what had focus so we can hand it back on close — otherwise a
+    // keyboard user restarts tabbing from the top of the document.
+    const opener = document.activeElement as HTMLElement | null;
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab") return;
+
+      const panel = panelRef.current;
+      if (!panel) return;
+      const items = Array.from(
+        panel.querySelectorAll<HTMLElement>(FOCUSABLE),
+      ).filter((el) => el.offsetParent !== null || el === document.activeElement);
+      if (items.length === 0) return;
+
+      const first = items[0];
+      const last = items[items.length - 1];
+      // Wrap at both ends. Focus that has escaped the panel entirely (portals
+      // and async content can do this) gets pulled back to the near edge.
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      } else if (!panel.contains(document.activeElement)) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+      }
+    };
+
     document.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
-    // Move keyboard focus into the panel so Escape/tabbing work immediately.
+
+    // Hide the rest of the app from AT and the tab order. The portal renders
+    // into <body>, so inerting the app root leaves the drawer itself active.
+    const appRoot = document.getElementById("root");
+    appRoot?.setAttribute("inert", "");
+
     closeRef.current?.focus();
+
     return () => {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
+      appRoot?.removeAttribute("inert");
+      // Only restore if the opener is still in the document; a row that was
+      // re-rendered away can't take focus back.
+      if (opener?.isConnected) opener.focus();
     };
   }, [open, onClose]);
 
@@ -47,10 +101,11 @@ export function SidePanel({
         aria-hidden
       />
       <aside
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="absolute inset-y-0 right-0 flex w-full max-w-2xl flex-col border-l border-line glass-strong shadow-pop animate-slide-in-right"
+        className="absolute inset-y-0 right-0 flex w-full max-w-2xl flex-col border-l border-line bg-elevated shadow-pop animate-slide-in-right"
       >
         <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 sm:px-6">
           <h2 className="text-sm font-semibold tracking-tight text-fg">

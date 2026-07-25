@@ -69,11 +69,27 @@ export interface DocumentListings {
 }
 
 /** Aggregate counts for the admin dashboard (GET /admin/dashboard/summary). */
+/** Three disjoint listing-quality slices that sum to total_listings. */
+export interface StatusDistribution {
+  complete: number;
+  needs_review: number;
+  missing_price: number;
+}
+
+/** One bar in the dashboard's "Top suppliers by listings" panel. */
+export interface SupplierListingCount {
+  company_id: number;
+  name: string;
+  count: number;
+}
+
 export interface DashboardSummary {
   total_listings: number;
   total_suppliers: number;
   uploads_last_7d: number;
   needs_review: number;
+  status_distribution: StatusDistribution;
+  top_suppliers: SupplierListingCount[];
 }
 
 /** One row on the admin user-management page. */

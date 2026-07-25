@@ -17,6 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Pagination } from "@/components/search/Pagination";
 import { PageHeader } from "@/components/layout/PageHeader";
 import type { AuditEntry } from "@/types/chemical";
+import { formatDateTime } from "@/lib/format";
 
 /**
  * Activity log (admin only): a separate, persistent record of who uploaded,
@@ -86,7 +87,7 @@ export default function AuditLogPage() {
                   {data.items.map((e) => (
                     <TableRow key={e.id}>
                       <TableCell className="whitespace-nowrap font-mono text-xs tabular-nums text-fg-muted">
-                        {formatDate(e.created_at)}
+                        {formatDateTime(e.created_at)}
                       </TableCell>
                       <TableCell className="max-w-[14rem] truncate text-fg-muted">
                         {e.actor_email || e.actor || "—"}
@@ -175,15 +176,3 @@ function describe(e: AuditEntry): string {
   }
 }
 
-function formatDate(iso: string): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso.slice(0, 16).replace("T", " ");
-  return d.toLocaleString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}

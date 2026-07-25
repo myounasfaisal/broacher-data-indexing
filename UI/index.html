@@ -1,0 +1,2303 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BrochureDB — full app UI reference</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Geist:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      /* ==================================================================
+         TOKENS — copied verbatim from frontend/src/index.css.
+         Components reference only these, so toggling `.dark` on <html>
+         re-themes the entire app exactly as the real one does.
+         ================================================================== */
+      :root {
+        color-scheme: light;
+        --app: #f6f7f9;
+        --surface: #ffffff;
+        --elevated: #ffffff;
+        --muted: #eceef2;
+        --hover: #e7eaef;
+        --fg: #171b24;
+        --fg-muted: #6b7688;
+        --fg-subtle: #98a2b1;
+        --line: #dde1e8;
+        --line-strong: #c4cbd5;
+
+        --brand: #0f7a72;
+        --brand-hover: #0b615a;
+        --on-brand: #ffffff;
+        --brand-text: #0b615a;
+        --brand-soft: #e8f6f4;
+        --brand-soft-text: #0b615a;
+
+        --danger: #c6413b;
+        --danger-hover: #a5322d;
+        --on-danger: #ffffff;
+        --danger-soft: #fcecec;
+        --danger-text: #a5322d;
+
+        --warn-soft: #fcf3e6;
+        --warn-text: #8f5e12;
+        --ok-soft: #e9f7ef;
+        --ok-text: #0e6d4a;
+
+        --scrim: 15 18 25 / 0.32;
+        --glass: 255 255 255 / 0.72;
+        --glass-strong: 255 255 255 / 0.85;
+
+        /* tailwind.config.js — named radii + elevation */
+        --r-chip: 7px;
+        --r-btn: 10px;
+        --r-card: 14px;
+        --r-panel: 18px;
+        --shadow-sm: 0 1px 2px 0 rgb(16 24 40 / 0.05);
+        --shadow-card: 0 1px 2px 0 rgb(16 24 40 / 0.04),
+          0 1px 3px 0 rgb(16 24 40 / 0.06);
+        --shadow-card-hover: 0 4px 12px -2px rgb(16 24 40 / 0.1),
+          0 2px 6px -2px rgb(16 24 40 / 0.06);
+        --shadow-pop: 0 12px 32px -8px rgb(16 24 40 / 0.2),
+          0 4px 12px -4px rgb(16 24 40 / 0.12);
+      }
+
+      .dark {
+        color-scheme: dark;
+        --app: #0e1116;
+        --surface: #161a21;
+        --elevated: #1c212a;
+        --muted: #232935;
+        --hover: #2a3140;
+        --fg: #e7eaf0;
+        --fg-muted: #99a3b2;
+        --fg-subtle: #6b7686;
+        --line: #262d39;
+        --line-strong: #384152;
+
+        /* Brighter teal fill + near-black text reads clearly on a dark
+           surface (deep teal + white text would sink into the background). */
+        --brand: #21b6a8;
+        --brand-hover: #33c6b8;
+        --on-brand: #052623;
+        --brand-text: #46d0c2;
+        --brand-soft: #123734;
+        --brand-soft-text: #5fddcf;
+
+        --danger: #e0655f;
+        --danger-hover: #e87a74;
+        --on-danger: #2a0a08;
+        --danger-soft: #3a1613;
+        --danger-text: #f0a6a1;
+
+        --warn-soft: #33270f;
+        --warn-text: #e6b968;
+        --ok-soft: #103026;
+        --ok-text: #63d19e;
+
+        --scrim: 3 5 8 / 0.55;
+        --glass: 22 26 33 / 0.72;
+        --glass-strong: 28 33 42 / 0.85;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      html {
+        -webkit-text-size-adjust: 100%;
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+      }
+      body {
+        margin: 0;
+        background: var(--app);
+        color: var(--fg);
+        font-family: "Geist", ui-sans-serif, system-ui, -apple-system,
+          "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        font-size: 16px;
+        line-height: 1.5;
+      }
+      .mono {
+        font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo,
+          Consolas, monospace;
+      }
+      .glass {
+        background: rgb(var(--glass));
+        backdrop-filter: blur(12px);
+      }
+      .glass-strong {
+        background: rgb(var(--glass-strong));
+        backdrop-filter: blur(16px);
+      }
+      .scrim {
+        background: rgb(var(--scrim));
+      }
+      svg {
+        display: block;
+      }
+
+      /* ============================ APP SHELL ============================ */
+      .shell {
+        min-height: 100vh;
+        background: var(--app);
+        color: var(--fg);
+      }
+      .sidebar {
+        position: fixed;
+        inset: 0 auto 0 0;
+        z-index: 30;
+        width: 256px;
+        border-right: 1px solid var(--line);
+        display: flex;
+        flex-direction: column;
+      }
+      @media (max-width: 1023px) {
+        .sidebar {
+          display: none;
+        }
+      }
+      .brandmark {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 64px;
+        padding: 0 20px;
+        text-decoration: none;
+      }
+      .brandmark .mark {
+        display: flex;
+        height: 32px;
+        width: 32px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 9px;
+        background: var(--brand);
+        color: var(--on-brand);
+        box-shadow: var(--shadow-sm);
+      }
+      .brandmark .word {
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        color: var(--fg);
+      }
+      .brandmark .word span {
+        color: var(--brand-text);
+      }
+
+      .nav {
+        flex: 1;
+        overflow-y: auto;
+        padding: 8px 12px;
+      }
+      .nav-item {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        border: 0;
+        background: none;
+        border-radius: var(--r-btn);
+        padding: 8px 12px;
+        margin-bottom: 4px;
+        font-family: inherit;
+        font-size: 14px;
+        color: var(--fg-muted);
+        cursor: pointer;
+        text-align: left;
+        transition: background-color 150ms, color 150ms;
+      }
+      .nav-item:hover {
+        background: var(--hover);
+        color: var(--fg);
+      }
+      .nav-item .rail {
+        position: absolute;
+        left: 0;
+        top: 50%;
+        height: 20px;
+        width: 3px;
+        transform: translateY(-50%);
+        border-radius: 9999px;
+        background: var(--brand);
+        opacity: 0;
+        transition: opacity 150ms;
+      }
+      .nav-item.active {
+        background: var(--brand-soft);
+        color: var(--brand-soft-text);
+        font-weight: 500;
+      }
+      .nav-item.active .rail {
+        opacity: 1;
+      }
+      .nav-item svg {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+        color: var(--fg-subtle);
+      }
+      .nav-item.active svg {
+        color: var(--brand-text);
+      }
+
+      .sidebar-footer {
+        border-top: 1px solid var(--line);
+        padding: 12px;
+      }
+      .theme-row {
+        display: flex;
+        width: 100%;
+        align-items: center;
+        gap: 12px;
+        border: 0;
+        background: none;
+        border-radius: var(--r-btn);
+        padding: 8px 12px;
+        font-family: inherit;
+        font-size: 14px;
+        color: var(--fg-muted);
+        cursor: pointer;
+      }
+      .theme-row:hover {
+        background: var(--hover);
+        color: var(--fg);
+      }
+      .user-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        border-radius: var(--r-btn);
+        padding: 8px;
+      }
+      .avatar {
+        display: flex;
+        height: 36px;
+        width: 36px;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: center;
+        border-radius: 9999px;
+        background: var(--brand-soft);
+        color: var(--brand-soft-text);
+        font-size: 14px;
+        font-weight: 500;
+      }
+      .user-row .email {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--fg);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .signout {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        margin-top: 4px;
+        border: 0;
+        background: none;
+        border-radius: var(--r-btn);
+        padding: 6px 12px;
+        font-family: inherit;
+        font-size: 13px;
+        color: var(--fg-muted);
+        cursor: pointer;
+      }
+      .signout:hover {
+        background: var(--hover);
+        color: var(--fg);
+      }
+
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        display: none;
+        height: 56px;
+        align-items: center;
+        gap: 12px;
+        border-bottom: 1px solid var(--line);
+        padding: 0 16px;
+      }
+      @media (max-width: 1023px) {
+        .topbar {
+          display: flex;
+        }
+      }
+      .icon-btn {
+        display: inline-flex;
+        height: 36px;
+        width: 36px;
+        align-items: center;
+        justify-content: center;
+        border: 0;
+        background: none;
+        border-radius: var(--r-btn);
+        color: var(--fg-muted);
+        cursor: pointer;
+      }
+      .icon-btn:hover {
+        background: var(--hover);
+        color: var(--fg);
+      }
+
+      .content {
+        padding-left: 256px;
+      }
+      @media (max-width: 1023px) {
+        .content {
+          padding-left: 0;
+        }
+      }
+      main.page {
+        margin: 0 auto;
+        max-width: 1400px;
+        padding: 32px;
+      }
+      @media (max-width: 639px) {
+        main.page {
+          padding: 24px 16px;
+        }
+      }
+
+      /* ============================ PRIMITIVES ============================ */
+      .page-header {
+        margin-bottom: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      @media (min-width: 640px) {
+        .page-header {
+          flex-direction: row;
+          align-items: flex-end;
+          justify-content: space-between;
+        }
+      }
+      .page-header h1 {
+        margin: 0;
+        font-size: 24px;
+        line-height: 32px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+      }
+      .page-header p {
+        margin: 4px 0 0;
+        font-size: 14px;
+        color: var(--fg-muted);
+      }
+
+      .card {
+        border-radius: var(--r-card);
+        border: 1px solid var(--line);
+        background: var(--surface);
+        box-shadow: var(--shadow-card);
+      }
+      .card-header {
+        padding: 24px 24px 12px;
+      }
+      .card-title {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 500;
+        letter-spacing: -0.01em;
+        color: var(--fg);
+      }
+      .card-header p {
+        margin: 4px 0 0;
+        font-size: 14px;
+        color: var(--fg-muted);
+      }
+      .card-content {
+        padding: 12px 24px 24px;
+      }
+      .card-content.pt6 {
+        padding-top: 24px;
+      }
+      .stack > * + * {
+        margin-top: 16px;
+      }
+      .stack-6 > * + * {
+        margin-top: 24px;
+      }
+      .eyebrow {
+        margin: 0 0 8px;
+        font-size: 12px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--fg-subtle);
+      }
+      .divider-top {
+        border-top: 1px solid var(--line);
+        padding-top: 16px;
+      }
+      .muted {
+        color: var(--fg-muted);
+      }
+      .subtle {
+        color: var(--fg-subtle);
+      }
+      .small {
+        font-size: 12px;
+      }
+      .sm-text {
+        font-size: 14px;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        border-radius: var(--r-btn);
+        font-family: inherit;
+        font-size: 14px;
+        font-weight: 500;
+        height: 40px;
+        padding: 8px 16px;
+        border: 0;
+        cursor: pointer;
+        transition: background-color 150ms, border-color 150ms, color 150ms;
+      }
+      .btn:disabled {
+        pointer-events: none;
+        opacity: 0.5;
+      }
+      .btn svg {
+        width: 16px;
+        height: 16px;
+      }
+      .btn-default {
+        background: var(--brand);
+        color: var(--on-brand);
+        box-shadow: var(--shadow-sm);
+      }
+      .btn-default:hover {
+        background: var(--brand-hover);
+      }
+      .btn-secondary {
+        background: var(--muted);
+        color: var(--fg);
+      }
+      .btn-secondary:hover {
+        background: var(--hover);
+      }
+      .btn-outline {
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--fg);
+        box-shadow: var(--shadow-sm);
+      }
+      .btn-outline:hover {
+        background: var(--muted);
+        border-color: var(--line-strong);
+      }
+      .btn-ghost {
+        background: none;
+        color: var(--fg-muted);
+      }
+      .btn-ghost:hover {
+        background: var(--hover);
+        color: var(--fg);
+      }
+      .btn-destructive {
+        background: var(--danger);
+        color: var(--on-danger);
+        box-shadow: var(--shadow-sm);
+      }
+      .btn-destructive:hover {
+        background: var(--danger-hover);
+      }
+      .btn-sm {
+        height: 32px;
+        padding: 0 12px;
+        font-size: 13px;
+      }
+      .btn-full {
+        width: 100%;
+      }
+
+      .label {
+        display: block;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--fg);
+      }
+      .input {
+        display: flex;
+        height: 40px;
+        width: 100%;
+        border-radius: var(--r-btn);
+        border: 1px solid var(--line);
+        background: var(--surface);
+        padding: 8px 12px;
+        font-family: inherit;
+        font-size: 14px;
+        color: var(--fg);
+        box-shadow: var(--shadow-sm);
+      }
+      .input::placeholder {
+        color: var(--fg-subtle);
+      }
+      .input:focus-visible {
+        outline: none;
+        border-color: var(--brand);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand) 30%, transparent);
+      }
+      .select-wrap {
+        position: relative;
+      }
+      .select {
+        appearance: none;
+        height: 40px;
+        width: 100%;
+        border-radius: var(--r-btn);
+        border: 1px solid var(--line);
+        background: var(--surface);
+        padding: 0 36px 0 12px;
+        font-family: inherit;
+        font-size: 14px;
+        color: var(--fg);
+        box-shadow: var(--shadow-sm);
+      }
+      .select-chevron {
+        pointer-events: none;
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 16px;
+        height: 16px;
+        color: var(--fg-subtle);
+      }
+      input[type="checkbox"] {
+        height: 16px;
+        width: 16px;
+        cursor: pointer;
+        border-radius: 4px;
+        accent-color: var(--brand);
+        margin: 0;
+      }
+      .field > * + * {
+        margin-top: 4px;
+      }
+
+      /* Chips / badges */
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        white-space: nowrap;
+        border-radius: var(--r-chip);
+        padding: 2px 6px;
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 12px;
+        line-height: 20px;
+        letter-spacing: -0.01em;
+        font-variant-numeric: tabular-nums;
+      }
+      .chip-price {
+        background: var(--brand-soft);
+        color: var(--brand-soft-text);
+        box-shadow: inset 0 0 0 1px
+          color-mix(in srgb, var(--brand) 20%, transparent);
+        font-weight: 500;
+      }
+      .chip-cas {
+        color: var(--brand-text);
+        box-shadow: inset 0 0 0 1px
+          color-mix(in srgb, var(--brand) 30%, transparent);
+      }
+      .chip-neutral {
+        background: var(--muted);
+        color: var(--fg-muted);
+        box-shadow: inset 0 0 0 1px var(--line);
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 9999px;
+        padding: 2px 10px;
+        font-size: 12px;
+        font-weight: 500;
+      }
+      .badge-default {
+        background: var(--fg);
+        color: var(--app);
+      }
+      .badge-secondary {
+        background: var(--muted);
+        color: var(--fg-muted);
+        box-shadow: inset 0 0 0 1px var(--line);
+      }
+      .badge-brand {
+        background: var(--brand-soft);
+        color: var(--brand-soft-text);
+      }
+      .badge-success {
+        background: var(--ok-soft);
+        color: var(--ok-text);
+      }
+      .badge-warning {
+        background: var(--warn-soft);
+        color: var(--warn-text);
+      }
+      .badge-destructive {
+        background: var(--danger-soft);
+        color: var(--danger-text);
+      }
+      .capitalize {
+        text-transform: capitalize;
+      }
+
+      /* Tables */
+      .table-wrap {
+        width: 100%;
+        overflow-x: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+      thead {
+        border-bottom: 1px solid var(--line);
+      }
+      th {
+        height: 40px;
+        padding: 0 12px;
+        text-align: left;
+        vertical-align: middle;
+        font-size: 12px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--fg-subtle);
+        white-space: nowrap;
+      }
+      th.right,
+      td.right {
+        text-align: right;
+      }
+      tbody tr {
+        border-bottom: 1px solid
+          color-mix(in srgb, var(--line) 60%, transparent);
+        transition: background-color 150ms;
+      }
+      tbody tr:hover {
+        background: color-mix(in srgb, var(--hover) 60%, transparent);
+      }
+      td {
+        padding: 10px 12px;
+        vertical-align: middle;
+        color: var(--fg);
+      }
+      .link {
+        border: 0;
+        background: none;
+        padding: 0;
+        font-family: inherit;
+        font-size: inherit;
+        font-weight: inherit;
+        text-align: left;
+        color: var(--brand-text);
+        cursor: pointer;
+        text-decoration: none;
+      }
+      .link:hover {
+        text-decoration: underline;
+      }
+      .dash {
+        color: var(--fg-subtle);
+      }
+      .row-btn {
+        border: 0;
+        background: none;
+        border-radius: 4px;
+        padding: 4px 8px;
+        font-family: inherit;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--brand-text);
+        cursor: pointer;
+      }
+      .row-btn:hover {
+        background: var(--brand-soft);
+      }
+      .converted {
+        display: block;
+        margin-top: 2px;
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 11px;
+        color: var(--fg-subtle);
+      }
+      .nowrap {
+        white-space: nowrap;
+      }
+
+      /* Stat cards */
+      .stat-grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: 1fr;
+      }
+      @media (min-width: 640px) {
+        .stat-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      @media (min-width: 1024px) {
+        .stat-grid {
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+      }
+      .stat {
+        padding: 20px;
+      }
+      .stat .top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .stat .label {
+        margin: 0;
+        font-size: 12px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--fg-subtle);
+      }
+      .stat .ico {
+        display: flex;
+        height: 32px;
+        width: 32px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 9px;
+        background: var(--muted);
+        color: var(--fg-muted);
+      }
+      .stat .ico.brand {
+        background: var(--brand-soft);
+        color: var(--brand-text);
+      }
+      .stat .ico.warning {
+        background: var(--warn-soft);
+        color: var(--warn-text);
+      }
+      .stat .value {
+        margin: 8px 0 0;
+        font-size: 30px;
+        line-height: 36px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        font-variant-numeric: tabular-nums;
+      }
+      .stat .value.warning {
+        color: var(--warn-text);
+      }
+      .stat .hint {
+        margin: 4px 0 0;
+        font-size: 12px;
+        color: var(--fg-subtle);
+      }
+      a.stat-link {
+        display: block;
+        border-radius: var(--r-card);
+        text-decoration: none;
+        color: inherit;
+      }
+
+      /* Selection bar */
+      .selection-bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 12px;
+        border-radius: var(--r-btn);
+        border: 1px solid color-mix(in srgb, var(--brand) 30%, transparent);
+        background: var(--brand-soft);
+        padding: 8px 12px;
+      }
+      .selection-bar .count {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--brand-soft-text);
+      }
+      .selection-bar .hint {
+        font-size: 12px;
+        color: color-mix(in srgb, var(--brand-soft-text) 80%, transparent);
+      }
+      .selection-bar .actions {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .link-btn {
+        border: 0;
+        background: none;
+        border-radius: var(--r-btn);
+        padding: 6px 10px;
+        font-family: inherit;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--brand-soft-text);
+        cursor: pointer;
+      }
+      .link-btn:hover {
+        background: color-mix(in srgb, var(--brand) 10%, transparent);
+      }
+
+      /* Empty state */
+      .empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 48px 24px;
+        text-align: center;
+      }
+      .empty .ico {
+        margin-bottom: 12px;
+        display: flex;
+        height: 44px;
+        width: 44px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 9999px;
+        background: var(--muted);
+        color: var(--fg-subtle);
+      }
+      .empty .t {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--fg);
+      }
+      .empty .d {
+        margin: 4px 0 0;
+        max-width: 384px;
+        font-size: 14px;
+        color: var(--fg-muted);
+      }
+
+      /* Search page bits */
+      .ai-row {
+        display: flex;
+        gap: 8px;
+      }
+      .ai-field {
+        position: relative;
+        flex: 1;
+      }
+      .ai-field .icon {
+        pointer-events: none;
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 16px;
+        height: 16px;
+        color: var(--brand-text);
+      }
+      .ai-field .input {
+        padding-left: 36px;
+      }
+      .filter-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+      @media (min-width: 640px) {
+        .filter-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      @media (min-width: 1024px) {
+        .filter-grid {
+          grid-template-columns: repeat(5, minmax(0, 1fr));
+          align-items: end;
+        }
+        .filter-grid .col-2 {
+          grid-column: span 2;
+        }
+        .filter-grid .col-5 {
+          grid-column: span 5;
+        }
+      }
+      .apply-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
+      }
+      .checkbox-label {
+        display: flex;
+        cursor: pointer;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+        color: var(--fg-muted);
+      }
+      @media (min-width: 640px) {
+        .apply-row .btn {
+          margin-left: auto;
+          width: 160px;
+        }
+      }
+      .alphabet {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+      .letter {
+        height: 32px;
+        width: 32px;
+        border-radius: var(--r-btn);
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--fg-muted);
+        font-family: inherit;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+      }
+      .letter.wide {
+        width: auto;
+        padding: 0 12px;
+      }
+      .letter:hover {
+        border-color: var(--line-strong);
+        background: var(--muted);
+      }
+      .letter.active {
+        border-color: var(--brand);
+        background: var(--brand);
+        color: var(--on-brand);
+      }
+      .results-meta {
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 14px;
+        color: var(--fg-muted);
+      }
+      .results-meta .em {
+        font-weight: 500;
+        color: var(--fg);
+      }
+      .review-wrap {
+        position: relative;
+        display: inline-flex;
+        margin-left: 8px;
+      }
+      .review-wrap .tip {
+        pointer-events: none;
+        position: absolute;
+        left: 0;
+        top: 100%;
+        z-index: 20;
+        margin-top: 6px;
+        display: none;
+        width: 240px;
+        border-radius: 6px;
+        background: var(--fg);
+        color: var(--app);
+        padding: 6px 10px;
+        font-size: 12px;
+        font-weight: 400;
+        line-height: 1.4;
+      }
+      .review-wrap:hover .tip {
+        display: block;
+      }
+
+      /* Pagination */
+      .pagination {
+        margin-top: 16px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+      }
+      .page-btn {
+        height: 36px;
+        min-width: 36px;
+        border-radius: var(--r-btn);
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--fg-muted);
+        padding: 0 8px;
+        font-family: inherit;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+      }
+      .page-btn:hover {
+        background: var(--muted);
+      }
+      .page-btn.active {
+        border-color: var(--brand);
+        background: var(--brand);
+        color: var(--on-brand);
+      }
+      .gap {
+        padding: 0 4px;
+        font-size: 14px;
+        color: var(--fg-subtle);
+      }
+
+      /* Review queue groups */
+      .group {
+        overflow: hidden;
+        border-radius: var(--r-card);
+        border: 1px solid var(--line);
+      }
+      .group-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        border-bottom: 1px solid var(--line);
+        background: color-mix(in srgb, var(--muted) 60%, transparent);
+        padding: 8px 12px;
+      }
+      .group-head .fname {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--fg);
+      }
+      .group-head .actions {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .btn-danger-outline {
+        border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent);
+        background: var(--surface);
+        color: var(--danger-text);
+      }
+      .btn-danger-outline:hover {
+        background: var(--danger-soft);
+        border-color: color-mix(in srgb, var(--danger) 60%, transparent);
+      }
+      .group ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .group li {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 12px;
+        padding: 10px 12px;
+        border-top: 1px solid var(--line);
+      }
+      .group li:first-child {
+        border-top: 0;
+      }
+      .group li .name-cell {
+        min-width: 0;
+        flex: 1 1 208px;
+      }
+
+      /* Upload */
+      .job-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .job-list li {
+        padding: 12px 0;
+        border-top: 1px solid var(--line);
+      }
+      .job-list li:first-child {
+        border-top: 0;
+      }
+      .job-top {
+        margin-bottom: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .job-top .fname {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--fg);
+      }
+      .job-top .stage {
+        margin: 0;
+        font-size: 12px;
+        color: var(--fg-muted);
+      }
+      .job-status {
+        border-radius: 9999px;
+        padding: 2px 8px;
+        font-size: 11px;
+        font-weight: 500;
+      }
+      .st-processing {
+        background: var(--brand-soft);
+        color: var(--brand-soft-text);
+      }
+      .st-done {
+        background: var(--ok-soft);
+        color: var(--ok-text);
+      }
+      .st-failed {
+        background: var(--danger-soft);
+        color: var(--danger-text);
+      }
+      .st-queued {
+        background: var(--muted);
+        color: var(--fg-muted);
+      }
+      .bar {
+        height: 6px;
+        width: 100%;
+        overflow: hidden;
+        border-radius: 9999px;
+        background: var(--muted);
+      }
+      .bar > div {
+        height: 100%;
+        border-radius: 9999px;
+      }
+      .bar .fill-brand {
+        background: var(--brand);
+      }
+      .bar .fill-ok {
+        background: var(--ok-text);
+      }
+      .bar .fill-danger {
+        background: var(--danger);
+      }
+      .bar .fill-muted {
+        background: var(--line-strong);
+      }
+      .job-actions {
+        display: flex;
+        flex-shrink: 0;
+        align-items: center;
+        gap: 4px;
+      }
+      .job-icon {
+        display: inline-flex;
+        height: 26px;
+        width: 26px;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        border-radius: 6px;
+        color: var(--fg-muted);
+        cursor: pointer;
+      }
+      .job-icon:hover {
+        background: var(--muted);
+        color: var(--fg);
+      }
+      .job-icon.danger:hover {
+        background: var(--danger-soft);
+        color: var(--danger-text);
+      }
+      .job-icon svg {
+        width: 14px;
+        height: 14px;
+      }
+      code.inline {
+        border-radius: 4px;
+        background: var(--muted);
+        padding: 0 4px;
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 0.9em;
+        color: var(--fg);
+      }
+
+      /* Overlays: side panel + modal */
+      .overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+      }
+      .overlay .scrim {
+        position: absolute;
+        inset: 0;
+      }
+      .side-panel {
+        position: absolute;
+        inset: 0 0 0 auto;
+        display: flex;
+        width: 100%;
+        max-width: 672px;
+        flex-direction: column;
+        border-left: 1px solid var(--line);
+        box-shadow: var(--shadow-pop);
+      }
+      .side-panel .ph {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        border-bottom: 1px solid var(--line);
+        padding: 12px 24px;
+      }
+      .side-panel .ph h2 {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+      .side-panel .pb {
+        flex: 1;
+        overflow-y: auto;
+        padding: 24px;
+      }
+      .modal-wrap {
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+      }
+      .modal {
+        position: relative;
+        width: 100%;
+        max-width: 512px;
+        border-radius: var(--r-panel);
+        border: 1px solid var(--line);
+        box-shadow: var(--shadow-pop);
+      }
+      .modal .mh {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 20px 20px 12px;
+      }
+      .modal h2 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+      .modal .md {
+        margin: 4px 0 0;
+        font-size: 14px;
+        color: var(--fg-muted);
+      }
+      .modal .mf {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        border-top: 1px solid var(--line);
+        padding: 12px 20px;
+      }
+
+      /* Product detail field boxes */
+      .field-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+      @media (min-width: 640px) {
+        .field-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      .fieldbox .fl {
+        font-size: 12px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--fg-subtle);
+        margin-bottom: 4px;
+      }
+      .fieldbox .fv {
+        min-height: 36px;
+        width: 100%;
+        white-space: pre-wrap;
+        word-break: break-word;
+        border-radius: var(--r-btn);
+        border: 1px solid var(--line);
+        background: var(--surface);
+        padding: 8px 12px;
+        font-size: 14px;
+        color: var(--fg);
+      }
+
+      /* Login (bare, no shell) */
+      .login-wrap {
+        position: relative;
+        display: flex;
+        min-height: 100vh;
+        align-items: center;
+        justify-content: center;
+        background: var(--app);
+        padding: 16px;
+      }
+      .login-inner {
+        width: 100%;
+        max-width: 384px;
+      }
+      .login-brand {
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+      }
+      .login-brand .mark {
+        display: flex;
+        height: 36px;
+        width: 36px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+        background: var(--brand);
+        color: var(--on-brand);
+        box-shadow: var(--shadow-sm);
+      }
+      .login-brand .word {
+        font-size: 18px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+      }
+      .login-brand .word span {
+        color: var(--brand-text);
+      }
+
+      /* Reference-file chrome (NOT part of the app) */
+      .refbar {
+        position: fixed;
+        right: 16px;
+        bottom: 16px;
+        z-index: 60;
+        display: flex;
+        gap: 8px;
+        border-radius: var(--r-btn);
+        border: 1px solid var(--line-strong);
+        background: var(--elevated);
+        padding: 8px;
+        box-shadow: var(--shadow-pop);
+      }
+      .refbar select {
+        height: 32px;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--fg);
+        font-family: inherit;
+        font-size: 13px;
+        padding: 0 8px;
+      }
+      .hidden {
+        display: none !important;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- ===================== SHELL ===================== -->
+    <div class="shell" id="shell">
+      <aside class="sidebar glass">
+        <div class="brandmark">
+          <span class="mark" id="brandIcon"></span>
+          <span class="word">Brochure<span>DB</span></span>
+        </div>
+        <nav class="nav" id="nav"></nav>
+        <div class="sidebar-footer">
+          <button class="theme-row" id="themeRow" type="button"></button>
+          <div class="user-row">
+            <div class="avatar" id="avatar">A</div>
+            <div style="min-width: 0; flex: 1">
+              <p class="email" id="userEmail">admin@aitexsolutions.com</p>
+              <span
+                class="badge badge-secondary capitalize"
+                id="roleBadge"
+                style="margin-top: 2px"
+                >admin</span
+              >
+            </div>
+          </div>
+          <button class="signout" type="button" id="signOut"></button>
+        </div>
+      </aside>
+
+      <header class="topbar glass">
+        <button class="icon-btn" id="menuBtn" aria-label="Open navigation"></button>
+        <div class="brandmark" style="height: auto; padding: 0">
+          <span class="mark" id="brandIconMobile"></span>
+          <span class="word">Brochure<span>DB</span></span>
+        </div>
+        <button class="icon-btn" id="themeIconBtn" style="margin-left: auto"></button>
+      </header>
+
+      <div class="content">
+        <main class="page" id="view"></main>
+      </div>
+    </div>
+
+    <!-- Login renders bare, outside the shell (as in App.tsx). -->
+    <div class="login-wrap hidden" id="loginView"></div>
+
+    <div id="overlays"></div>
+
+    <!-- Reference-file controls — not part of the product UI. -->
+    <div class="refbar">
+      <select id="roleSelect" title="Role — drives which nav items appear">
+        <option value="admin">admin</option>
+        <option value="manager">manager</option>
+        <option value="viewer">viewer</option>
+      </select>
+      <button class="btn btn-outline btn-sm" id="themeToggle2">Theme</button>
+    </div>
+
+    <script>
+      /* =================================================================
+         Icons — the lucide-react glyphs the app imports, inlined as paths.
+         ================================================================= */
+      const P = {
+        flask: '<path d="M10 2v7.31"/><path d="M14 9.3V1.99"/><path d="M8.5 2h7"/><path d="M14 9.3a6.5 6.5 0 1 1-4 0"/><path d="M5.52 16h12.96"/>',
+        dashboard:
+          '<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>',
+        search:
+          '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+        building:
+          '<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>',
+        filewarning:
+          '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+        upload:
+          '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/>',
+        users:
+          '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+        scroll:
+          '<path d="M15 12h-5"/><path d="M15 8h-5"/><path d="M19 17V5a2 2 0 0 0-2-2H4"/><path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3"/>',
+        logout:
+          '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>',
+        menu: '<line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/>',
+        x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+        moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+        sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
+        sparkles:
+          '<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>',
+        chevron: '<path d="m6 9 6 6 6-6"/>',
+        boxes:
+          '<path d="M2.97 12.92A2 2 0 0 0 2 14.63v3.24a2 2 0 0 0 .97 1.71l3 1.8a2 2 0 0 0 2.06 0L12 19v-5.5l-5-3-4.03 2.42Z"/><path d="m7 16.5-4.74-2.85"/><path d="m7 16.5 5-3"/><path d="M7 16.5v5.17"/><path d="M12 13.5V19l3.97 2.38a2 2 0 0 0 2.06 0l3-1.8a2 2 0 0 0 .97-1.71v-3.24a2 2 0 0 0-.97-1.71L17 10.5l-5 3Z"/><path d="m17 16.5-5-3"/><path d="m17 16.5 4.74-2.85"/><path d="M17 16.5v5.17"/><path d="M7.97 4.42A2 2 0 0 0 7 6.13v4.37l5 3 5-3V6.13a2 2 0 0 0-.97-1.71l-3-1.8a2 2 0 0 0-2.06 0l-3 1.8Z"/><path d="M12 8 7.26 5.15"/><path d="m12 8 4.74-2.85"/><path d="M12 13.5V8"/>',
+        filetext:
+          '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/>',
+        shield:
+          '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+        mail: '<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>',
+        phone:
+          '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>',
+        external:
+          '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+        pause: '<rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/>',
+        play: '<polygon points="6 3 20 12 6 21 6 3"/>',
+        rotate:
+          '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',
+        ban: '<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>',
+        trash:
+          '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+        pencil:
+          '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/>',
+      };
+      const icon = (name, cls = "") =>
+        `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[name]}</svg>`;
+
+      /* =================================================================
+         Nav — mirrors NAV_ITEMS + role gating in AppShell.tsx.
+         ================================================================= */
+      const isUploader = (r) => r === "admin" || r === "manager";
+      const NAV = [
+        { id: "dashboard", icon: "dashboard", label: "Dashboard", show: isUploader },
+        { id: "search", icon: "search", label: "Search", show: () => true },
+        { id: "suppliers", icon: "building", label: "Suppliers", show: () => true },
+        { id: "review", icon: "filewarning", label: "Review", show: isUploader },
+        { id: "upload", icon: "upload", label: "Upload", show: isUploader },
+        { id: "users", icon: "users", label: "Users", show: (r) => r === "admin" },
+        { id: "audit", icon: "scroll", label: "Activity", show: (r) => r === "admin" },
+      ];
+
+      let role = "admin";
+      let current = "search";
+
+      /* =================================================================
+         Sample data — illustrative content, NOT real listings.
+         ================================================================= */
+      const LISTINGS = [
+        { name_en: "Sodium Hydroxide", name_raw: "氢氧化钠", cas: "1310-73-2", supEn: "Qingdao Echemi Technology Co., Ltd.", supRaw: "青岛易享化工科技有限公司", price: "420 USD", conv: "≈ ₨116,760", purity: "99%", review: false, sel: true },
+        { name_en: "Sodium Carbonate (Soda Ash Light)", name_raw: "碳酸钠", cas: "497-19-8", supEn: "Tianjin Bohai Chemical Industry Group", supRaw: "天津渤海化工集团", price: "285 USD", conv: "≈ ₨79,230", purity: "99.2%", review: false, sel: true },
+        { name_en: "Sodium Bicarbonate", name_raw: "Sodium Bicarbonate", cas: "144-55-8", supEn: "Bostech Polymer Co., Ltd.", supRaw: "", price: "310 USD", conv: "≈ ₨86,180", purity: null, review: false, sel: false },
+        { name_en: "Sodium Lauryl Sulfate", name_raw: "K12 / SLS", cas: "151-21-3", supEn: "Jiangsu Hai'an Petrochemical Plant", supRaw: "江苏海安石油化工厂", price: "1,250 CNY", conv: "≈ $172 · ₨47,820", purity: "92% min", review: true, sel: false },
+        { name_en: "Sodium Metabisulfite", name_raw: "偏重亚硫酸钠", cas: "7681-57-4", supEn: "Hubei Xingfa Chemicals Group Co., Ltd.", supRaw: "湖北兴发化工集团股份有限公司", price: null, conv: "", purity: "97%", review: false, sel: false },
+        { name_en: "Sodium Silicate", name_raw: "硅酸钠 (水玻璃)", cas: null, supEn: "Shandong Yourui Chemical Co., Ltd.", supRaw: "山东优瑞化工有限公司", price: "198 USD", conv: "≈ ₨55,040", purity: null, review: true, sel: false },
+        { name_en: "Sodium Tripolyphosphate", name_raw: "STPP", cas: "7758-29-4", supEn: "Yunnan Nanlin Chemical Co., Ltd.", supRaw: "云南南磷化工有限公司", price: "845 USD", conv: "≈ ₨234,910", purity: "94% min", review: false, sel: false },
+      ];
+
+      const SUPPLIERS = [
+        { en: "Qingdao Echemi Technology Co., Ltd.", raw: "青岛易享化工科技有限公司", email: "sales@echemi.com", phone: "+86 532 8098 1234", sites: ["www.echemi.com"], count: 412, first: "12/03/2025" },
+        { en: "Tianjin Bohai Chemical Industry Group", raw: "天津渤海化工集团", email: "", phone: "", sites: ["www.bohaichem.com.cn"], count: 268, first: "04/11/2025" },
+        { en: "Bostech Polymer Co., Ltd.", raw: "", email: "info@bostech.com.tw", phone: "+886 2 2712 8899", sites: ["www.bostech.com.tw"], count: 97, first: "22/01/2026" },
+        { en: "Jiangsu Hai'an Petrochemical Plant", raw: "江苏海安石油化工厂", email: "", phone: "", sites: [], count: 64, first: "09/06/2025" },
+        { en: "Hubei Xingfa Chemicals Group Co., Ltd.", raw: "湖北兴发化工集团股份有限公司", email: "export@xingfa.com", phone: "", sites: ["www.hbxingfa.com"], count: 51, first: "17/09/2025" },
+      ];
+
+      const USERS = [
+        { email: "admin@aitexsolutions.com", role: "admin", joined: "03/02/2025", last: "20/07/2026", self: true },
+        { email: "nasir@aitexsolutions.com", role: "manager", joined: "14/03/2025", last: "19/07/2026", self: false },
+        { email: "procurement@aitexsolutions.com", role: "viewer", joined: "02/06/2025", last: "18/07/2026", self: false },
+        { email: "lab@aitexsolutions.com", role: "viewer", joined: "28/11/2025", last: "—", self: false },
+      ];
+
+      const UPLOADS = [
+        { file: "echemi-catalogue-2026.pdf", company: "Qingdao Echemi Technology", products: 128, by: "admin@aitexsolutions.com", when: "19/07/2026" },
+        { file: "bohai-price-list-q2.pdf", company: "Tianjin Bohai Chemical", products: 74, by: "nasir@aitexsolutions.com", when: "18/07/2026" },
+        { file: "bostech-polymer-brochure.pdf", company: "Bostech Polymer", products: 41, by: "nasir@aitexsolutions.com", when: "16/07/2026" },
+        { file: "xingfa-export-2026.pdf", company: "Hubei Xingfa Chemicals", products: 33, by: "admin@aitexsolutions.com", when: "14/07/2026" },
+      ];
+
+      const AUDIT = [
+        { when: "20/07/2026 09:14", who: "admin@aitexsolutions.com", action: "upload", label: "Uploaded", destructive: false, what: "echemi-catalogue-2026.pdf — 128 listings added" },
+        { when: "19/07/2026 17:02", who: "nasir@aitexsolutions.com", action: "update_listing", label: "Edited", destructive: false, what: "Sodium Silicate — cas_number, purity" },
+        { when: "19/07/2026 16:48", who: "nasir@aitexsolutions.com", action: "bulk_delete_listings", label: "Bulk deleted", destructive: true, what: "6 listings" },
+        { when: "18/07/2026 11:20", who: "admin@aitexsolutions.com", action: "undo_upload", label: "Undid upload", destructive: true, what: "old-scan-2019.pdf — 22 listings removed" },
+        { when: "17/07/2026 08:55", who: "nasir@aitexsolutions.com", action: "delete_listing", label: "Deleted", destructive: true, what: "Calcium Carbonate (duplicate)" },
+      ];
+
+      const JOBS = [
+        { file: "echemi-catalogue-2026.pdf", stage: "Extracting products from page 34 of 96…", status: "processing", pct: 62 },
+        { file: "bohai-price-list-q2.pdf", stage: "Queued — waiting for a worker", status: "queued", pct: 4 },
+        { file: "bostech-polymer-brochure.pdf", stage: "Done — 41 listings inserted, 3 need review", status: "done", pct: 100 },
+        { file: "corrupt-scan.pdf", stage: "Could not read the PDF (no extractable pages)", status: "failed", pct: 100 },
+      ];
+
+      /* ================== Small render helpers ================== */
+      const dash = '<span class="dash">—</span>';
+      const REVIEW_HINT =
+        "The AI matched this listing to its chemical by name similarity (no exact CAS or name hit) — an admin should verify it.";
+      const reviewBadge = `<span class="review-wrap"><span class="badge badge-warning" tabindex="0" style="cursor:help">review</span><span class="tip" role="tooltip">${REVIEW_HINT}</span></span>`;
+
+      function pageHeader(title, desc) {
+        return `<div class="page-header"><div><h1>${title}</h1>${desc ? `<p>${desc}</p>` : ""}</div></div>`;
+      }
+      function pageWindow(page, total) {
+        const set = new Set([1, total]);
+        for (let p = page - 2; p <= page + 2; p++)
+          if (p >= 1 && p <= total) set.add(p);
+        const sorted = [...set].sort((a, b) => a - b);
+        const out = [];
+        let prev = 0;
+        for (const p of sorted) {
+          if (prev && p - prev > 1) out.push("…");
+          out.push(p);
+          prev = p;
+        }
+        return out;
+      }
+      function pagination(page, total) {
+        if (total <= 1) return "";
+        return (
+          `<div class="pagination"><button class="btn btn-outline btn-sm" ${page <= 1 ? "disabled" : ""}>Prev</button>` +
+          pageWindow(page, total)
+            .map((p) =>
+              p === "…"
+                ? `<span class="gap">…</span>`
+                : `<button class="page-btn ${p === page ? "active" : ""}">${p}</button>`,
+            )
+            .join("") +
+          `<button class="btn btn-outline btn-sm">Next</button></div>`
+        );
+      }
+      function emptyState(ic, title, desc) {
+        return `<div class="empty"><span class="ico">${icon(ic)}</span><p class="t">${title}</p><p class="d">${desc}</p></div>`;
+      }
+      function statCard(label, value, ic, tone, hint) {
+        return `<div class="card stat">
+          <div class="top"><p class="label">${label}</p><span class="ico ${tone || ""}">${icon(ic)}</span></div>
+          <p class="value ${tone === "warning" ? "warning" : ""}">${value}</p>
+          ${hint ? `<p class="hint">${hint}</p>` : ""}
+        </div>`;
+      }
+      function supplierCell(r) {
+        const sec = r.supRaw && r.supRaw !== r.supEn ? `<span class="small subtle" style="display:block">${r.supRaw}</span>` : "";
+        return `<span>${r.supEn}</span>${sec}`;
+      }
+      function priceCell(r) {
+        const main = r.price ? `<span class="chip chip-price">${r.price}</span>` : dash;
+        return main + (r.conv ? `<span class="converted" title="Approximate — converted at current exchange rates">${r.conv}</span>` : "");
+      }
+
+      /* ========================== PAGES ========================== */
+
+      function viewDashboard() {
+        return (
+          pageHeader(
+            "Dashboard",
+            "An overview of the chemical database — listings, suppliers, and recent activity.",
+          ) +
+          `<div class="stat-grid">
+            ${statCard("Total listings", "12,481", "boxes", "brand")}
+            ${statCard("Suppliers", "312", "building", "")}
+            ${statCard("Uploads · 7 days", "9", "upload", "")}
+            <a class="stat-link" href="#" onclick="go('review');return false" title="Open the review queue">
+              ${statCard("Needs review", "37", "filewarning", "warning", "Matched by name similarity — open the review queue")}
+            </a>
+          </div>
+
+          <div style="margin-top:24px" class="stack-6">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">Recent uploads</h3>
+                <p>Every upload across the team — expand a row to see its listings, or undo it.</p>
+              </div>
+              <div class="card-content">
+                <div class="table-wrap"><table>
+                  <thead><tr><th>File</th><th>Supplier</th><th class="right">Products</th><th>Uploaded by</th><th>When</th><th></th></tr></thead>
+                  <tbody>${UPLOADS.map(
+                    (u) => `<tr>
+                      <td><button class="link" style="font-weight:500">${u.file}</button></td>
+                      <td class="muted">${u.company}</td>
+                      <td class="right"><span class="chip chip-neutral">${u.products}</span></td>
+                      <td class="muted sm-text">${u.by}</td>
+                      <td class="mono small muted nowrap">${u.when}</td>
+                      <td class="right"><button class="row-btn">Undo</button></td>
+                    </tr>`,
+                  ).join("")}</tbody>
+                </table></div>
+              </div>
+            </div>
+
+            ${
+              role === "admin"
+                ? `<div class="card">
+                    <div class="card-header">
+                      <h3 class="card-title">Users</h3>
+                      <p>Change a teammate's role. You can't change your own.</p>
+                    </div>
+                    <div class="card-content">${usersTable()}</div>
+                  </div>`
+                : ""
+            }
+          </div>`
+        );
+      }
+
+      function usersTable() {
+        return `<div class="table-wrap"><table>
+          <thead><tr><th>Email</th><th>Role</th><th>Joined</th><th>Last sign-in</th></tr></thead>
+          <tbody>${USERS.map(
+            (u) => `<tr>
+              <td style="font-weight:500">${u.email}${u.self ? ' <span class="badge badge-secondary" style="margin-left:8px">you</span>' : ""}</td>
+              <td>
+                <div class="select-wrap" style="width:144px">
+                  <select class="select" style="height:36px" ${u.self ? "disabled" : ""} title="${u.self ? "You cannot change your own role" : ""}">
+                    <option ${u.role === "admin" ? "selected" : ""}>Admin</option>
+                    <option ${u.role === "manager" ? "selected" : ""}>Manager</option>
+                    <option ${u.role === "viewer" ? "selected" : ""}>Viewer</option>
+                  </select>
+                  ${icon("chevron", "select-chevron")}
+                </div>
+              </td>
+              <td class="muted">${u.joined}</td>
+              <td class="muted">${u.last}</td>
+            </tr>`,
+          ).join("")}</tbody>
+        </table></div>`;
+      }
+
+      function viewSearch() {
+        return (
+          pageHeader(
+            "Search chemicals",
+            "Compare suppliers and find the cheapest option — even under different trade names.",
+          ) +
+          `<div class="stack-6">
+          <div class="card"><div class="card-content pt6 stack">
+            <div>
+              <p class="eyebrow">AI search</p>
+              <div class="ai-row">
+                <div class="ai-field">${icon("sparkles", "icon")}
+                  <input class="input" aria-label="AI search" placeholder='Ask in plain words — e.g. "cheapest sodium hydroxide under $5 with purity over 99%"' />
+                </div>
+                <button class="btn btn-default">AI search</button>
+              </div>
+            </div>
+
+            <div class="divider-top">
+              <form class="filter-grid" onsubmit="return false">
+                <div class="field col-2">
+                  <label class="label" for="q">Name, CAS, supplier or description</label>
+                  <input class="input" id="q" placeholder="e.g. ethanol, 64-17-5, titanium dioxide" />
+                </div>
+                <div class="field">
+                  <label class="label" for="maxPrice">Max price (USD)</label>
+                  <input class="input" id="maxPrice" type="number" min="0" />
+                </div>
+                <div class="field">
+                  <label class="label" for="minPurity">Min purity %</label>
+                  <input class="input" id="minPurity" type="number" min="0" max="100" />
+                </div>
+                <div class="field">
+                  <label class="label" for="sort">Sort by</label>
+                  <div class="select-wrap">
+                    <select class="select" id="sort">
+                      <option>Price: low → high</option><option>Price: high → low</option>
+                      <option>Name: A → Z</option><option>Name: Z → A</option>
+                    </select>${icon("chevron", "select-chevron")}
+                  </div>
+                </div>
+                <div class="apply-row col-5">
+                  <label class="checkbox-label"><input type="checkbox" /> Only listings with a price</label>
+                  <button class="btn btn-default" type="submit">Apply filters</button>
+                </div>
+              </form>
+            </div>
+
+            <div class="divider-top">
+              <p class="eyebrow">Browse by letter</p>
+              <div class="alphabet">
+                <button class="letter wide active">All</button>
+                ${"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map((l) => `<button class="letter">${l}</button>`).join("")}
+              </div>
+            </div>
+          </div></div>
+
+          <div class="card"><div class="card-content pt6">
+            <div class="results-meta">
+              <span><span class="em">683</span> results matching <span class="em">“sodium”</span></span>
+              <span>Page 1 of 46</span>
+            </div>
+
+            ${
+              isUploader(role)
+                ? `<div class="selection-bar" style="margin-bottom:12px">
+                    <span class="count">2 listings selected</span>
+                    <span class="hint">the header checkbox selects the 15 shown on this page; selections keep across pages</span>
+                    <div class="actions">
+                      <button class="btn btn-destructive btn-sm" onclick="openModal('delete')">Delete selected</button>
+                      <button class="link-btn">Clear selection</button>
+                    </div>
+                  </div>`
+                : ""
+            }
+
+            <div class="table-wrap"><table>
+              <thead><tr>
+                ${isUploader(role) ? '<th style="width:32px"><input type="checkbox" aria-label="Select all 15 listings shown on this page" /></th>' : ""}
+                <th>Name (EN)</th><th>As printed</th><th>CAS</th><th>Supplier</th>
+                <th class="right">Price</th><th>Purity</th>${isUploader(role) ? "<th></th>" : ""}
+              </tr></thead>
+              <tbody>${LISTINGS.map(
+                (r) => `<tr>
+                  ${isUploader(role) ? `<td style="width:32px"><input type="checkbox" ${r.sel ? "checked" : ""} aria-label="Select ${r.name_en}" /></td>` : ""}
+                  <td style="font-weight:500"><button class="link" onclick="openPanel()">${r.name_en}</button>${r.review ? reviewBadge : ""}</td>
+                  <td class="muted">${r.name_raw}</td>
+                  <td>${r.cas ? `<span class="chip chip-cas">${r.cas}</span>` : dash}</td>
+                  <td>${supplierCell(r)}</td>
+                  <td class="right">${priceCell(r)}</td>
+                  <td>${r.purity ? `<span class="chip chip-neutral">${r.purity}</span>` : dash}</td>
+                  ${isUploader(role) ? '<td class="right"><button class="row-btn" onclick="openPanel(true)" title="Open with the edit form">Edit</button></td>' : ""}
+                </tr>`,
+              ).join("")}</tbody>
+            </table></div>
+
+            ${pagination(1, 46)}
+          </div></div>
+          </div>`
+        );
+      }
+
+      function viewSuppliers() {
+        const contact = (s) => {
+          const rows = [];
+          if (s.email) rows.push(`<a class="link" href="mailto:${s.email}" style="display:inline-flex;align-items:center;gap:6px">${icon("mail", "")}${s.email}</a>`);
+          if (s.phone) rows.push(`<span style="display:inline-flex;align-items:center;gap:6px"><span class="subtle">${icon("phone")}</span><span class="mono small">${s.phone}</span></span>`);
+          s.sites.forEach((w) => rows.push(`<a class="link" href="#" style="display:inline-flex;align-items:center;gap:6px">${icon("external")}${w}</a>`));
+          if (!rows.length) return `<span class="sm-text subtle">—</span>`;
+          return `<div style="display:flex;flex-direction:column;gap:4px;font-size:14px">${rows.join("")}</div>`;
+        };
+        return (
+          pageHeader(
+            "Suppliers",
+            "Every supplier extracted from the brochures, with their printed contact details and products.",
+          ) +
+          `<div class="card"><div class="card-content pt6">
+            <div class="sm-text muted" style="margin-bottom:12px">312 suppliers</div>
+            <div class="table-wrap"><table>
+              <thead><tr><th>Supplier</th><th>Contact</th><th>First seen</th><th class="right">Products</th><th></th></tr></thead>
+              <tbody>${SUPPLIERS.map(
+                (s) => `<tr>
+                  <td><div style="min-width:0">
+                    <button class="link" style="font-weight:500" title="View supplier details">${s.en}</button>
+                    ${s.raw ? `<p class="small subtle" style="margin:0">${s.raw}</p>` : ""}
+                  </div></td>
+                  <td>${contact(s)}</td>
+                  <td class="mono small muted nowrap">${s.first}</td>
+                  <td class="right"><span class="chip chip-neutral">${s.count}</span></td>
+                  <td class="right"><a class="link nowrap sm-text" style="font-weight:500;display:inline-flex;align-items:center;gap:6px" href="#" onclick="go('search');return false">View products ${icon("search")}</a></td>
+                </tr>`,
+              ).join("")}</tbody>
+            </table></div>
+            ${pagination(1, 32)}
+            <p class="small subtle" style="margin-top:12px">
+              Contact details show exactly what the brochures print — email and phone are
+              captured from uploads going forward when a brochure includes them; suppliers
+              from older uploads show only their names and website.
+            </p>
+          </div></div>`
+        );
+      }
+
+      function viewReview() {
+        const grp = (file, items) => `<div class="group">
+          <div class="group-head">
+            <span class="subtle">${icon("filetext")}</span>
+            <span class="fname">${file}</span>
+            <span class="small subtle">${items.length} flagged on this page</span>
+            <div class="actions">
+              <input type="checkbox" aria-label="Select all flagged listings from this file" title="Select all from this file" />
+              <button class="btn btn-sm btn-danger-outline" title="Undo this whole upload — deletes every listing it added">Delete file</button>
+            </div>
+          </div>
+          <ul>${items.map(
+            (r) => `<li>
+              <input type="checkbox" aria-label="Select ${r.name_en}" />
+              <div class="name-cell">
+                <button class="link sm-text" style="font-weight:500" onclick="openPanel()" title="Open details">${r.name_en}</button>
+                ${r.name_raw !== r.name_en ? `<p class="small muted" style="margin:0">${r.name_raw}</p>` : ""}
+              </div>
+              <div>${r.cas ? `<span class="chip chip-cas">${r.cas}</span>` : dash}</div>
+              <div class="sm-text muted" style="flex-basis:180px;min-width:0">${r.supEn}</div>
+              <div style="margin-left:auto;display:flex;gap:8px">
+                <button class="btn btn-secondary btn-sm">Mark verified</button>
+                <button class="btn btn-outline btn-sm" onclick="openPanel(true)">Open</button>
+              </div>
+            </li>`,
+          ).join("")}</ul>
+        </div>`;
+
+        return (
+          pageHeader(
+            "Review queue",
+            "Listings the AI matched by name similarity — verify, correct, or delete them (or their whole source file).",
+          ) +
+          `<div class="card"><div class="card-content pt6 stack">
+            <div style="display:flex;align-items:center;justify-content:space-between" class="sm-text muted">
+              <span>37 listings awaiting review</span><span>Page 1 of 3</span>
+            </div>
+            <div class="selection-bar">
+              <span class="count">3 listings selected</span>
+              <span class="hint">selections keep across pages</span>
+              <div class="actions">
+                <button class="btn btn-secondary btn-sm">Mark verified</button>
+                <button class="btn btn-destructive btn-sm" onclick="openModal('delete')">Delete selected</button>
+                <button class="link-btn">Clear selection</button>
+              </div>
+            </div>
+            ${grp("echemi-catalogue-2026.pdf", [LISTINGS[3], LISTINGS[5]])}
+            ${grp("xingfa-export-2026.pdf", [LISTINGS[4]])}
+            ${pagination(1, 3)}
+          </div></div>`
+        );
+      }
+
+      function viewUpload() {
+        const st = (s) =>
+          s === "processing" ? "st-processing" : s === "done" ? "st-done" : s === "failed" ? "st-failed" : "st-queued";
+        const fill = (s) =>
+          s === "done" ? "fill-ok" : s === "failed" ? "fill-danger" : s === "queued" ? "fill-muted" : "fill-brand";
+        const lbl = { processing: "Processing", done: "Done", failed: "Failed", queued: "Queued" };
+
+        return (
+          pageHeader(
+            "Upload brochures",
+            "Pick a folder or individual PDFs — each is processed in memory and never stored.",
+          ) +
+          `<div class="stack-6">
+          <div class="card">
+            <div class="card-header"><h3 class="card-title">Select brochures to upload</h3></div>
+            <div class="card-content stack">
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn btn-default">📁 Select folder</button>
+                <button class="btn btn-outline">📄 Select PDF(s)</button>
+              </div>
+              <p class="small muted">
+                Pick an entire <strong style="color:var(--fg)">folder</strong> or one / multiple individual
+                <strong style="color:var(--fg)">PDF files</strong>. Each file is queued on the server and shows its
+                own progress; you can <strong style="color:var(--fg)">pause, resume, cancel, restart or remove</strong>
+                any file. The queue <strong style="color:var(--fg)">survives page reloads</strong>. Only
+                <code class="inline">.pdf</code> files are processed; each is sent to the AI model in memory and
+                never stored.
+              </p>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <h3 class="card-title">Progress</h3>
+                <button class="btn btn-outline btn-sm">Clear finished</button>
+              </div>
+            </div>
+            <div class="card-content stack">
+              <ul class="job-list">${JOBS.map(
+                (j) => `<li>
+                  <div class="job-top">
+                    <div style="min-width:0">
+                      <p class="fname">${j.file}</p>
+                      <p class="stage">${j.stage}</p>
+                    </div>
+                    <div class="job-actions">
+                      <span class="job-status ${st(j.status)}">${lbl[j.status]}</span>
+                      ${j.status === "processing" ? `<button class="job-icon" title="Pause">${icon("pause")}</button>` : ""}
+                      ${j.status === "queued" ? `<button class="job-icon" title="Resume">${icon("play")}</button>` : ""}
+                      ${j.status === "failed" ? `<button class="job-icon" title="Restart">${icon("rotate")}</button>` : ""}
+                      ${j.status === "processing" || j.status === "queued" ? `<button class="job-icon danger" title="Cancel">${icon("ban")}</button>` : ""}
+                      <button class="job-icon" title="Remove">${icon("trash")}</button>
+                    </div>
+                  </div>
+                  <div class="bar"><div class="${fill(j.status)}" style="width:${j.pct}%"></div></div>
+                </li>`,
+              ).join("")}</ul>
+              <div class="sm-text muted">1 processing · 1 queued · 1 done · 1 failed</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><h3 class="card-title">Upload history</h3></div>
+            <div class="card-content">
+              <p class="small muted" style="margin-top:0;margin-bottom:16px">
+                Past uploads and how many listings each added. As an admin you can see everyone's
+                uploads (who, when) and expand any row to see exactly which listings were added.
+                This history is saved on the server and persists across restarts.
+              </p>
+              <div class="table-wrap"><table>
+                <thead><tr><th>File</th><th>Supplier</th><th class="right">Products</th><th>Uploaded by</th><th>When</th><th></th></tr></thead>
+                <tbody>${UPLOADS.map(
+                  (u) => `<tr>
+                    <td><button class="link" style="font-weight:500">${u.file}</button></td>
+                    <td class="muted">${u.company}</td>
+                    <td class="right"><span class="chip chip-neutral">${u.products}</span></td>
+                    <td class="muted sm-text">${u.by}</td>
+                    <td class="mono small muted nowrap">${u.when}</td>
+                    <td class="right"><button class="row-btn">Undo</button></td>
+                  </tr>`,
+                ).join("")}</tbody>
+              </table></div>
+            </div>
+          </div>
+          </div>`
+        );
+      }
+
+      function viewUsers() {
+        return (
+          pageHeader(
+            "Manage users",
+            "List every registered user and change their role. You can't change your own role.",
+          ) +
+          `<div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Roles</h3>
+              <p><strong style="color:var(--fg);font-weight:500">Admin</strong>: search, upload &amp; manage users ·
+                 <strong style="color:var(--fg);font-weight:500">Manager</strong>: search &amp; upload brochures ·
+                 <strong style="color:var(--fg);font-weight:500">Viewer</strong>: search only.</p>
+            </div>
+            <div class="card-content">${usersTable()}</div>
+          </div>`
+        );
+      }
+
+      function viewAudit() {
+        return (
+          pageHeader(
+            "Activity",
+            "Who uploaded, edited, and deleted what — recorded automatically, newest first.",
+          ) +
+          `<div class="card"><div class="card-content pt6">
+            <div class="sm-text muted" style="margin-bottom:12px">1,204 events</div>
+            <div class="table-wrap"><table>
+              <thead><tr><th>When</th><th>Who</th><th>Action</th><th>What</th></tr></thead>
+              <tbody>${AUDIT.map(
+                (e) => `<tr>
+                  <td class="mono small muted nowrap">${e.when}</td>
+                  <td class="muted">${e.who}</td>
+                  <td><span class="badge ${e.destructive ? "badge-destructive" : "badge-secondary"}">${e.label}</span></td>
+                  <td class="sm-text">${e.what}</td>
+                </tr>`,
+              ).join("")}</tbody>
+            </table></div>
+            ${pagination(1, 25)}
+          </div></div>`
+        );
+      }
+
+      /* =============== Overlays: product panel + modal =============== */
+      function fieldBox(label, value, mono) {
+        return `<div class="fieldbox"><div class="fl">${label}</div><div class="fv ${mono ? "mono" : ""}">${value}</div></div>`;
+      }
+
+      function openPanel(edit) {
+        document.getElementById("overlays").innerHTML = `
+          <div class="overlay">
+            <div class="scrim" onclick="closeOverlays()"></div>
+            <aside class="side-panel glass-strong" role="dialog" aria-modal="true" aria-label="Product">
+              <div class="ph">
+                <h2>Product</h2>
+                <div style="display:flex;align-items:center;gap:4px">
+                  <button class="row-btn">Full page</button>
+                  <button class="icon-btn" style="height:32px;width:32px" onclick="closeOverlays()" aria-label="Close panel">${icon("x")}</button>
+                </div>
+              </div>
+              <div class="pb stack">
+                <div class="card">
+                  <div class="card-header">
+                    <h3 class="card-title" style="font-size:20px;display:flex;align-items:center">Sodium Lauryl Sulfate ${reviewBadge}</h3>
+                    <p style="font-size:14px">As printed: K12 / SLS</p>
+                  </div>
+                  <div class="card-content stack">
+                    <div class="field-grid">
+                      ${fieldBox("CAS number", "151-21-3", true)}
+                      ${fieldBox("Price", '1,250 CNY<span class="converted">≈ $172 · ₨47,820</span>', true)}
+                      ${fieldBox("Purity", "92% min")}
+                      ${fieldBox("Supplier", "Jiangsu Hai'an Petrochemical Plant (江苏海安石油化工厂)")}
+                      ${fieldBox("Listed", "16/07/2026")}
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:6px">
+                      <a class="link sm-text" style="font-weight:500;display:inline-flex;align-items:center;gap:6px" href="#">
+                        Supplier website ${icon("external")}
+                        <span class="subtle" style="font-weight:400">(general site, as printed on the brochure)</span>
+                      </a>
+                      <a class="link sm-text" style="font-weight:500;display:inline-flex;align-items:center;gap:6px" href="#">
+                        Find this product online ${icon("search")}
+                        <span class="subtle" style="font-weight:400">(web search on the supplier's site)</span>
+                      </a>
+                    </div>
+                  </div>
+                </div>
+
+                ${
+                  edit
+                    ? `<div class="card"><div class="card-header"><h3 class="card-title">Edit listing</h3></div>
+                       <div class="card-content stack">
+                         <div class="field"><label class="label">Name (EN)</label><input class="input" value="Sodium Lauryl Sulfate" /></div>
+                         <div class="field"><label class="label">CAS number</label><input class="input mono" value="151-21-3" /></div>
+                         <div class="field-grid">
+                           <div class="field"><label class="label">Price</label><input class="input" value="1250" /></div>
+                           <div class="field"><label class="label">Currency</label><input class="input" value="CNY" /></div>
+                         </div>
+                         <label class="checkbox-label"><input type="checkbox" checked /> Needs review</label>
+                         <div style="display:flex;gap:8px;justify-content:flex-end">
+                           <button class="btn btn-outline btn-sm">Cancel</button>
+                           <button class="btn btn-default btn-sm">Save changes</button>
+                         </div>
+                       </div></div>`
+                    : `<button class="btn btn-outline">${icon("pencil")} Edit listing</button>`
+                }
+
+                <div class="card">
+                  <div class="card-header">
+                    <h3 class="card-title">Technical details</h3>
+                    <p class="small subtle">Exactly as extracted from this supplier's brochure — fields vary per brochure.</p>
+                  </div>
+                  <div class="card-content"><div class="field-grid">
+                    ${fieldBox("Appearance", "White to pale yellow powder")}
+                    ${fieldBox("Active content", "92% min")}
+                    ${fieldBox("Packing", "25kg kraft paper bag")}
+                    ${fieldBox("MOQ", "1 metric ton")}
+                  </div></div>
+                </div>
+
+                <div class="card">
+                  <div class="card-header">
+                    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px">
+                      <h3 class="card-title">Reference data</h3>
+                      <span class="badge badge-secondary">not from brochure</span>
+                    </div>
+                    <p class="small subtle">Looked up from PubChem by CAS number — authoritative reference values, not printed on this supplier's brochure.</p>
+                  </div>
+                  <div class="card-content"><div class="field-grid">
+                    ${fieldBox("Molecular formula", "C12H25NaO4S")}
+                    ${fieldBox("Molecular weight", "288.38 g/mol")}
+                  </div></div>
+                </div>
+              </div>
+            </aside>
+          </div>`;
+      }
+
+      function openModal() {
+        document.getElementById("overlays").innerHTML = `
+          <div class="modal-wrap">
+            <div class="scrim" style="position:absolute;inset:0" onclick="closeOverlays()"></div>
+            <div class="modal glass-strong" role="dialog" aria-modal="true">
+              <div class="mh">
+                <div>
+                  <h2>Delete 2 listings?</h2>
+                  <p class="md">The selected listings will be permanently removed from the database. This cannot be undone.</p>
+                </div>
+                <button class="icon-btn" style="height:32px;width:32px" onclick="closeOverlays()" aria-label="Close dialog">${icon("x")}</button>
+              </div>
+              <div class="mf">
+                <button class="btn btn-outline btn-sm" onclick="closeOverlays()">Cancel</button>
+                <button class="btn btn-destructive btn-sm" onclick="closeOverlays()">Delete 2 listings</button>
+              </div>
+            </div>
+          </div>`;
+      }
+
+      function closeOverlays() {
+        document.getElementById("overlays").innerHTML = "";
+      }
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") closeOverlays();
+      });
+
+      /* ========================= LOGIN ========================= */
+      function renderLogin() {
+        document.getElementById("loginView").innerHTML = `
+          <div style="position:absolute;right:16px;top:16px">
+            <button class="icon-btn" style="border:1px solid var(--line)" onclick="toggleTheme()">${icon(document.documentElement.classList.contains("dark") ? "sun" : "moon")}</button>
+          </div>
+          <div class="login-inner">
+            <div class="login-brand">
+              <span class="mark">${icon("flask")}</span>
+              <span class="word">Brochure<span>DB</span></span>
+            </div>
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">Sign in</h3>
+                <p>Sign in to compare and manage brochures</p>
+              </div>
+              <div class="card-content">
+                <form class="stack" onsubmit="return false">
+                  <div class="field">
+                    <label class="label" for="lemail">Email</label>
+                    <input class="input" id="lemail" type="email" />
+                  </div>
+                  <div class="field">
+                    <div style="display:flex;align-items:center;justify-content:space-between">
+                      <label class="label" for="lpw">Password</label>
+                      <button type="button" class="link small">Forgot password?</button>
+                    </div>
+                    <input class="input" id="lpw" type="password" />
+                  </div>
+                  <button class="btn btn-default btn-full" type="submit">Sign in</button>
+                  <div style="text-align:center" class="sm-text">
+                    <button type="button" class="link">Don't have an account? Sign up</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+            <p style="text-align:center;margin-top:16px" class="small subtle">
+              <button class="link small" onclick="go('search')">← Back to the app (reference file only)</button>
+            </p>
+          </div>`;
+      }
+
+      /* ========================= ROUTER ========================= */
+      const VIEWS = {
+        dashboard: viewDashboard,
+        search: viewSearch,
+        suppliers: viewSuppliers,
+        review: viewReview,
+        upload: viewUpload,
+        users: viewUsers,
+        audit: viewAudit,
+      };
+
+      function go(id) {
+        closeOverlays();
+        if (id === "login") {
+          document.getElementById("shell").classList.add("hidden");
+          document.getElementById("loginView").classList.remove("hidden");
+          renderLogin();
+          return;
+        }
+        document.getElementById("shell").classList.remove("hidden");
+        document.getElementById("loginView").classList.add("hidden");
+        current = id;
+        document.getElementById("view").innerHTML = VIEWS[id]();
+        renderNav();
+        window.scrollTo(0, 0);
+      }
+
+      function renderNav() {
+        document.getElementById("nav").innerHTML = NAV.filter((n) => n.show(role))
+          .map(
+            (n) => `<button class="nav-item ${n.id === current ? "active" : ""}" onclick="go('${n.id}')">
+              <span class="rail"></span>${icon(n.icon)}<span>${n.label}</span>
+            </button>`,
+          )
+          .join("");
+      }
+
+      function renderChrome() {
+        const dark = document.documentElement.classList.contains("dark");
+        document.getElementById("brandIcon").innerHTML = icon("flask");
+        document.getElementById("brandIconMobile").innerHTML = icon("flask");
+        document.getElementById("themeRow").innerHTML =
+          icon(dark ? "sun" : "moon") + (dark ? "Dark theme" : "Light theme");
+        document.getElementById("themeIconBtn").innerHTML = icon(dark ? "sun" : "moon");
+        document.getElementById("menuBtn").innerHTML = icon("menu");
+        document.getElementById("signOut").innerHTML = icon("logout") + "Sign out";
+
+        const email =
+          role === "admin"
+            ? "admin@aitexsolutions.com"
+            : role === "manager"
+              ? "nasir@aitexsolutions.com"
+              : "procurement@aitexsolutions.com";
+        document.getElementById("userEmail").textContent = email;
+        document.getElementById("avatar").textContent = email[0].toUpperCase();
+        document.getElementById("roleBadge").textContent = role;
+      }
+
+      function toggleTheme() {
+        document.documentElement.classList.toggle("dark");
+        renderChrome();
+        if (!document.getElementById("loginView").classList.contains("hidden"))
+          renderLogin();
+      }
+
+      document.getElementById("themeRow").onclick = toggleTheme;
+      document.getElementById("themeIconBtn").onclick = toggleTheme;
+      document.getElementById("themeToggle2").onclick = toggleTheme;
+      document.getElementById("signOut").onclick = () => go("login");
+      document.getElementById("roleSelect").onchange = (e) => {
+        role = e.target.value;
+        // Viewers/managers can't stay on a page their role no longer shows.
+        const item = NAV.find((n) => n.id === current);
+        if (item && !item.show(role)) current = "search";
+        renderChrome();
+        go(current);
+      };
+
+      renderChrome();
+      go("search");
+    </script>
+  </body>
+</html>

@@ -322,6 +322,24 @@ class DocumentListingsResponse(BaseModel):
     listings: list[ListingOut]
 
 
+class StatusDistribution(BaseModel):
+    """The listing catalog split into three disjoint quality states, summing to
+    total_listings. A listing flagged for review counts as needs_review even if
+    it also lacks a price, so the three slices never double-count."""
+
+    complete: int = 0
+    needs_review: int = 0
+    missing_price: int = 0
+
+
+class SupplierListingCount(BaseModel):
+    """One bar in the dashboard's 'Top suppliers by listings' panel."""
+
+    company_id: int
+    name: str
+    count: int
+
+
 class DashboardSummary(BaseModel):
     """Aggregate stat-card counts for the admin/manager dashboard."""
 
@@ -329,6 +347,8 @@ class DashboardSummary(BaseModel):
     total_suppliers: int = 0
     uploads_last_7d: int = 0
     needs_review: int = 0
+    status_distribution: StatusDistribution = StatusDistribution()
+    top_suppliers: list[SupplierListingCount] = []
 
 
 class ManagedUser(BaseModel):

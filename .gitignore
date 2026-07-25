@@ -21,3 +21,6 @@ backend/.pytest_cache/
 Thumbs.db
 .idea/
 .vscode/
+
+# run.sh logs
+.run-logs/

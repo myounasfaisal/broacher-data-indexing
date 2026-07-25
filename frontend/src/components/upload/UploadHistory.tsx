@@ -20,6 +20,7 @@ import { Pagination } from "@/components/search/Pagination";
 import { ListingPanel } from "@/components/listing/ListingPanel";
 import { useSelection } from "@/hooks/useSelection";
 import type { UploadHistoryItem, UploadRange } from "@/types/chemical";
+import { formatDateTime } from "@/lib/format";
 
 const RANGES: { value: UploadRange; label: string }[] = [
   { value: "week", label: "Week" },
@@ -310,7 +311,7 @@ function HistoryRow({
           />
         </TableCell>
         <TableCell className="whitespace-nowrap font-mono text-xs tabular-nums text-fg-muted">
-          {formatDate(item.created_at)}
+          {formatDateTime(item.created_at)}
         </TableCell>
         <TableCell className="max-w-[16rem] truncate" title={item.filename}>
           {item.filename || "—"}
@@ -585,15 +586,3 @@ function Tab({
   );
 }
 
-function formatDate(iso: string): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso.slice(0, 16).replace("T", " ");
-  return d.toLocaleString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}

@@ -118,6 +118,14 @@ async def clear_finished_jobs(
     return {"removed": jobs.clear_finished(uploader_id)}
 
 
+@router.post("/upload-jobs/cancel-all")
+async def cancel_all_jobs(
+    uploader_id: str = Depends(require_uploader),
+) -> dict[str, int]:
+    """Cancel all of the caller's active (queued/paused/processing) jobs."""
+    return {"cancelled": jobs.cancel_all(uploader_id)}
+
+
 @router.post("/upload-jobs/{job_id}/action")
 async def job_action(
     job_id: str,

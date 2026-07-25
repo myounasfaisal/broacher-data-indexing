@@ -19,7 +19,7 @@ import { useRole } from "@/hooks/useRole";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SidebarNavItem } from "@/components/ui/sidebar-nav-item";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { AppearanceMenu } from "@/components/ui/appearance-menu";
 import { cn } from "@/lib/utils";
 
 /**
@@ -107,7 +107,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Menu className="h-5 w-5" />
         </button>
         <BrandMark />
-        <ThemeToggle className="ml-auto" />
+        <AppearanceMenu className="ml-auto" />
       </header>
 
       {/* Mobile drawer + scrim. */}
@@ -167,7 +167,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       <div className="border-t border-line p-3">
-        <ThemeToggle variant="full" className="mb-1" />
+        <AppearanceMenu variant="full" className="mb-1" />
         <div className="flex items-center gap-3 rounded-btn px-2 py-2">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-soft text-sm font-medium text-brand-soft-text">
             {(user?.email?.[0] ?? "?").toUpperCase()}

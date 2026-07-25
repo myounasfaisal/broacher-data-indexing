@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&amp;family=Geist:wght@400;500;600&amp;display=swap" rel="stylesheet">
+  <style>
+    body { margin: 0; font-family: "Geist", ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: var(--brand-text); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    input::placeholder { color: var(--fg-subtle); }
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 8px; border: 2px solid var(--app); }
+  </style>
+</helmet>
+
+<div style="{{ rootStyle }}">
+  <div style="display:flex;min-height:100vh;">
+
+    <!-- ============ SIDEBAR ============ -->
+    <aside style="width:260px;flex-shrink:0;position:sticky;top:0;height:100vh;border-right:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column;">
+      <div style="display:flex;align-items:center;gap:11px;height:64px;padding:0 20px;border-bottom:1px solid var(--line);">
+        <span style="display:flex;height:32px;width:32px;align-items:center;justify-content:center;border-radius:9px;background:var(--brand);color:var(--on-brand);">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.31"></path><path d="M14 9.3V1.99"></path><path d="M8.5 2h7"></path><path d="M14 9.3a6.5 6.5 0 1 1-4 0"></path><path d="M5.52 16h12.96"></path></svg>
+        </span>
+        <span style="font:600 15px/1 Geist;letter-spacing:-0.02em;color:var(--fg);">Brochure<span style="color:var(--brand-text);">DB</span></span>
+      </div>
+
+      <nav style="flex:1;overflow-y:auto;padding:12px 12px 8px;">
+        <div style="font:600 11px/1 Geist;letter-spacing:0.06em;text-transform:uppercase;color:var(--c-teal);padding:0 12px;margin:6px 0 6px;">Overview</div>
+        <button onClick="{{ nav.dashboard.onClick }}" style="{{ nav.dashboard.style }}" style-hover="{{ nav.dashboard.hover }}"><span style="{{ nav.dashboard.rail }}"></span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"></rect><rect width="7" height="5" x="14" y="3" rx="1"></rect><rect width="7" height="9" x="14" y="12" rx="1"></rect><rect width="7" height="5" x="3" y="16" rx="1"></rect></svg><span style="flex:1;">Dashboard</span></button>
+
+        <div style="font:600 11px/1 Geist;letter-spacing:0.06em;text-transform:uppercase;color:var(--c-indigo);padding:0 12px;margin:16px 0 6px;">Catalog</div>
+        <button onClick="{{ nav.search.onClick }}" style="{{ nav.search.style }}" style-hover="{{ nav.search.hover }}"><span style="{{ nav.search.rail }}"></span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg><span style="flex:1;">Search</span></button>
+        <button onClick="{{ nav.suppliers.onClick }}" style="{{ nav.suppliers.style }}" style-hover="{{ nav.suppliers.hover }}"><span style="{{ nav.suppliers.rail }}"></span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"></path><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"></path><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"></path><path d="M10 6h4"></path><path d="M10 10h4"></path><path d="M10 14h4"></path></svg><span style="flex:1;">Suppliers</span></button>
+
+        <div style="font:600 11px/1 Geist;letter-spacing:0.06em;text-transform:uppercase;color:var(--c-amber);padding:0 12px;margin:16px 0 6px;">Curation</div>
+        <button onClick="{{ nav.review.onClick }}" style="{{ nav.review.style }}" style-hover="{{ nav.review.hover }}"><span style="{{ nav.review.rail }}"></span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg><span style="flex:1;">Review</span><span style="display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:999px;background:var(--warn-soft);color:var(--warn-text);font:600 11px/1 Geist;">37</span></button>
+        <button onClick="{{ nav.upload.onClick }}" style="{{ nav.upload.style }}" style-hover="{{ nav.upload.hover }}"><span style="{{ nav.upload.rail }}"></span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" x2="12" y1="3" y2="15"></line></svg><span style="flex:1;">Upload</span></button>
+
+        <div style="font:600 11px/1 Geist;letter-spacing:0.06em;text-transform:uppercase;color:var(--c-sky);padding:0 12px;margin:16px 0 6px;">Admin</div>
+        <button onClick="{{ nav.users.onClick }}" style="{{ nav.users.style }}" style-hover="{{ nav.users.hover }}"><span style="{{ nav.users.rail }}"></span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg><span style="flex:1;">Users</span></button>
+        <button onClick="{{ nav.activity.onClick }}" style="{{ nav.activity.style }}" style-hover="{{ nav.activity.hover }}"><span style="{{ nav.activity.rail }}"></span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 12h-5"></path><path d="M15 8h-5"></path><path d="M19 17V5a2 2 0 0 0-2-2H4"></path><path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3"></path></svg><span style="flex:1;">Activity</span></button>
+      </nav>
+
+      <div style="border-top:1px solid var(--line);padding:12px;">
+        <div style="display:flex;gap:8px;align-items:center;border-radius:var(--r-btn);padding:6px;">
+          <div style="display:flex;height:36px;width:36px;flex-shrink:0;align-items:center;justify-content:center;border-radius:999px;background:var(--c-violet-soft);color:var(--c-violet);font:500 14px/1 Geist;">A</div>
+          <div style="min-width:0;flex:1;">
+            <div style="font:500 13px/1 Geist;color:var(--fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">admin@aitexsolutions.com</div>
+            <span style="display:inline-flex;align-items:center;height:18px;padding:0 7px;margin-top:3px;border-radius:999px;background:var(--muted);color:var(--fg-muted);font:500 11px/1 Geist;text-transform:capitalize;box-shadow:inset 0 0 0 1px var(--line);">admin</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ============ MAIN ============ -->
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column;">
+      <header style="position:sticky;top:0;z-index:20;height:60px;display:flex;align-items:center;gap:16px;padding:0 24px;border-bottom:1px solid var(--line);background:var(--surface);">
+        <button type="button" onClick="{{ nav.search.onClick }}" style="display:flex;align-items:center;gap:10px;height:38px;flex:1;max-width:460px;padding:0 14px;border:1px solid var(--line);border-radius:var(--r-btn);background:var(--app);color:var(--fg-subtle);font:400 13px/1 Geist;cursor:pointer;transition:border-color 120ms,background-color 120ms;" style-hover="border-color:var(--line-strong);background:var(--surface)">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+          <span style="flex:1;text-align:left;">Search chemicals, suppliers, CAS…</span>
+          <span style="display:inline-flex;align-items:center;height:20px;padding:0 6px;border-radius:5px;background:var(--muted);color:var(--fg-subtle);font:500 11px/1 'Geist Mono',monospace;">⌘K</span>
+        </button>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+          <button type="button" onClick="{{ toggleTheme }}" title="Toggle theme" style="display:inline-flex;height:38px;width:38px;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:var(--r-btn);background:var(--app);color:var(--fg-muted);cursor:pointer;" style-hover="background:var(--muted);color:var(--fg)">
+            <sc-if value="{{ isDark }}" hint-placeholder-val="{{ true }}"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg></sc-if>
+            <sc-if value="{{ isLight }}" hint-placeholder-val="{{ false }}"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg></sc-if>
+          </button>
+        </div>
+      </header>
+
+      <main style="{{ mainStyle }}">
+
+        <!-- ===== DASHBOARD ===== -->
+        <sc-if value="{{ isDashboard }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-bottom:20px;">
+            <div style="display:flex;align-items:center;gap:8px;font:500 12px/1 Geist;margin-bottom:10px;"><span style="color:var(--brand-text);">Overview</span><span style="color:var(--line-strong);">/</span><span style="color:var(--fg-muted);">Dashboard</span></div>
+            <h1 style="margin:0;font:600 26px/32px Geist;letter-spacing:-0.02em;color:var(--fg);">Dashboard</h1><p style="margin:6px 0 0;font:400 14px/20px Geist;color:var(--fg-muted);">An overview of the chemical database — listings, suppliers, and recent activity.</p>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;">
+            <div style="border-radius:var(--r-card);border:1px solid var(--line);background:var(--surface);padding:20px;">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;"><span style="font:500 12px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);">Total listings</span><span style="display:flex;height:32px;width:32px;align-items:center;justify-content:center;border-radius:9px;background:var(--brand-soft);color:var(--brand-text);"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.97 4.42A2 2 0 0 0 7 6.13v4.37l5 3 5-3V6.13a2 2 0 0 0-.97-1.71l-3-1.8a2 2 0 0 0-2.06 0Z"></path><path d="M12 8 7.26 5.15"></path><path d="m12 8 4.74-2.85"></path><path d="M12 13.5V8"></path></svg></span></div>
+              <div style="margin-top:10px;font:600 30px/36px Geist;letter-spacing:-0.02em;font-variant-numeric:tabular-nums;color:var(--fg);">12,481</div>
+              <div style="margin-top:4px;font:400 12px/1 Geist;color:var(--fg-subtle);">across 312 suppliers</div>
+            </div>
+            <div style="border-radius:var(--r-card);border:1px solid var(--line);background:var(--surface);padding:20px;">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;"><span style="font:500 12px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);">Suppliers</span><span style="display:flex;height:32px;width:32px;align-items:center;justify-content:center;border-radius:9px;background:var(--c-indigo-soft);color:var(--c-indigo);"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"></path><path d="M10 6h4"></path><path d="M10 10h4"></path><path d="M10 14h4"></path></svg></span></div>
+              <div style="margin-top:10px;font:600 30px/36px Geist;letter-spacing:-0.02em;font-variant-numeric:tabular-nums;color:var(--fg);">312</div>
+              <div style="margin-top:4px;font:400 12px/1 Geist;color:var(--fg-subtle);">+7 this month</div>
+            </div>
+            <div style="border-radius:var(--r-card);border:1px solid var(--line);background:var(--surface);padding:20px;">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;"><span style="font:500 12px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);">Uploads · 7 days</span><span style="display:flex;height:32px;width:32px;align-items:center;justify-content:center;border-radius:9px;background:var(--c-sky-soft);color:var(--c-sky);"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" x2="12" y1="3" y2="15"></line></svg></span></div>
+              <div style="margin-top:10px;font:600 30px/36px Geist;letter-spacing:-0.02em;font-variant-numeric:tabular-nums;color:var(--fg);">9</div>
+              <div style="margin-top:4px;font:400 12px/1 Geist;color:var(--fg-subtle);">276 listings added</div>
+            </div>
+            <button type="button" onClick="{{ nav.review.onClick }}" style="text-align:left;border-radius:var(--r-card);border:1px solid color-mix(in srgb,var(--warn-text) 30%,var(--line));background:var(--surface);padding:20px;cursor:pointer;" style-hover="background:var(--muted)">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;"><span style="font:500 12px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);">Needs review</span><span style="display:flex;height:32px;width:32px;align-items:center;justify-content:center;border-radius:9px;background:var(--warn-soft);color:var(--warn-text);"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span></div>
+              <div style="margin-top:10px;font:600 30px/36px Geist;letter-spacing:-0.02em;font-variant-numeric:tabular-nums;color:var(--warn-text);">37</div>
+              <div style="margin-top:4px;font:400 12px/1 Geist;color:var(--fg-subtle);">Open the review queue →</div>
+            </button>
+          </div>
+
+          <div style="margin-top:16px;display:grid;grid-template-columns:1.1fr 1fr;gap:16px;">
+            <div style="border-radius:var(--r-card);border:1px solid var(--line);background:var(--surface);padding:20px 24px;">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;"><span style="display:flex;height:28px;width:28px;align-items:center;justify-content:center;border-radius:8px;background:var(--c-violet-soft);color:var(--c-violet);"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg></span><h3 style="margin:0;font:500 15px/1 Geist;color:var(--fg);">Listing status</h3></div>
+              <div style="display:flex;align-items:center;gap:24px;">
+                <svg width="140" height="140" viewBox="0 0 128 128" style="flex-shrink:0;transform:rotate(-90deg);" data-om-raster>
+                  <circle cx="64" cy="64" r="52" fill="none" stroke="var(--muted)" stroke-width="18"></circle>
+                  <circle cx="64" cy="64" r="52" fill="none" stroke="var(--c-green)" stroke-width="18" stroke-dasharray="202.6 326.7" stroke-dashoffset="0"></circle>
+                  <circle cx="64" cy="64" r="52" fill="none" stroke="var(--c-amber)" stroke-width="18" stroke-dasharray="49 326.7" stroke-dashoffset="-202.6"></circle>
+                  <circle cx="64" cy="64" r="52" fill="none" stroke="var(--c-rose)" stroke-width="18" stroke-dasharray="75.1 326.7" stroke-dashoffset="-251.6"></circle>
+                </svg>
+                <div style="flex:1;display:flex;flex-direction:column;gap:12px;">
+                  <sc-for list="{{ statusDist }}" as="d" hint-placeholder-count="3">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                      <span style="width:10px;height:10px;border-radius:3px;background:{{ d.color }};flex-shrink:0;"></span>
+                      <span style="flex:1;font:400 13px Geist;color:var(--fg-muted);">{{ d.label }}</span>
+                      <span style="font:600 14px 'Geist Mono',monospace;font-variant-numeric:tabular-nums;color:var(--fg);">{{ d.value }}</span>
+                      <span style="width:44px;text-align:right;font:400 12px 'Geist Mono',monospace;color:var(--fg-subtle);">{{ d.pct }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+
+            <div style="border-radius:var(--r-card);border:1px solid var(--line);background:var(--surface);padding:20px 24px;">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;"><span style="display:flex;height:28px;width:28px;align-items:center;justify-content:center;border-radius:8px;background:var(--c-sky-soft);color:var(--c-sky);"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m19 9-5 5-4-4-3 3"/></svg></span><h3 style="margin:0;font:500 15px/1 Geist;color:var(--fg);">Top suppliers by listings</h3></div>
+              <div style="display:flex;flex-direction:column;gap:14px;">
+                <sc-for list="{{ topSuppliers }}" as="t" hint-placeholder-count="4">
+                  <div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;"><span style="font:400 13px Geist;color:var(--fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ t.name }}</span><span style="font:600 13px 'Geist Mono',monospace;font-variant-numeric:tabular-nums;color:var(--fg-muted);margin-left:12px;">{{ t.count }}</span></div>
+                    <div style="height:6px;border-radius:999px;background:var(--muted);overflow:hidden;"><div style="{{ t.barStyle }}"></div></div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:16px;border-radius:var(--r-card);border:1px solid var(--line);background:var(--surface);">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px 14px;">
+              <div><h3 style="margin:0;font:500 16px/1 Geist;letter-spacing:-0.01em;color:var(--fg);">Recent uploads</h3><p style="margin:5px 0 0;font:400 13px/1 Geist;color:var(--fg-muted);">Every upload across the team — undo any that shouldn't be there.</p></div>
+              <button type="button" onClick="{{ exportCsv }}" style="display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border:1px solid var(--line);border-radius:var(--r-btn);background:var(--app);color:var(--fg);font:500 13px/1 Geist;cursor:pointer;" style-hover="background:var(--muted)"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="m7 10 5 5 5-5"></path><path d="M12 15V3"></path></svg>Export CSV</button>
+            </div>
+            <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:14px;">
+              <thead><tr style="border-bottom:1px solid var(--line);"><th style="padding:8px 24px;text-align:left;font:500 12px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);">File</th><th style="padding:8px 12px;text-align:left;font:500 12px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);">Supplier</th><th style="padding:8px 12px;text-align:right;font:500 12px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);">Products</th><th style="padding:8px 12px;text-align:left;font:500 12px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);">Uploaded by</th><th style="padding:8px 12px;text-align:left;font:500 12px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);">When</th><th></th></tr></thead>
+              <tbody>
+                <sc-for list="{{ uploads }}" as="u" hint-placeholder-count="4">
+                  <tr style="border-bottom:1px solid color-mix(in srgb,var(--line) 60%,transparent);">
+                    <td style="padding:12px 24px;"><button type="button" style="border:0;background:none;padding:0;font:500 14px Geist;color:var(--brand-text);cursor:pointer;">{{ u.file }}</button></td>
+                    <td style="padding:12px;color:var(--fg-muted);">{{ u.company }}</td>
+                    <td style="padding:12px;text-align:right;"><span style="display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:var(--r-chip);background:var(--muted);color:var(--fg-muted);font:400 12px 'Geist Mono',monospace;box-shadow:inset 0 0 0 1px var(--line);">{{ u.products }}</span></td>
+                    <td style="padding:12px;color:var(--fg-muted);font-size:13px;">{{ u.by }}</td>
+                    <td style="padding:12px;font:400 12px 'Geist Mono',monospace;color:var(--fg-muted);white-space:nowrap;">{{ u.when }}</td>
+                    <td style="padding:12px 24px;text-align:right;"><button type="button" style="border:0;background:none;border-radius:6px;padding:5px 10px;font:500 12px Geist;color:var(--brand-text);cursor:pointer;" style-hover="background:var(--brand-soft)">Undo</button></td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table></div>
+          </div>
+        </sc-if>
+
+        <!-- ===== SEARCH ===== -->
+        <sc-if value="{{ isSearch }}" hint-placeholder-val="{{ true }}">
+          <div style="flex:1;min-height:0;position:relative;display:flex;flex-direction:column;">
+            <dc-import name="Inspector" embedded="{{ true }}" fill="{{ true }}" palette="{{ palette }}" on-view="{{ openPanelView }}" on-edit="{{ openPanelEdit }}" style="position:absolute;top:0;left:0;right:0;bottom:0;" hint-size="100%,100%"></dc-import>
+          </div>
+        </sc-if>
+
+        <!-- ===== SUPPLIERS ===== -->
+        <sc-if value="{{ isSuppliers }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:24px;"><div><h1 style="margin:0;font:600 26px/32px Geist;letter-spacing:-0.02em;color:var(--fg);">Suppliers</h1><p style="margin:6px 0 0;font:400 14px/20px Geist;color:var(--fg-muted);">Every supplier extracted from the brochures, with printed contact details and products.</p></div><button type="button" onClick="{{ exportCsv }}" style="display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 14px;border:1px solid var(--line);border-radius:var(--r-btn);background:var(--surface);color:var(--fg);font:500 14px/1 Geist;cursor:pointer;flex-shrink:0;" style-hover="background:var(--muted)"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="m7 10 5 5 5-5"></path><path d="M12 15V3"></path></svg>Export CSV</button></div>
+          <div style="border-radius:var(--r-card);border:1px solid var(--line);background:var(--surface);">
+            <div style="padding:16px 24px 8px;font:400 13px Geist;color:var(--fg-muted);">312 suppliers</div>
+            <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:14px;">
+              <thead><tr style="border-bottom:1px solid var(--line);"><th style="padding:8px 24px;text-align:left;font:500 12px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);">Supplier</th><th style="padding:8px 12px;text-align:left;font:500 12px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);">Contact</th><th style="padding:8px 12px;text-align:left;font:500 12px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);">First seen</th><th style="padding:8px 12px;text-align:right;font:500 12px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);">Products</th><th></th></tr></thead>
+              <tbody>
+                <sc-for list="{{ suppliers }}" as="s" hint-placeholder-count="5">
+                  <tr style="border-bottom:1px solid color-mix(in srgb,var(--line) 60%,transparent);">
+                    <td style="padding:14px 24px;"><button type="button" onClick="{{ s.onView }}" style="border:0;background:none;padding:0;font:500 14px Geist;color:var(--brand-text);cursor:pointer;text-align:left;" style-hover="text-decoration:underline">{{ s.en }}</button><sc-if value="{{ s.showRaw }}" hint-placeholder-val="{{ false }}"><div style="font:400 12px Geist;color:var(--fg-subtle);">{{ s.raw }}</div></sc-if></td>
+                    <td style="padding:14px 12px;">
+                      <sc-if value="{{ s.hasContact }}" hint-placeholder-val="{{ true }}">
+                        <div style="display:flex;flex-direction:column;gap:4px;font-size:13px;">
+                          <sc-if value="{{ s.hasEmail }}" hint-placeholder-val="{{ true }}"><span style="display:inline-flex;align-items:center;gap:6px;color:var(--brand-text);"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg>{{ s.email }}</span></sc-if>
+                          <sc-if value="{{ s.hasPhone }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;gap:6px;color:var(--fg-muted);font-family:'Geist Mono',monospace;font-size:12px;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="var(--fg-subtle)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>{{ s.phone }}</span></sc-if>
+                          <sc-for list="{{ s.sites }}" as="w" hint-placeholder-count="1"><span style="display:inline-flex;align-items:center;gap:6px;color:var(--brand-text);"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"></path><path d="M10 14 21 3"></path><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path></svg>{{ w }}</span></sc-for>
+                        </div>
+                      </sc-if>
+                      <sc-if value="{{ s.noContact }}" hint-placeholder-val="{{ false }}"><span style="color:var(--fg-subtle);font-size:14px;">—</span></sc-if>
+                    </td>
+                    <td style="padding:14px 12px;font:400 12px 'Geist Mono',monospace;color:var(--fg-muted);white-space:nowrap;">{{ s.first }}</td>
+                    <td style="padding:14px 12px;text-align:right;"><span style="display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:var(--r-chip);background:var(--muted);color:var(--fg-muted);font:400 12px 'Geist Mono',monospace;box-shadow:inset 0 0 0 1px var(--line);">{{ s.count }}</span></td>
+                    <td style="padding:14px 24px;text-align:right;"><button type="button" onClick="{{ nav.search.onClick }}" style="border:0;background:none;font:500 13px Geist;color:var(--brand-text);cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;">View products<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg></button></td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table></div>
+            <p style="padding:14px 24px 20px;margin:0;font:400 12px/1.5 Geist;color:var(--fg-subtle);">Contact details show exactly what the brochures print — email and phone are captured from uploads going forward when a brochure includes them; older suppliers show only names and website.</p>
+          </div>
+        </sc-if>
+
+        <!-- ===== REVIEW ===== -->
+        <sc-if value="{{ isReview }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-bottom:24px;"><h1 style="margin:0;font:600 26px/32px Geist;letter-spacing:-0.02em;color:var(--fg);">Review queue</h1><p style="margin:6px 0 0;font:400 14px/20px Geist;color:var(--fg-muted);">Listings the AI matched by name similarity — verify, correct, or delete them (or their whole source file).</p></div>
+          <div style="display:flex;flex-direction:column;gap:16px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;font:400 14px Geist;color:var(--fg-muted);"><span>37 listings awaiting review</span><span>Page 1 of 3</span></div>
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-radius:var(--r-btn);border:1px solid color-mix(in srgb,var(--brand) 30%,transparent);background:var(--brand-soft);padding:10px 14px;">
+              <span style="font:600 14px Geist;color:var(--brand-soft-text);">3 listings selected</span>
+              <span style="font:400 12px Geist;color:color-mix(in srgb,var(--brand-soft-text) 78%,transparent);">selections keep across pages</span>
+              <div style="margin-left:auto;display:flex;gap:8px;">
+                <button type="button" style="height:32px;padding:0 12px;border:0;border-radius:var(--r-btn);background:var(--muted);color:var(--fg);font:500 13px/1 Geist;cursor:pointer;">Mark verified</button>
+                <button type="button" onClick="{{ openDelete }}" style="height:32px;padding:0 12px;border:0;border-radius:var(--r-btn);background:var(--danger);color:var(--on-danger);font:500 13px/1 Geist;cursor:pointer;">Delete selected</button>
+                <button type="button" style="border:0;background:none;color:var(--brand-soft-text);font:500 13px/1 Geist;cursor:pointer;padding:6px 8px;">Clear</button>
+              </div>
+            </div>
+            <sc-for list="{{ reviewGroups }}" as="g" hint-placeholder-count="2">
+              <div style="border-radius:var(--r-card);border:1px solid var(--line);overflow:hidden;">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--muted) 55%,transparent);padding:10px 14px;">
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="var(--fg-subtle)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M16 13H8"></path><path d="M16 17H8"></path><path d="M10 9H8"></path></svg>
+                  <span style="font:500 14px Geist;color:var(--fg);">{{ g.file }}</span>
+                  <span style="font:400 12px Geist;color:var(--fg-subtle);">{{ g.countLabel }}</span>
+                  <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+                    <button type="button" style="height:30px;padding:0 10px;border:1px solid color-mix(in srgb,var(--danger) 40%,transparent);border-radius:var(--r-btn);background:var(--surface);color:var(--danger-text);font:500 12px/1 Geist;cursor:pointer;" style-hover="background:var(--danger-soft)">Delete file</button>
+                  </div>
+                </div>
+                <sc-for list="{{ g.items }}" as="r" hint-placeholder-count="2">
+                  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:11px 14px;border-top:1px solid color-mix(in srgb,var(--line) 60%,transparent);">
+                    <input type="checkbox" style="width:16px;height:16px;accent-color:var(--brand);">
+                    <div style="flex:1 1 200px;min-width:0;">
+                      <button type="button" onClick="{{ openPanelView }}" style="border:0;background:none;padding:0;font:500 14px Geist;color:var(--brand-text);cursor:pointer;text-align:left;">{{ r.name_en }}</button>
+                      <sc-if value="{{ r.showRaw }}" hint-placeholder-val="{{ false }}"><div style="font:400 12px Geist;color:var(--fg-muted);">{{ r.name_raw }}</div></sc-if>
+                    </div>
+                    <sc-if value="{{ r.hasCas }}" hint-placeholder-val="{{ true }}"><span style="display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:var(--r-chip);color:var(--brand-text);font:400 12px 'Geist Mono',monospace;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--brand) 30%,transparent);">{{ r.cas }}</span></sc-if>
+                    <div style="flex-basis:180px;min-width:0;font-size:13px;color:var(--fg-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ r.supEn }}</div>
+                    <div style="margin-left:auto;display:flex;gap:8px;">
+                      <button type="button" style="height:32px;padding:0 12px;border:0;border-radius:var(--r-btn);background:var(--muted);color:var(--fg);font:500 13px/1 Geist;cursor:pointer;">Mark verified</button>
+                      <button type="button" onClick="{{ openPanelEdit }}" style="height:32px;padding:0 12px;border:1px solid var(--line);border-radius:var(--r-btn);background:var(--surface);color:var(--fg);font:500 13px/1 Geist;cursor:pointer;">Open</button>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <!-- ===== UPLOAD ===== -->
+        <sc-if value="{{ isUpload }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-bottom:24px;"><h1 style="margin:0;font:600 26px/32px Geist;letter-spacing:-0.02em;color:var(--fg);">Upload brochures</h1><p style="margin:6px 0 0;font:400 14px/20px Geist;color:var(--fg-muted);">Pick a folder or individual PDFs — each is processed in memory and never stored.</p></div>
+          <div style="display:flex;flex-direction:column;gap:24px;">
+            <div style="border-radius:var(--r-card);border:2px dashed var(--line-strong);background:var(--surface);padding:36px 24px;text-align:center;">
+              <div style="display:flex;justify-content:center;margin-bottom:14px;"><span style="display:flex;height:52px;width:52px;align-items:center;justify-content:center;border-radius:999px;background:var(--brand-soft);color:var(--brand-text);"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" x2="12" y1="3" y2="15"></line></svg></span></div>
+              <div style="font:500 15px Geist;color:var(--fg);margin-bottom:4px;">Drop brochures here, or choose what to upload</div>
+              <div style="font:400 13px Geist;color:var(--fg-muted);max-width:440px;margin:0 auto 16px;">Only <code style="font-family:'Geist Mono',monospace;font-size:12px;background:var(--muted);border-radius:4px;padding:0 4px;">.pdf</code> files are processed. The queue survives page reloads.</div>
+              <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;"><button type="button" style="display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 18px;border:0;border-radius:var(--r-btn);background:var(--brand);color:var(--on-brand);font:600 14px/1 Geist;cursor:pointer;" style-hover="background:var(--brand-hover)">Select folder</button><button type="button" style="display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 18px;border:1px solid var(--line);border-radius:var(--r-btn);background:var(--surface);color:var(--fg);font:500 14px/1 Geist;cursor:pointer;" style-hover="background:var(--muted)">Select PDF(s)</button></div>
+            </div>
+
+            <div style="border-radius:var(--r-card);border:1px solid var(--line);background:var(--surface);">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px 12px;"><h3 style="margin:0;font:500 16px/1 Geist;color:var(--fg);">Progress</h3><button type="button" style="height:32px;padding:0 12px;border:1px solid var(--line);border-radius:var(--r-btn);background:var(--app);color:var(--fg);font:500 13px/1 Geist;cursor:pointer;" style-hover="background:var(--muted)">Clear finished</button></div>
+              <div style="padding:0 24px 8px;">
+                <sc-for list="{{ jobs }}" as="j" hint-placeholder-count="4">
+                  <div style="padding:14px 0;border-top:1px solid var(--line);">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;">
+                      <div style="min-width:0;"><div style="font:500 14px Geist;color:var(--fg);">{{ j.file }}</div><div style="font:400 12px Geist;color:var(--fg-muted);">{{ j.stage }}</div></div>
+                      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                        <span style="{{ j.statusStyle }}">{{ j.statusLabel }}</span>
+                        <sc-if value="{{ j.showPause }}" hint-placeholder-val="{{ false }}"><button type="button" title="Pause" style="display:inline-flex;height:26px;width:26px;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--fg-muted);cursor:pointer;"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><rect x="14" y="4" width="4" height="16" rx="1"></rect><rect x="6" y="4" width="4" height="16" rx="1"></rect></svg></button></sc-if>
+                        <sc-if value="{{ j.showResume }}" hint-placeholder-val="{{ false }}"><button type="button" title="Resume" style="display:inline-flex;height:26px;width:26px;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--fg-muted);cursor:pointer;"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg></button></sc-if>
+                        <sc-if value="{{ j.showRestart }}" hint-placeholder-val="{{ false }}"><button type="button" title="Restart" style="display:inline-flex;height:26px;width:26px;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--fg-muted);cursor:pointer;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg></button></sc-if>
+                        <sc-if value="{{ j.showCancel }}" hint-placeholder-val="{{ false }}"><button type="button" title="Cancel" style="display:inline-flex;height:26px;width:26px;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--fg-muted);cursor:pointer;" style-hover="background:var(--danger-soft);color:var(--danger-text)"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="m4.9 4.9 14.2 14.2"></path></svg></button></sc-if>
+                        <button type="button" title="Remove" style="display:inline-flex;height:26px;width:26px;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--fg-muted);cursor:pointer;" style-hover="background:var(--muted);color:var(--fg)"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+                      </div>
+                    </div>
+                    <div style="height:6px;width:100%;border-radius:999px;background:var(--muted);overflow:hidden;"><div style="{{ j.barStyle }}"></div></div>
+                  </div>
+                </sc-for>
+                <div style="padding:14px 0;font:400 13px Geist;color:var(--fg-muted);">1 processing · 1 queued · 1 done · 1 failed</div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ===== USERS ===== -->
+        <sc-if value="{{ isUsers }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-bottom:24px;"><h1 style="margin:0;font:600 26px/32px Geist;letter-spacing:-0.02em;color:var(--fg);">Manage users</h1><p style="margin:6px 0 0;font:400 14px/20px Geist;color:var(--fg-muted);">List every registered user and change their role. You can't change your own role.</p></div>
+          <div style="border-radius:var(--r-card);border:1px solid var(--line);background:var(--surface);">
+            <div style="padding:20px 24px 14px;border-bottom:1px solid var(--line);"><h3 style="margin:0;font:500 16px/1 Geist;color:var(--fg);">Roles</h3><p style="margin:6px 0 0;font:400 13px/1.5 Geist;color:var(--fg-muted);"><b style="color:var(--fg);font-weight:500;">Admin</b>: search, upload &amp; manage users · <b style="color:var(--fg);font-weight:500;">Manager</b>: search &amp; upload · <b style="color:var(--fg);font-weight:500;">Viewer</b>: search only.</p></div>
+            <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:14px;">
+              <thead><tr style="border-bottom:1px solid var(--line);"><th style="padding:8px 24px;text-align:left;font:500 12px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);">Email</th><th style="padding:8px 12px;text-align:left;font:500 12px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);">Role</th><th style="padding:8px 12px;text-align:left;font:500 12px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);">Joined</th><th style="padding:8px 12px;text-align:left;font:500 12px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);">Last sign-in</th></tr></thead>
+              <tbody>
+                <sc-for list="{{ users }}" as="u" hint-placeholder-count="4">
+                  <tr style="border-bottom:1px solid color-mix(in srgb,var(--line) 60%,transparent);">
+                    <td style="padding:14px 24px;font:500 14px Geist;color:var(--fg);">{{ u.email }}<sc-if value="{{ u.self }}" hint-placeholder-val="{{ false }}"><span style="margin-left:8px;display:inline-flex;align-items:center;height:18px;padding:0 7px;border-radius:999px;background:var(--muted);color:var(--fg-muted);font:500 11px/1 Geist;box-shadow:inset 0 0 0 1px var(--line);">you</span></sc-if></td>
+                    <td style="padding:14px 12px;"><div style="position:relative;width:150px;"><select value="{{ u.role }}" onChange="{{ noop }}" disabled="{{ u.self }}" style="{{ u.selectStyle }}"><option value="admin">Admin</option><option value="manager">Manager</option><option value="viewer">Viewer</option></select><svg style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--fg-subtle);pointer-events:none;" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></div></td>
+                    <td style="padding:14px 12px;color:var(--fg-muted);">{{ u.joined }}</td>
+                    <td style="padding:14px 12px;color:var(--fg-muted);">{{ u.last }}</td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table></div>
+          </div>
+        </sc-if>
+
+        <!-- ===== ACTIVITY ===== -->
+        <sc-if value="{{ isActivity }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-bottom:24px;"><h1 style="margin:0;font:600 26px/32px Geist;letter-spacing:-0.02em;color:var(--fg);">Activity</h1><p style="margin:6px 0 0;font:400 14px/20px Geist;color:var(--fg-muted);">Who uploaded, edited, and deleted what — recorded automatically, newest first.</p></div>
+          <div style="border-radius:var(--r-card);border:1px solid var(--line);background:var(--surface);">
+            <div style="padding:16px 24px 8px;font:400 13px Geist;color:var(--fg-muted);">1,204 events</div>
+            <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:14px;">
+              <thead><tr style="border-bottom:1px solid var(--line);"><th style="padding:8px 24px;text-align:left;font:500 12px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);">When</th><th style="padding:8px 12px;text-align:left;font:500 12px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);">Who</th><th style="padding:8px 12px;text-align:left;font:500 12px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);">Action</th><th style="padding:8px 12px;text-align:left;font:500 12px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);">What</th></tr></thead>
+              <tbody>
+                <sc-for list="{{ audit }}" as="e" hint-placeholder-count="5">
+                  <tr style="border-bottom:1px solid color-mix(in srgb,var(--line) 60%,transparent);">
+                    <td style="padding:14px 24px;font:400 12px 'Geist Mono',monospace;color:var(--fg-muted);white-space:nowrap;">{{ e.when }}</td>
+                    <td style="padding:14px 12px;color:var(--fg-muted);">{{ e.who }}</td>
+                    <td style="padding:14px 12px;"><span style="{{ e.badgeStyle }}">{{ e.label }}</span></td>
+                    <td style="padding:14px 12px;color:var(--fg);font-size:13px;">{{ e.what }}</td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table></div>
+          </div>
+        </sc-if>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ===== OVERLAYS ===== -->
+  <sc-if value="{{ showPanel }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;z-index:50;">
+      <div onClick="{{ closeOverlay }}" style="position:absolute;inset:0;background:rgba(3,5,8,0.55);"></div>
+      <aside style="position:absolute;inset:0 0 0 auto;display:flex;width:100%;max-width:640px;flex-direction:column;background:var(--surface);border-left:1px solid var(--line);box-shadow:-12px 0 40px -8px rgba(0,0,0,0.4);">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding:14px 24px;">
+          <h2 style="margin:0;font:600 14px/1 Geist;color:var(--fg);">Product</h2>
+          <button type="button" onClick="{{ closeOverlay }}" aria-label="Close" style="display:inline-flex;height:32px;width:32px;align-items:center;justify-content:center;border:0;background:none;border-radius:var(--r-btn);color:var(--fg-muted);cursor:pointer;" style-hover="background:var(--hover);color:var(--fg)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:16px;">
+          <div style="border-radius:var(--r-card);border:1px solid var(--line);background:var(--app);padding:20px;">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><h3 style="margin:0;font:600 20px/26px Geist;letter-spacing:-0.01em;color:var(--fg);">Sodium Lauryl Sulfate</h3><span style="display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:999px;background:var(--warn-soft);color:var(--warn-text);font:500 11px/1 Geist;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--warn-text) 20%,transparent);">review</span></div>
+            <p style="margin:6px 0 16px;font:400 13px Geist;color:var(--fg-muted);">As printed: K12 / SLS</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div><div style="font:500 11px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);margin-bottom:5px;">CAS number</div><div style="min-height:36px;border-radius:var(--r-btn);border:1px solid var(--line);background:var(--surface);padding:8px 12px;font:400 14px 'Geist Mono',monospace;color:var(--fg);">151-21-3</div></div>
+              <div><div style="font:500 11px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);margin-bottom:5px;">Price</div><div style="min-height:36px;border-radius:var(--r-btn);border:1px solid var(--line);background:var(--surface);padding:8px 12px;font:400 14px 'Geist Mono',monospace;color:var(--fg);">1,250 CNY<span style="display:block;font-size:11px;color:var(--fg-subtle);">≈ $172 · ₨47,820</span></div></div>
+              <div><div style="font:500 11px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);margin-bottom:5px;">Purity</div><div style="min-height:36px;border-radius:var(--r-btn);border:1px solid var(--line);background:var(--surface);padding:8px 12px;font:400 14px Geist;color:var(--fg);">92% min</div></div>
+              <div><div style="font:500 11px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);margin-bottom:5px;">Supplier</div><div style="min-height:36px;border-radius:var(--r-btn);border:1px solid var(--line);background:var(--surface);padding:8px 12px;font:400 13px Geist;color:var(--fg);">Jiangsu Hai'an Petrochemical Plant</div></div>
+            </div>
+          </div>
+
+          <sc-if value="{{ overlayEdit }}" hint-placeholder-val="{{ false }}">
+            <div style="border-radius:var(--r-card);border:1px solid var(--line);background:var(--surface);padding:20px;display:flex;flex-direction:column;gap:12px;">
+              <h3 style="margin:0;font:500 16px/1 Geist;color:var(--fg);">Edit listing</h3>
+              <div><div style="font:500 13px/1 Geist;color:var(--fg);margin-bottom:5px;">Name (EN)</div><input value="Sodium Lauryl Sulfate" style="height:40px;width:100%;border-radius:var(--r-btn);border:1px solid var(--line);background:var(--app);padding:0 12px;font:400 14px Geist;color:var(--fg);"></div>
+              <div><div style="font:500 13px/1 Geist;color:var(--fg);margin-bottom:5px;">CAS number</div><input value="151-21-3" style="height:40px;width:100%;border-radius:var(--r-btn);border:1px solid var(--line);background:var(--app);padding:0 12px;font:400 14px 'Geist Mono',monospace;color:var(--fg);"></div>
+              <label style="display:flex;align-items:center;gap:8px;font:400 14px Geist;color:var(--fg-muted);cursor:pointer;"><input type="checkbox" checked="" style="width:16px;height:16px;accent-color:var(--brand);"> Needs review</label>
+              <div style="display:flex;justify-content:flex-end;gap:8px;"><button type="button" onClick="{{ closeOverlay }}" style="height:36px;padding:0 14px;border:1px solid var(--line);border-radius:var(--r-btn);background:var(--app);color:var(--fg);font:500 13px/1 Geist;cursor:pointer;">Cancel</button><button type="button" onClick="{{ closeOverlay }}" style="height:36px;padding:0 14px;border:0;border-radius:var(--r-btn);background:var(--brand);color:var(--on-brand);font:600 13px/1 Geist;cursor:pointer;">Save changes</button></div>
+            </div>
+          </sc-if>
+
+          <div style="border-radius:var(--r-card);border:1px solid var(--line);background:var(--surface);padding:20px;">
+            <h3 style="margin:0 0 4px;font:500 16px/1 Geist;color:var(--fg);">Technical details</h3>
+            <p style="margin:0 0 14px;font:400 12px Geist;color:var(--fg-subtle);">Exactly as extracted from this supplier's brochure.</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div><div style="font:500 11px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);margin-bottom:5px;">Appearance</div><div style="min-height:36px;border-radius:var(--r-btn);border:1px solid var(--line);background:var(--app);padding:8px 12px;font:400 14px Geist;color:var(--fg);">White to pale yellow powder</div></div>
+              <div><div style="font:500 11px/1 Geist;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg-subtle);margin-bottom:5px;">Packing</div><div style="min-height:36px;border-radius:var(--r-btn);border:1px solid var(--line);background:var(--app);padding:8px 12px;font:400 14px Geist;color:var(--fg);">25kg kraft paper bag</div></div>
+            </div>
+          </div>
+
+          <div style="margin-top:auto;display:flex;gap:8px;"><button type="button" onClick="{{ closeOverlay }}" style="flex:1;height:40px;border:0;border-radius:var(--r-btn);background:var(--brand);color:var(--on-brand);font:600 14px/1 Geist;cursor:pointer;">Done</button></div>
+        </div>
+      </aside>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ showDelete }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:16px;">
+      <div onClick="{{ closeOverlay }}" style="position:absolute;inset:0;background:rgba(3,5,8,0.55);"></div>
+      <div style="position:relative;width:100%;max-width:460px;border-radius:var(--r-panel);border:1px solid var(--line);background:var(--surface);box-shadow:0 24px 60px -12px rgba(0,0,0,0.5);">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:20px 20px 12px;">
+          <div><h2 style="margin:0;font:600 16px/1 Geist;color:var(--fg);">Delete selected listings?</h2><p style="margin:8px 0 0;font:400 14px/1.5 Geist;color:var(--fg-muted);">The selected listings will be permanently removed from the database. This cannot be undone.</p></div>
+          <button type="button" onClick="{{ closeOverlay }}" aria-label="Close" style="display:inline-flex;height:32px;width:32px;align-items:center;justify-content:center;border:0;background:none;border-radius:var(--r-btn);color:var(--fg-muted);cursor:pointer;flex-shrink:0;" style-hover="background:var(--hover);color:var(--fg)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;border-top:1px solid var(--line);padding:12px 20px;"><button type="button" onClick="{{ closeOverlay }}" style="height:36px;padding:0 14px;border:1px solid var(--line);border-radius:var(--r-btn);background:var(--app);color:var(--fg);font:500 13px/1 Geist;cursor:pointer;">Cancel</button><button type="button" onClick="{{ closeOverlay }}" style="height:36px;padding:0 14px;border:0;border-radius:var(--r-btn);background:var(--danger);color:var(--on-danger);font:600 13px/1 Geist;cursor:pointer;">Delete listings</button></div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:900},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;Dark&quot;,&quot;options&quot;:[&quot;Dark&quot;,&quot;Light&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;accent&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;Teal&quot;,&quot;options&quot;:[&quot;Teal&quot;,&quot;Violet&quot;,&quot;Blue&quot;,&quot;Amber&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;density&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;Balanced&quot;,&quot;options&quot;:[&quot;Compact&quot;,&quot;Balanced&quot;,&quot;Spacious&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Layout&quot;}}">
+const DARK = { "--app":"#0e1116","--surface":"#161a21","--elevated":"#1c212a","--muted":"#232935","--hover":"#2a3140","--fg":"#e7eaf0","--fg-muted":"#99a3b2","--fg-subtle":"#6b7686","--line":"#262d39","--line-strong":"#384152","--brand":"#21b6a8","--brand-hover":"#33c6b8","--on-brand":"#052623","--brand-text":"#46d0c2","--brand-soft":"#123734","--brand-soft-text":"#5fddcf","--danger":"#e0655f","--danger-hover":"#e87a74","--on-danger":"#2a0a08","--danger-soft":"#3a1613","--danger-text":"#f0a6a1","--warn-soft":"#33270f","--warn-text":"#e6b968","--ok-soft":"#103026","--ok-text":"#63d19e",
+  "--c-teal":"#46d0c2","--c-teal-soft":"#123734","--c-indigo":"#8b9bfb","--c-indigo-soft":"#1c2350","--c-violet":"#c58cf5","--c-violet-soft":"#2c1f47","--c-amber":"#e6b968","--c-amber-soft":"#33270f","--c-rose":"#ef8fae","--c-rose-soft":"#3a1826","--c-green":"#63d19e","--c-green-soft":"#103026","--c-sky":"#63b6ea","--c-sky-soft":"#0f2a3d" };
+const LIGHT = { "--app":"#f6f7f9","--surface":"#ffffff","--elevated":"#ffffff","--muted":"#eceef2","--hover":"#e7eaef","--fg":"#171b24","--fg-muted":"#6b7688","--fg-subtle":"#98a2b1","--line":"#dde1e8","--line-strong":"#c4cbd5","--brand":"#0f7a72","--brand-hover":"#0b615a","--on-brand":"#ffffff","--brand-text":"#0b615a","--brand-soft":"#e8f6f4","--brand-soft-text":"#0b615a","--danger":"#c6413b","--danger-hover":"#a5322d","--on-danger":"#ffffff","--danger-soft":"#fcecec","--danger-text":"#a5322d","--warn-soft":"#fcf3e6","--warn-text":"#8f5e12","--ok-soft":"#e9f7ef","--ok-text":"#0e6d4a",
+  "--c-teal":"#0f7a72","--c-teal-soft":"#e2f4f2","--c-indigo":"#4f5bd5","--c-indigo-soft":"#eaecfb","--c-violet":"#8b3fd4","--c-violet-soft":"#f3e9fc","--c-amber":"#a6720f","--c-amber-soft":"#fbf1dd","--c-rose":"#c14b74","--c-rose-soft":"#fceaf1","--c-green":"#0e6d4a","--c-green-soft":"#e4f5ec","--c-sky":"#1f7bb8","--c-sky-soft":"#e3f1fb" };
+const RADII = { "--r-chip":"7px","--r-btn":"10px","--r-card":"14px","--r-panel":"18px" };
+const ACCENTS = {
+  Teal: { dark:{}, light:{} },
+  Violet: {
+    dark:{ "--brand":"#8b8cf9","--brand-hover":"#a3a4fb","--on-brand":"#0c0e22","--brand-text":"#aeaffb","--brand-soft":"#231f4a","--brand-soft-text":"#c8c9fd" },
+    light:{ "--brand":"#5a5bd6","--brand-hover":"#4a4bc0","--on-brand":"#ffffff","--brand-text":"#4a4bc0","--brand-soft":"#ececfb","--brand-soft-text":"#4a4bc0" } },
+  Blue: {
+    dark:{ "--brand":"#4a92f5","--brand-hover":"#62a3f8","--on-brand":"#05152e","--brand-text":"#7ab2fa","--brand-soft":"#122942","--brand-soft-text":"#9cc7fb" },
+    light:{ "--brand":"#2f6bf0","--brand-hover":"#255ad6","--on-brand":"#ffffff","--brand-text":"#2456c9","--brand-soft":"#e8f0fe","--brand-soft-text":"#1f4fb8" } },
+  Amber: {
+    dark:{ "--brand":"#e0a34a","--brand-hover":"#eeb45f","--on-brand":"#241701","--brand-text":"#ecbc6e","--brand-soft":"#352712","--brand-soft-text":"#f2cf8e" },
+    light:{ "--brand":"#b5781a","--brand-hover":"#996414","--on-brand":"#ffffff","--brand-text":"#996414","--brand-soft":"#fbf1e0","--brand-soft-text":"#996414" } },
+};
+
+const LISTINGS = [
+  { name_en:"Sodium Hydroxide", name_raw:"氢氧化钠", cas:"1310-73-2", supEn:"Qingdao Echemi Technology Co., Ltd." },
+  { name_en:"Sodium Lauryl Sulfate", name_raw:"K12 / SLS", cas:"151-21-3", supEn:"Jiangsu Hai'an Petrochemical Plant" },
+  { name_en:"Sodium Silicate", name_raw:"硅酸钠 (水玻璃)", cas:null, supEn:"Shandong Yourui Chemical Co., Ltd." },
+  { name_en:"Sodium Metabisulfite", name_raw:"偏重亚硫酸钠", cas:"7681-57-4", supEn:"Hubei Xingfa Chemicals Group Co., Ltd." },
+];
+const SUPPLIERS = [
+  { en:"Qingdao Echemi Technology Co., Ltd.", raw:"青岛易享化工科技有限公司", email:"sales@echemi.com", phone:"+86 532 8098 1234", sites:["www.echemi.com"], count:412, first:"12/03/2025" },
+  { en:"Tianjin Bohai Chemical Industry Group", raw:"天津渤海化工集团", email:"", phone:"", sites:["www.bohaichem.com.cn"], count:268, first:"04/11/2025" },
+  { en:"Bostech Polymer Co., Ltd.", raw:"", email:"info@bostech.com.tw", phone:"+886 2 2712 8899", sites:["www.bostech.com.tw"], count:97, first:"22/01/2026" },
+  { en:"Jiangsu Hai'an Petrochemical Plant", raw:"江苏海安石油化工厂", email:"", phone:"", sites:[], count:64, first:"09/06/2025" },
+  { en:"Hubei Xingfa Chemicals Group Co., Ltd.", raw:"湖北兴发化工集团股份有限公司", email:"export@xingfa.com", phone:"", sites:["www.hbxingfa.com"], count:51, first:"17/09/2025" },
+];
+const USERS = [
+  { email:"admin@aitexsolutions.com", role:"admin", joined:"03/02/2025", last:"20/07/2026", self:true },
+  { email:"nasir@aitexsolutions.com", role:"manager", joined:"14/03/2025", last:"19/07/2026", self:false },
+  { email:"procurement@aitexsolutions.com", role:"viewer", joined:"02/06/2025", last:"18/07/2026", self:false },
+  { email:"lab@aitexsolutions.com", role:"viewer", joined:"28/11/2025", last:"—", self:false },
+];
+const UPLOADS = [
+  { file:"echemi-catalogue-2026.pdf", company:"Qingdao Echemi Technology", products:128, by:"admin@aitexsolutions.com", when:"19/07/2026" },
+  { file:"bohai-price-list-q2.pdf", company:"Tianjin Bohai Chemical", products:74, by:"nasir@aitexsolutions.com", when:"18/07/2026" },
+  { file:"bostech-polymer-brochure.pdf", company:"Bostech Polymer", products:41, by:"nasir@aitexsolutions.com", when:"16/07/2026" },
+  { file:"xingfa-export-2026.pdf", company:"Hubei Xingfa Chemicals", products:33, by:"admin@aitexsolutions.com", when:"14/07/2026" },
+];
+const AUDIT = [
+  { when:"20/07/2026 09:14", who:"admin@aitexsolutions.com", label:"Uploaded", destructive:false, what:"echemi-catalogue-2026.pdf — 128 listings added" },
+  { when:"19/07/2026 17:02", who:"nasir@aitexsolutions.com", label:"Edited", destructive:false, what:"Sodium Silicate — cas_number, purity" },
+  { when:"19/07/2026 16:48", who:"nasir@aitexsolutions.com", label:"Bulk deleted", destructive:true, what:"6 listings" },
+  { when:"18/07/2026 11:20", who:"admin@aitexsolutions.com", label:"Undid upload", destructive:true, what:"old-scan-2019.pdf — 22 listings removed" },
+  { when:"17/07/2026 08:55", who:"nasir@aitexsolutions.com", label:"Deleted", destructive:true, what:"Calcium Carbonate (duplicate)" },
+];
+const JOBS = [
+  { file:"echemi-catalogue-2026.pdf", stage:"Extracting products from page 34 of 96…", status:"processing", pct:62 },
+  { file:"bohai-price-list-q2.pdf", stage:"Queued — waiting for a worker", status:"queued", pct:4 },
+  { file:"bostech-polymer-brochure.pdf", stage:"Done — 41 listings inserted, 3 need review", status:"done", pct:100 },
+  { file:"corrupt-scan.pdf", stage:"Could not read the PDF (no extractable pages)", status:"failed", pct:100 },
+];
+
+class Component extends DCLogic {
+  state = { page:"search", theme:null, overlay:null, overlayEdit:false };
+
+  go(id){ this.setState({ page:id, overlay:null }); window.scrollTo(0,0); }
+  openPanel(edit){ this.setState({ overlay:"panel", overlayEdit:!!edit }); }
+
+  exportCsv = () => {
+    const esc = v => '"' + String(v ?? "").replace(/"/g,'""') + '"';
+    const lines = [["Name (EN)","As printed","CAS","Supplier"].map(esc).join(",")]
+      .concat(LISTINGS.map(r => [r.name_en, r.name_raw, r.cas||"", r.supEn].map(esc).join(",")));
+    const url = URL.createObjectURL(new Blob([lines.join("\n")], { type:"text/csv" }));
+    const a = document.createElement("a"); a.href = url; a.download = "brochuredb-export.csv";
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  };
+
+  renderVals(){
+    const theme = this.state.theme || (this.props.theme === "Light" ? "light" : "dark");
+    const dark = theme === "dark";
+    const accent = ACCENTS[this.props.accent] || {};
+    const pal = { ...(dark ? DARK : LIGHT), ...(dark ? accent.dark : accent.light) };
+    const rootStyle = { ...pal, ...RADII, minHeight:"100vh", background:"var(--app)", color:"var(--fg)", fontFamily:"Geist, ui-sans-serif, system-ui, sans-serif" };
+    const density = this.props.density || "Balanced";
+    const mainPad = density === "Compact" ? "16px 24px 32px" : density === "Spacious" ? "32px 40px 48px" : "20px 32px 40px";
+    const isSearchPage = this.state.page === "search";
+    const mainStyle = isSearchPage
+      ? { width:"100%", height:"calc(100vh - 60px)", display:"flex", flexDirection:"column", padding:0 }
+      : { width:"100%", padding:mainPad };
+    const page = this.state.page;
+
+    const navItem = (id) => {
+      const on = page === id;
+      const base = "position:relative;display:flex;align-items:center;gap:12px;width:100%;border:0;background:none;border-radius:var(--r-btn);padding:9px 12px;margin-bottom:2px;font:400 14px/1 Geist;cursor:pointer;text-align:left;transition:background-color 120ms,color 120ms;";
+      return {
+        onClick: () => this.go(id),
+        style: base + (on ? "background:var(--brand-soft);color:var(--brand-soft-text);font-weight:500;" : "color:var(--fg-muted);"),
+        hover: on ? "background:var(--brand-soft)" : "background:var(--hover);color:var(--fg)",
+        rail: "position:absolute;left:0;top:50%;height:20px;width:3px;transform:translateY(-50%);border-radius:9px;background:var(--brand);opacity:" + (on?"1":"0") + ";",
+      };
+    };
+    const nav = { dashboard:navItem("dashboard"), search:navItem("search"), suppliers:navItem("suppliers"), review:navItem("review"), upload:navItem("upload"), users:navItem("users"), activity:navItem("activity") };
+
+    const suppliers = SUPPLIERS.map(s => ({ ...s,
+      showRaw: !!s.raw, hasEmail: !!s.email, hasPhone: !!s.phone,
+      hasContact: !!(s.email || s.phone || (s.sites && s.sites.length)),
+      noContact: !(s.email || s.phone || (s.sites && s.sites.length)),
+      onView: () => this.openPanel(false) }));
+
+    const users = USERS.map(u => ({ ...u,
+      selectStyle: "appearance:none;height:36px;width:150px;border-radius:var(--r-btn);border:1px solid var(--line);background:var(--surface);padding:0 34px 0 12px;font:400 14px Geist;color:var(--fg);cursor:pointer;" + (u.self ? "opacity:0.55;cursor:not-allowed;" : "") }));
+
+    const hueBadge = (soft, text) => "display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:999px;background:var(" + soft + ");color:var(" + text + ");font:500 12px/1 Geist;";
+    const actionHue = {
+      "Uploaded": ["--c-sky-soft","--c-sky"],
+      "Edited": ["--c-indigo-soft","--c-indigo"],
+      "Undid upload": ["--c-amber-soft","--c-amber"],
+      "Deleted": ["--c-rose-soft","--c-rose"],
+      "Bulk deleted": ["--c-rose-soft","--c-rose"],
+    };
+    const audit = AUDIT.map(e => { const h = actionHue[e.label] || ["--muted","--fg-muted"]; return { ...e, badgeStyle: hueBadge(h[0], h[1]) }; });
+
+    const jobStyles = {
+      processing: "display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:999px;background:var(--brand-soft);color:var(--brand-soft-text);font:500 11px/1 Geist;",
+      queued: "display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:999px;background:var(--muted);color:var(--fg-muted);font:500 11px/1 Geist;",
+      done: "display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:999px;background:var(--ok-soft);color:var(--ok-text);font:500 11px/1 Geist;",
+      failed: "display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:999px;background:var(--danger-soft);color:var(--danger-text);font:500 11px/1 Geist;",
+    };
+    const jobLabels = { processing:"Processing", queued:"Queued", done:"Done", failed:"Failed" };
+    const jobFill = { processing:"var(--brand)", queued:"var(--line-strong)", done:"var(--ok-text)", failed:"var(--danger)" };
+    const jobs = JOBS.map(j => ({ ...j,
+      statusStyle: jobStyles[j.status], statusLabel: jobLabels[j.status],
+      barStyle: "height:100%;border-radius:999px;width:" + j.pct + "%;background:" + jobFill[j.status] + ";",
+      showPause: j.status==="processing", showResume: j.status==="queued",
+      showRestart: j.status==="failed", showCancel: j.status==="processing" || j.status==="queued" }));
+
+    const mkItem = (r) => ({ ...r, showRaw: r.name_raw !== r.name_en, hasCas: !!r.cas });
+    const reviewGroups = [
+      { file:"echemi-catalogue-2026.pdf", countLabel:"2 flagged on this page", items:[mkItem(LISTINGS[1]), mkItem(LISTINGS[2])] },
+      { file:"xingfa-export-2026.pdf", countLabel:"1 flagged on this page", items:[mkItem(LISTINGS[3])] },
+    ];
+
+    return {
+      rootStyle, mainStyle, palette: pal, nav,
+      isDark: dark, isLight: !dark, toggleTheme: () => this.setState({ theme: dark ? "light" : "dark" }),
+      isDashboard: page==="dashboard", isSearch: page==="search", isSuppliers: page==="suppliers",
+      isReview: page==="review", isUpload: page==="upload", isUsers: page==="users", isActivity: page==="activity",
+      statusDist: [
+        { label:"Complete", value:"7,742", pct:"62%", color:"var(--c-green)" },
+        { label:"Needs review", value:"1,872", pct:"15%", color:"var(--c-amber)" },
+        { label:"Missing price", value:"2,867", pct:"23%", color:"var(--c-rose)" },
+      ],
+      topSuppliers: [
+        { name:"Qingdao Echemi Technology", count:"412", w:100, color:"var(--brand)" },
+        { name:"Tianjin Bohai Chemical", count:"268", w:65, color:"var(--c-indigo)" },
+        { name:"Bostech Polymer", count:"97", w:24, color:"var(--c-sky)" },
+        { name:"Jiangsu Hai'an Petrochemical", count:"64", w:16, color:"var(--c-violet)" },
+      ].map(t => ({ ...t, barStyle: "height:100%;border-radius:999px;width:" + t.w + "%;background:" + t.color + ";" })),
+      uploads: UPLOADS, suppliers, users, audit, jobs, reviewGroups,
+      exportCsv: this.exportCsv, noop: () => {},
+      openPanelView: () => this.openPanel(false), openPanelEdit: () => this.openPanel(true),
+      openDelete: () => this.setState({ overlay:"delete" }),
+      closeOverlay: () => this.setState({ overlay:null }),
+      showPanel: this.state.overlay==="panel", showDelete: this.state.overlay==="delete",
+      overlayEdit: this.state.overlayEdit,
+    };
+  }
+
+  componentDidMount(){
+    this._esc = (e) => { if (e.key === "Escape") this.setState({ overlay:null }); };
+    document.addEventListener("keydown", this._esc);
+  }
+  componentWillUnmount(){ document.removeEventListener("keydown", this._esc); }
+}
+</script>
+</body>
+</html>

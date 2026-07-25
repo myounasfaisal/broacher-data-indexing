@@ -8,18 +8,24 @@ import { cn } from "@/lib/utils";
  * tabular value, quiet label, optional tinted icon and hint. `tone` tints the
  * icon/value for metrics that should draw attention (e.g. "needs review").
  */
-type Tone = "default" | "brand" | "warning";
+type Tone = "default" | "brand" | "warning" | "indigo" | "sky";
 
 const iconTones: Record<Tone, string> = {
   default: "bg-muted text-fg-muted",
   brand: "bg-brand-soft text-brand-text",
   warning: "bg-warn-soft text-warn-text",
+  indigo: "bg-c-indigo-soft text-c-indigo",
+  sky: "bg-c-sky-soft text-c-sky",
 };
 
 const valueTones: Record<Tone, string> = {
   default: "text-fg",
   brand: "text-fg",
   warning: "text-warn-text",
+  // The categorical tone lives in the icon tile only; the value stays ink so
+  // the number never competes with the catalog's one accent.
+  indigo: "text-fg",
+  sky: "text-fg",
 };
 
 export function StatCard({

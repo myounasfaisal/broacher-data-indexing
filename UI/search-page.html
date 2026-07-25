@@ -1,0 +1,1166 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BrochureDB — Search chemicals (UI reference)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Geist:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      /* ------------------------------------------------------------------
+         Semantic tokens — copied verbatim from frontend/src/index.css.
+         Same two-layer scheme as the app: components below reference only
+         these variables, so toggling `.dark` on <html> re-themes everything.
+         ------------------------------------------------------------------ */
+      :root {
+        color-scheme: light;
+
+        --app: #f6f7f9;
+        --surface: #ffffff;
+        --elevated: #ffffff;
+        --muted: #eceef2;
+        --hover: #e7eaef;
+        --fg: #171b24;
+        --fg-muted: #6b7688;
+        --fg-subtle: #98a2b1;
+        --line: #dde1e8;
+        --line-strong: #c4cbd5;
+
+        --brand: #0f7a72;
+        --brand-hover: #0b615a;
+        --on-brand: #ffffff;
+        --brand-text: #0b615a;
+        --brand-soft: #e8f6f4;
+        --brand-soft-text: #0b615a;
+
+        --danger: #c6413b;
+        --danger-hover: #a5322d;
+        --on-danger: #ffffff;
+        --danger-soft: #fcecec;
+        --danger-text: #a5322d;
+
+        --warn-soft: #fcf3e6;
+        --warn-text: #8f5e12;
+        --ok-soft: #e9f7ef;
+        --ok-text: #0e6d4a;
+
+        /* Named radii + elevation from tailwind.config.js */
+        --r-chip: 7px;
+        --r-btn: 10px;
+        --r-card: 14px;
+        --r-panel: 18px;
+        --shadow-card: 0 1px 2px 0 rgb(16 24 40 / 0.04),
+          0 1px 3px 0 rgb(16 24 40 / 0.06);
+        --shadow-sm: 0 1px 2px 0 rgb(16 24 40 / 0.05);
+      }
+
+      .dark {
+        color-scheme: dark;
+
+        --app: #0e1116;
+        --surface: #161a21;
+        --elevated: #1c212a;
+        --muted: #232935;
+        --hover: #2a3140;
+        --fg: #e7eaf0;
+        --fg-muted: #99a3b2;
+        --fg-subtle: #6b7686;
+        --line: #262d39;
+        --line-strong: #384152;
+
+        /* Brighter teal fill + near-black text reads clearly on a dark
+           surface (deep teal + white text would sink into the background). */
+        --brand: #21b6a8;
+        --brand-hover: #33c6b8;
+        --on-brand: #052623;
+        --brand-text: #46d0c2;
+        --brand-soft: #123734;
+        --brand-soft-text: #5fddcf;
+
+        --danger: #e0655f;
+        --danger-hover: #e87a74;
+        --on-danger: #2a0a08;
+        --danger-soft: #3a1613;
+        --danger-text: #f0a6a1;
+
+        --warn-soft: #33270f;
+        --warn-text: #e6b968;
+        --ok-soft: #103026;
+        --ok-text: #63d19e;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html {
+        -webkit-text-size-adjust: 100%;
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      body {
+        margin: 0;
+        background: var(--app);
+        color: var(--fg);
+        font-family: "Geist", ui-sans-serif, system-ui, -apple-system,
+          "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        font-size: 16px;
+        line-height: 1.5;
+      }
+
+      .page {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 32px 24px 64px;
+      }
+
+      /* ---------------- PageHeader ---------------- */
+      .page-header {
+        margin-bottom: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      @media (min-width: 640px) {
+        .page-header {
+          flex-direction: row;
+          align-items: flex-end;
+          justify-content: space-between;
+        }
+      }
+      .page-header h1 {
+        margin: 0;
+        font-size: 24px;
+        line-height: 32px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        color: var(--fg);
+      }
+      .page-header p {
+        margin: 4px 0 0;
+        font-size: 14px;
+        color: var(--fg-muted);
+      }
+
+      /* ---------------- Card ---------------- */
+      .card {
+        border-radius: var(--r-card);
+        border: 1px solid var(--line);
+        background: var(--surface);
+        box-shadow: var(--shadow-card);
+      }
+      .card-content {
+        padding: 24px;
+        padding-top: 24px;
+      }
+      .stack > * + * {
+        margin-top: 16px;
+      }
+
+      .eyebrow {
+        margin: 0 0 8px;
+        font-size: 12px;
+        line-height: 16px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--fg-subtle);
+      }
+
+      .divider-top {
+        border-top: 1px solid var(--line);
+        padding-top: 16px;
+      }
+
+      /* ---------------- Button ---------------- */
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        border-radius: var(--r-btn);
+        font-family: inherit;
+        font-size: 14px;
+        font-weight: 500;
+        height: 40px;
+        padding: 8px 16px;
+        border: 0;
+        cursor: pointer;
+        transition: background-color 150ms, border-color 150ms, color 150ms,
+          box-shadow 150ms;
+      }
+      .btn:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 2px var(--app), 0 0 0 4px color-mix(in srgb, var(--brand) 70%, transparent);
+      }
+      .btn:disabled {
+        pointer-events: none;
+        opacity: 0.5;
+      }
+      .btn-default {
+        background: var(--brand);
+        color: var(--on-brand);
+        box-shadow: var(--shadow-sm);
+      }
+      .btn-default:hover {
+        background: var(--brand-hover);
+      }
+      .btn-outline {
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--fg);
+        box-shadow: var(--shadow-sm);
+      }
+      .btn-outline:hover {
+        background: var(--muted);
+        border-color: var(--line-strong);
+      }
+      .btn-destructive {
+        background: var(--danger);
+        color: var(--on-danger);
+        box-shadow: var(--shadow-sm);
+      }
+      .btn-destructive:hover {
+        background: var(--danger-hover);
+      }
+      .btn-sm {
+        height: 32px;
+        padding: 0 12px;
+        font-size: 13px;
+      }
+
+      /* ---------------- Input / Select / Label ---------------- */
+      .label {
+        display: block;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--fg);
+      }
+      .input {
+        display: flex;
+        height: 40px;
+        width: 100%;
+        border-radius: var(--r-btn);
+        border: 1px solid var(--line);
+        background: var(--surface);
+        padding: 8px 12px;
+        font-family: inherit;
+        font-size: 14px;
+        color: var(--fg);
+        box-shadow: var(--shadow-sm);
+        transition: border-color 150ms, box-shadow 150ms;
+      }
+      .input::placeholder {
+        color: var(--fg-subtle);
+      }
+      .input:focus-visible {
+        outline: none;
+        border-color: var(--brand);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand) 30%, transparent);
+      }
+      .select-wrap {
+        position: relative;
+      }
+      .select {
+        appearance: none;
+        height: 40px;
+        width: 100%;
+        border-radius: var(--r-btn);
+        border: 1px solid var(--line);
+        background: var(--surface);
+        padding: 0 36px 0 12px;
+        font-family: inherit;
+        font-size: 14px;
+        color: var(--fg);
+        box-shadow: var(--shadow-sm);
+      }
+      .select:focus-visible {
+        outline: none;
+        border-color: var(--brand);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand) 30%, transparent);
+      }
+      .select-chevron {
+        pointer-events: none;
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 16px;
+        height: 16px;
+        color: var(--fg-subtle);
+      }
+      input[type="checkbox"] {
+        height: 16px;
+        width: 16px;
+        cursor: pointer;
+        border-radius: 4px;
+        accent-color: var(--brand);
+        margin: 0;
+      }
+
+      /* ---------------- AI search bar ---------------- */
+      .ai-row {
+        display: flex;
+        gap: 8px;
+      }
+      .ai-field {
+        position: relative;
+        flex: 1;
+      }
+      .ai-field .icon {
+        pointer-events: none;
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 16px;
+        height: 16px;
+        color: var(--brand-text);
+      }
+      .ai-field .input {
+        padding-left: 36px;
+      }
+
+      /* ---------------- Filter grid (SearchFilters) ---------------- */
+      .filter-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+      @media (min-width: 640px) {
+        .filter-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      @media (min-width: 1024px) {
+        .filter-grid {
+          grid-template-columns: repeat(5, minmax(0, 1fr));
+          align-items: end;
+        }
+        .filter-grid .col-span-2 {
+          grid-column: span 2;
+        }
+        .filter-grid .col-span-5 {
+          grid-column: span 5;
+        }
+      }
+      .field > * + * {
+        margin-top: 4px;
+      }
+      .apply-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
+      }
+      .checkbox-label {
+        display: flex;
+        cursor: pointer;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+        color: var(--fg-muted);
+      }
+      .apply-row .btn {
+        width: 160px;
+      }
+      @media (min-width: 640px) {
+        .apply-row .btn {
+          margin-left: auto;
+        }
+      }
+
+      /* ---------------- AlphabetBar ---------------- */
+      .alphabet {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+      .letter {
+        height: 32px;
+        width: 32px;
+        border-radius: var(--r-btn);
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--fg-muted);
+        font-family: inherit;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color 150ms, border-color 150ms, color 150ms;
+      }
+      .letter.wide {
+        width: auto;
+        padding: 0 12px;
+      }
+      .letter:hover {
+        border-color: var(--line-strong);
+        background: var(--muted);
+      }
+      .letter.active {
+        border-color: var(--brand);
+        background: var(--brand);
+        color: var(--on-brand);
+      }
+      .letter:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand) 70%, transparent);
+      }
+
+      /* ---------------- Results meta ---------------- */
+      .results-meta {
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 14px;
+        color: var(--fg-muted);
+      }
+      .results-meta .em {
+        font-weight: 500;
+        color: var(--fg);
+      }
+
+      /* ---------------- SelectionBar ---------------- */
+      .selection-bar {
+        margin-bottom: 12px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 12px;
+        border-radius: var(--r-btn);
+        border: 1px solid color-mix(in srgb, var(--brand) 30%, transparent);
+        background: var(--brand-soft);
+        padding: 8px 12px;
+      }
+      .selection-bar .count {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--brand-soft-text);
+      }
+      .selection-bar .hint {
+        font-size: 12px;
+        color: color-mix(in srgb, var(--brand-soft-text) 80%, transparent);
+      }
+      .selection-bar .actions {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .link-btn {
+        border: 0;
+        background: none;
+        border-radius: var(--r-btn);
+        padding: 6px 10px;
+        font-family: inherit;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--brand-soft-text);
+        cursor: pointer;
+      }
+      .link-btn:hover {
+        background: color-mix(in srgb, var(--brand) 10%, transparent);
+      }
+
+      /* ---------------- Table ---------------- */
+      .table-wrap {
+        width: 100%;
+        overflow-x: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        caption-side: bottom;
+        font-size: 14px;
+      }
+      thead {
+        border-bottom: 1px solid var(--line);
+      }
+      th {
+        height: 40px;
+        padding: 0 12px;
+        text-align: left;
+        vertical-align: middle;
+        font-size: 12px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--fg-subtle);
+      }
+      th.right {
+        text-align: right;
+      }
+      tbody tr {
+        border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+        transition: background-color 150ms;
+      }
+      tbody tr:hover {
+        background: color-mix(in srgb, var(--hover) 60%, transparent);
+      }
+      td {
+        padding: 10px 12px;
+        vertical-align: middle;
+        color: var(--fg);
+      }
+      td.right {
+        text-align: right;
+      }
+      td.name {
+        font-weight: 500;
+      }
+      td.printed {
+        color: var(--fg-muted);
+      }
+      .w-8 {
+        width: 32px;
+      }
+
+      .product-link {
+        border: 0;
+        background: none;
+        padding: 0;
+        font-family: inherit;
+        font-size: inherit;
+        font-weight: inherit;
+        text-align: left;
+        color: var(--brand-text);
+        cursor: pointer;
+      }
+      .product-link:hover {
+        text-decoration: underline;
+      }
+
+      .supplier-primary {
+        color: var(--fg);
+      }
+      .supplier-secondary {
+        display: block;
+        font-size: 12px;
+        color: var(--fg-subtle);
+      }
+
+      .dash {
+        color: var(--fg-subtle);
+      }
+
+      .row-edit {
+        border: 0;
+        background: none;
+        border-radius: 4px;
+        padding: 4px 8px;
+        font-family: inherit;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--brand-text);
+        cursor: pointer;
+      }
+      .row-edit:hover {
+        background: var(--brand-soft);
+      }
+
+      /* ---------------- MonoChip ---------------- */
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        white-space: nowrap;
+        border-radius: var(--r-chip);
+        padding: 2px 6px;
+        font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo,
+          Consolas, monospace;
+        font-size: 12px;
+        line-height: 20px;
+        letter-spacing: -0.01em;
+        font-variant-numeric: tabular-nums;
+      }
+      .chip-price {
+        background: var(--brand-soft);
+        color: var(--brand-soft-text);
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand) 20%, transparent);
+        font-weight: 500;
+      }
+      .chip-cas {
+        color: var(--brand-text);
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand) 30%, transparent);
+      }
+      .chip-neutral {
+        background: var(--muted);
+        color: var(--fg-muted);
+        box-shadow: inset 0 0 0 1px var(--line);
+      }
+
+      .converted {
+        display: block;
+        margin-top: 2px;
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 11px;
+        color: var(--fg-subtle);
+      }
+
+      /* ---------------- Badge (needs_review) ---------------- */
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 9999px;
+        padding: 2px 10px;
+        font-size: 12px;
+        font-weight: 500;
+      }
+      .badge-warning {
+        background: var(--warn-soft);
+        color: var(--warn-text);
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warn-text) 20%, transparent);
+      }
+      .review-wrap {
+        position: relative;
+        display: inline-flex;
+        margin-left: 8px;
+      }
+      .review-wrap .tip {
+        pointer-events: none;
+        position: absolute;
+        left: 0;
+        top: 100%;
+        z-index: 20;
+        margin-top: 6px;
+        display: none;
+        width: 240px;
+        border-radius: 6px;
+        background: var(--fg);
+        color: var(--app);
+        padding: 6px 10px;
+        font-size: 12px;
+        font-weight: 400;
+        line-height: 1.4;
+      }
+      .review-wrap:hover .tip {
+        display: block;
+      }
+
+      /* ---------------- Pagination ---------------- */
+      .pagination {
+        margin-top: 16px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+      }
+      .page-btn {
+        height: 36px;
+        min-width: 36px;
+        border-radius: var(--r-btn);
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--fg-muted);
+        padding: 0 8px;
+        font-family: inherit;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color 150ms;
+      }
+      .page-btn:hover {
+        background: var(--muted);
+      }
+      .page-btn.active {
+        border-color: var(--brand);
+        background: var(--brand);
+        color: var(--on-brand);
+      }
+      .gap {
+        padding: 0 4px;
+        font-size: 14px;
+        color: var(--fg-subtle);
+      }
+
+      /* Mobile card list — the md:hidden branch of ResultsTable. */
+      .mobile-list {
+        display: none;
+      }
+      @media (max-width: 767px) {
+        .table-wrap {
+          display: none;
+        }
+        .mobile-list {
+          display: block;
+          list-style: none;
+          margin: 0;
+          padding: 0;
+        }
+        .mobile-list li + li {
+          margin-top: 12px;
+        }
+        .mobile-card {
+          border-radius: var(--r-card);
+          border: 1px solid var(--line);
+          background: var(--surface);
+          padding: 12px;
+          box-shadow: var(--shadow-card);
+        }
+        .mobile-card .top {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 12px;
+        }
+        .mobile-card dl {
+          margin: 8px 0 0;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 6px 16px;
+          font-size: 12px;
+          color: var(--fg-muted);
+        }
+        .mobile-card dt {
+          color: var(--fg-subtle);
+        }
+        .mobile-card .pair {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .mobile-card dd {
+          margin: 0;
+        }
+        .mobile-card .full {
+          grid-column: span 2;
+        }
+      }
+
+      /* Theme toggle — not part of the page itself; this file is a static
+         reference, so it stands in for the app shell's toggle. */
+      .theme-toggle {
+        position: fixed;
+        right: 16px;
+        bottom: 16px;
+        z-index: 50;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="page">
+      <!-- PageHeader -->
+      <div class="page-header">
+        <div>
+          <h1>Search chemicals</h1>
+          <p>
+            Compare suppliers and find the cheapest option — even under
+            different trade names.
+          </p>
+        </div>
+      </div>
+
+      <div class="stack">
+        <!-- ============ Card 1: AI search + filters + alphabet ============ -->
+        <div class="card">
+          <div class="card-content stack">
+            <!-- AI search -->
+            <div>
+              <p class="eyebrow">AI search</p>
+              <div class="ai-row">
+                <div class="ai-field">
+                  <svg
+                    class="icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"
+                    />
+                  </svg>
+                  <input
+                    class="input"
+                    aria-label="AI search"
+                    placeholder="Ask in plain words — e.g. &quot;cheapest sodium hydroxide under $5 with purity over 99%&quot;"
+                  />
+                </div>
+                <button class="btn btn-default" type="button">AI search</button>
+              </div>
+            </div>
+
+            <!-- SearchFilters -->
+            <div class="divider-top">
+              <form class="filter-grid" onsubmit="return false">
+                <div class="field col-span-2">
+                  <label class="label" for="q"
+                    >Name, CAS, supplier or description</label
+                  >
+                  <input
+                    class="input"
+                    id="q"
+                    placeholder="e.g. ethanol, 64-17-5, titanium dioxide"
+                  />
+                </div>
+
+                <div class="field">
+                  <label class="label" for="maxPrice">Max price (USD)</label>
+                  <input class="input" id="maxPrice" type="number" min="0" />
+                </div>
+
+                <div class="field">
+                  <label class="label" for="minPurity">Min purity %</label>
+                  <input
+                    class="input"
+                    id="minPurity"
+                    type="number"
+                    min="0"
+                    max="100"
+                  />
+                </div>
+
+                <div class="field">
+                  <label class="label" for="sort">Sort by</label>
+                  <div class="select-wrap">
+                    <select class="select" id="sort">
+                      <option value="price_asc">Price: low → high</option>
+                      <option value="price_desc">Price: high → low</option>
+                      <option value="name_asc">Name: A → Z</option>
+                      <option value="name_desc">Name: Z → A</option>
+                    </select>
+                    <svg
+                      class="select-chevron"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="m6 9 6 6 6-6" />
+                    </svg>
+                  </div>
+                </div>
+
+                <div class="apply-row col-span-5">
+                  <label class="checkbox-label" for="pricedOnly">
+                    <input id="pricedOnly" type="checkbox" />
+                    Only listings with a price
+                  </label>
+                  <button class="btn btn-default" type="submit">
+                    Apply filters
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <!-- AlphabetBar -->
+            <div class="divider-top">
+              <p class="eyebrow">Browse by letter</p>
+              <div class="alphabet" id="alphabet">
+                <button class="letter wide active" type="button">All</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============ Card 2: results ============ -->
+        <div class="card">
+          <div class="card-content">
+            <div class="results-meta">
+              <span>
+                <span class="em">683</span> results matching
+                <span class="em">“sodium”</span>
+              </span>
+              <span>Page 1 of 46</span>
+            </div>
+
+            <!-- SelectionBar (admin/manager only; shown here with 2 selected) -->
+            <div class="selection-bar">
+              <span class="count">2 listings selected</span>
+              <span class="hint"
+                >the header checkbox selects the 15 shown on this page;
+                selections keep across pages</span
+              >
+              <div class="actions">
+                <button class="btn btn-destructive btn-sm" type="button">
+                  Delete selected
+                </button>
+                <button class="link-btn" type="button">Clear selection</button>
+              </div>
+            </div>
+
+            <!-- ResultsTable — md and up -->
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th class="w-8">
+                      <input type="checkbox" aria-label="Select all 15 listings shown on this page" />
+                    </th>
+                    <th>Name (EN)</th>
+                    <th>As printed</th>
+                    <th>CAS</th>
+                    <th>Supplier</th>
+                    <th class="right">Price</th>
+                    <th>Purity</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="rows"></tbody>
+              </table>
+            </div>
+
+            <!-- ResultsTable — below md -->
+            <ul class="mobile-list" id="mobileRows"></ul>
+
+            <!-- Pagination -->
+            <div class="pagination" id="pagination"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn btn-outline btn-sm theme-toggle" id="themeToggle" type="button">
+      Light / dark
+    </button>
+
+    <script>
+      // Representative rows only — this file is a static UI reference, so the
+      // data is illustrative sample content, not real listings from the DB.
+      const rows = [
+        {
+          name_en: "Sodium Hydroxide",
+          name_raw: "氢氧化钠",
+          cas: "1310-73-2",
+          supplierEn: "Qingdao Echemi Technology Co., Ltd.",
+          supplierRaw: "青岛易享化工科技有限公司",
+          price: "420 USD",
+          converted: "≈ ₨116,760",
+          purity: "99%",
+          review: false,
+          selected: true,
+        },
+        {
+          name_en: "Sodium Carbonate (Soda Ash Light)",
+          name_raw: "碳酸钠",
+          cas: "497-19-8",
+          supplierEn: "Tianjin Bohai Chemical Industry Group",
+          supplierRaw: "天津渤海化工集团",
+          price: "285 USD",
+          converted: "≈ ₨79,230",
+          purity: "99.2%",
+          review: false,
+          selected: true,
+        },
+        {
+          name_en: "Sodium Bicarbonate",
+          name_raw: "Sodium Bicarbonate",
+          cas: "144-55-8",
+          supplierEn: "Bostech Polymer Co., Ltd.",
+          supplierRaw: "",
+          price: "310 USD",
+          converted: "≈ ₨86,180",
+          purity: null,
+          review: false,
+          selected: false,
+        },
+        {
+          name_en: "Sodium Lauryl Sulfate",
+          name_raw: "K12 / SLS",
+          cas: "151-21-3",
+          supplierEn: "Jiangsu Hai'an Petrochemical Plant",
+          supplierRaw: "江苏海安石油化工厂",
+          price: "1,250 CNY",
+          converted: "≈ $172 · ₨47,820",
+          purity: "92% min",
+          review: true,
+          selected: false,
+        },
+        {
+          name_en: "Sodium Metabisulfite",
+          name_raw: "偏重亚硫酸钠",
+          cas: "7681-57-4",
+          supplierEn: "Hubei Xingfa Chemicals Group Co., Ltd.",
+          supplierRaw: "湖北兴发化工集团股份有限公司",
+          price: null,
+          converted: "",
+          purity: "97%",
+          review: false,
+          selected: false,
+        },
+        {
+          name_en: "Sodium Silicate",
+          name_raw: "硅酸钠 (水玻璃)",
+          cas: null,
+          supplierEn: "Shandong Yourui Chemical Co., Ltd.",
+          supplierRaw: "山东优瑞化工有限公司",
+          price: "198 USD",
+          converted: "≈ ₨55,040",
+          purity: null,
+          review: true,
+          selected: false,
+        },
+        {
+          name_en: "Sodium Tripolyphosphate",
+          name_raw: "STPP",
+          cas: "7758-29-4",
+          supplierEn: "Yunnan Nanlin Chemical Co., Ltd.",
+          supplierRaw: "云南南磷化工有限公司",
+          price: "845 USD",
+          converted: "≈ ₨234,910",
+          purity: "94% min",
+          review: false,
+          selected: false,
+        },
+      ];
+
+      const REVIEW_HINT =
+        "The AI matched this listing to its chemical by name similarity (no exact CAS or name hit) — an admin should verify it.";
+
+      const reviewBadge = `
+        <span class="review-wrap">
+          <span class="badge badge-warning" tabindex="0" style="cursor:help">review</span>
+          <span class="tip" role="tooltip">${REVIEW_HINT}</span>
+        </span>`;
+
+      const dash = '<span class="dash">—</span>';
+
+      function supplierCell(r) {
+        const secondary =
+          r.supplierRaw && r.supplierRaw !== r.supplierEn
+            ? `<span class="supplier-secondary">${r.supplierRaw}</span>`
+            : "";
+        return `<span class="supplier-primary">${r.supplierEn}</span>${secondary}`;
+      }
+
+      function priceCell(r) {
+        const main = r.price
+          ? `<span class="chip chip-price">${r.price}</span>`
+          : dash;
+        const conv = r.converted
+          ? `<span class="converted" title="Approximate — converted at current exchange rates">${r.converted}</span>`
+          : "";
+        return main + conv;
+      }
+
+      document.getElementById("rows").innerHTML = rows
+        .map(
+          (r) => `
+        <tr>
+          <td class="w-8"><input type="checkbox" ${r.selected ? "checked" : ""} aria-label="Select ${r.name_en}" /></td>
+          <td class="name">
+            <button class="product-link" type="button" title="View full product details">${r.name_en}</button>
+            ${r.review ? reviewBadge : ""}
+          </td>
+          <td class="printed">${r.name_raw}</td>
+          <td>${r.cas ? `<span class="chip chip-cas">${r.cas}</span>` : dash}</td>
+          <td>${supplierCell(r)}</td>
+          <td class="right">${priceCell(r)}</td>
+          <td>${r.purity ? `<span class="chip chip-neutral">${r.purity}</span>` : dash}</td>
+          <td class="right"><button class="row-edit" type="button" title="Open with the edit form">Edit</button></td>
+        </tr>`,
+        )
+        .join("");
+
+      document.getElementById("mobileRows").innerHTML = rows
+        .map(
+          (r) => `
+        <li class="mobile-card">
+          <div class="top">
+            <input type="checkbox" ${r.selected ? "checked" : ""} aria-label="Select ${r.name_en}" />
+            <div style="min-width:0">
+              <p style="margin:0;font-weight:500">
+                <button class="product-link" type="button">${r.name_en}</button>
+                ${r.review ? reviewBadge : ""}
+              </p>
+              ${
+                r.name_raw !== r.name_en
+                  ? `<p style="margin:0;font-size:12px;color:var(--fg-muted)">${r.name_raw}</p>`
+                  : ""
+              }
+            </div>
+            <div style="text-align:right">${priceCell(r)}</div>
+          </div>
+          <dl>
+            <div class="pair"><dt>CAS</dt><dd>${r.cas ? `<span class="chip chip-cas">${r.cas}</span>` : dash}</dd></div>
+            <div class="pair"><dt>Purity</dt><dd>${r.purity ? `<span class="chip chip-neutral">${r.purity}</span>` : dash}</dd></div>
+            <div class="full">
+              <dt style="display:inline">Supplier </dt>
+              <dd style="display:inline">${r.supplierEn}${
+                r.supplierRaw && r.supplierRaw !== r.supplierEn
+                  ? ` <span class="dash">(${r.supplierRaw})</span>`
+                  : ""
+              }</dd>
+            </div>
+          </dl>
+          <div style="margin-top:8px;text-align:right">
+            <button class="row-edit" type="button">Edit</button>
+          </div>
+        </li>`,
+        )
+        .join("");
+
+      // AlphabetBar: "All" + A–Z
+      const alphabet = document.getElementById("alphabet");
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").forEach((l) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "letter";
+        b.textContent = l;
+        b.addEventListener("click", () => {
+          alphabet
+            .querySelectorAll(".letter")
+            .forEach((x) => x.classList.remove("active"));
+          b.classList.add("active");
+        });
+        alphabet.appendChild(b);
+      });
+      alphabet.querySelector(".letter.wide").addEventListener("click", (e) => {
+        alphabet
+          .querySelectorAll(".letter")
+          .forEach((x) => x.classList.remove("active"));
+        e.currentTarget.classList.add("active");
+      });
+
+      // Pagination: same sliding window as Pagination.tsx (1 … 4 5 [6] 7 8 … 46)
+      function pageWindow(page, total) {
+        const set = new Set([1, total]);
+        for (let p = page - 2; p <= page + 2; p++) {
+          if (p >= 1 && p <= total) set.add(p);
+        }
+        const sorted = [...set].sort((a, b) => a - b);
+        const out = [];
+        let prev = 0;
+        for (const p of sorted) {
+          if (prev && p - prev > 1) out.push("…");
+          out.push(p);
+          prev = p;
+        }
+        return out;
+      }
+
+      const CURRENT = 1;
+      const TOTAL = 46;
+      document.getElementById("pagination").innerHTML =
+        `<button class="btn btn-outline btn-sm" disabled>Prev</button>` +
+        pageWindow(CURRENT, TOTAL)
+          .map((p) =>
+            p === "…"
+              ? `<span class="gap">…</span>`
+              : `<button class="page-btn ${p === CURRENT ? "active" : ""}" type="button">${p}</button>`,
+          )
+          .join("") +
+        `<button class="btn btn-outline btn-sm">Next</button>`;
+
+      document.getElementById("themeToggle").addEventListener("click", () => {
+        document.documentElement.classList.toggle("dark");
+      });
+    </script>
+  </body>
+</html>

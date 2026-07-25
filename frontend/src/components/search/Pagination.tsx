@@ -37,7 +37,9 @@ export function Pagination({
             type="button"
             onClick={() => onPage(p)}
             className={[
-              "h-9 min-w-9 rounded-btn border px-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/70",
+              // 36px reads right beside the sm buttons on a mouse; coarse
+              // pointers get the 44px minimum instead.
+              "h-9 min-w-9 touch-target rounded-btn border px-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/70",
               p === page
                 ? "border-brand bg-brand text-on-brand"
                 : "border-line bg-surface text-fg-muted hover:bg-muted",

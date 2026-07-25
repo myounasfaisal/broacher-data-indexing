@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { MonoChip } from "@/components/ui/mono-chip";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Listing } from "@/types/chemical";
+import { formatDate, websiteHref } from "@/lib/format";
 
 // Enrichment (PubChem-by-CAS) is attached under this key and rendered as its
 // own clearly-labelled "not from the brochure" section, kept out of the
@@ -95,11 +96,14 @@ export function ListingDetailBody({
                 {data.name_en}
                 {data.needs_review && <ReviewBadge />}
               </CardTitle>
-              {data.name_raw !== data.name_en && (
-                <p className="mt-1 text-sm text-fg-muted">
-                  As printed: {data.name_raw}
-                </p>
-              )}
+              {/* Always shown, even when identical to the English name: the
+                  results table no longer carries an "As printed" column, so
+                  this panel is the one place the brochure's own wording is
+                  guaranteed to be retrievable. */}
+              <p className="mt-1 text-sm text-fg-muted">
+                As printed:{" "}
+                <span className="text-fg">{data.name_raw}</span>
+              </p>
             </CardHeader>
             <CardContent className="space-y-4">
               <dl className="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
@@ -311,17 +315,7 @@ function formatDetailValue(value: unknown): string | null {
   return null;
 }
 
-function formatDate(value: string): string {
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString();
-}
 
-/** Printed URLs often omit the scheme; only http(s) links are emitted. */
-function websiteHref(url: string): string {
-  const trimmed = url.trim();
-  if (/^https?:\/\//i.test(trimmed)) return trimmed;
-  return `https://${trimmed}`;
-}
 
 /**
  * Honest product lookup: a web search scoped to the supplier's site when we

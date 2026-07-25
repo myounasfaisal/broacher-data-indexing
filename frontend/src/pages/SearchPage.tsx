@@ -14,8 +14,11 @@ import {
 } from "@/lib/api";
 import {
   SearchFilters,
+  countActiveFilters,
+  isDirty,
   type FilterValues,
 } from "@/components/search/SearchFilters";
+import { SearchBox } from "@/components/search/SearchBox";
 import {
   ResultsSkeleton,
   ResultsTable,
@@ -26,9 +29,9 @@ import { Pagination } from "@/components/search/Pagination";
 import { ListingPanel } from "@/components/listing/ListingPanel";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ChevronDown, Sparkles, SlidersHorizontal, X } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { SelectionBar } from "@/components/ui/selection-bar";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { useRole } from "@/hooks/useRole";
 import { useSelection } from "@/hooks/useSelection";
 
@@ -81,32 +84,45 @@ function loadPersistedState(): Partial<PersistedState> {
 export default function SearchPage() {
   // An explicit ?q= in the URL (e.g. the Suppliers page's "View products"
   // link) beats any persisted state: it starts a fresh named search.
-  const [urlQ] = useState(
-    () => new URLSearchParams(window.location.search).get("q") || null,
-  );
+  // ?supplier= is how the Suppliers page's "View products" arrives: it fills
+  // the supplier FILTER and leaves the main box empty, so the user can type a
+  // product straight away and search within that supplier. (?q= is the older
+  // form and still starts a plain named search.)
+  const [urlArrival] = useState(() => {
+    const p = new URLSearchParams(window.location.search);
+    return { q: p.get("q"), supplier: p.get("supplier") };
+  });
+  const urlQ = urlArrival.q;
+  const urlSupplier = urlArrival.supplier;
+  const fromUrl = Boolean(urlQ || urlSupplier);
+
   const [searchParams, setSearchParams] = useSearchParams();
   const [restored] = useState(loadPersistedState);
-  const initialQ = urlQ ?? restored.q ?? "";
+  const initialQ = urlQ ?? (urlSupplier ? "" : (restored.q ?? ""));
+  const initialFilters: FilterValues = urlSupplier
+    ? { ...DEFAULT_FILTERS, supplier: urlSupplier }
+    : (restored.filters ?? DEFAULT_FILTERS);
   const [q, setQ] = useState(initialQ);
   const [debouncedQ, setDebouncedQ] = useState(initialQ.trim());
-  const [filters, setFilters] = useState<FilterValues>(
-    restored.filters ?? DEFAULT_FILTERS,
-  );
-  const [appliedFilters, setAppliedFilters] = useState<FilterValues>(
-    restored.appliedFilters ?? DEFAULT_FILTERS,
-  );
+  const [filters, setFilters] = useState<FilterValues>(initialFilters);
+  const [appliedFilters, setAppliedFilters] =
+    useState<FilterValues>(
+      urlSupplier ? initialFilters : (restored.appliedFilters ?? DEFAULT_FILTERS),
+    );
   const [letter, setLetter] = useState<string | null>(
-    urlQ ? null : (restored.letter ?? null),
+    fromUrl ? null : (restored.letter ?? null),
   );
   const [aiFilters, setAiFilters] = useState<InterpretedFilters | null>(
-    urlQ ? null : (restored.aiFilters ?? null),
+    fromUrl ? null : (restored.aiFilters ?? null),
   );
-  const [page, setPage] = useState(urlQ ? 1 : (restored.page ?? 1));
+  const [page, setPage] = useState(fromUrl ? 1 : (restored.page ?? 1));
 
-  // The ?q= param is consumed exactly once — drop it from the URL so later
-  // typing/back-navigation doesn't resurrect a stale query.
+  // Both arrival params are consumed exactly once — drop them from the URL so
+  // later typing/back-navigation doesn't resurrect a stale query or filter.
   useEffect(() => {
-    if (searchParams.has("q")) setSearchParams({}, { replace: true });
+    if (searchParams.has("q") || searchParams.has("supplier")) {
+      setSearchParams({}, { replace: true });
+    }
   }, [searchParams, setSearchParams]);
 
   // Slide-in product panel: the id being viewed, or null when closed.
@@ -115,6 +131,13 @@ export default function SearchPage() {
   // Edit button) or collapsed (a name click).
   const [openId, setOpenId] = useState<string | null>(null);
   const [openEdit, setOpenEdit] = useState(false);
+
+  // Both refine surfaces start closed at every screen size. Results are the
+  // point of the page; filter chrome that is always open pushes the first row
+  // below the fold on desktop as well as mobile. The Filters toggle carries a
+  // count so a collapsed panel is never a hidden-state trap.
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
 
   const { data: role } = useRole();
   // Bulk delete follows the listing write permission: admin + manager.
@@ -283,51 +306,152 @@ export default function SearchPage() {
   }
 
   const searching = debouncedQ.length > 0;
+  const activeCount = countActiveFilters(appliedFilters);
+  const dirty = isDirty(filters, appliedFilters);
+  // Letter browsing lives inside the collapsed panel too, so it has to count
+  // toward the badge — otherwise picking "K", collapsing, and forgetting reads
+  // as "the database only has 40 chemicals".
+  const refineCount = activeCount + (letter ? 1 : 0);
+
+  function resetFilters() {
+    setFilters(DEFAULT_FILTERS);
+    setAppliedFilters(DEFAULT_FILTERS);
+    setPage(1);
+  }
+
+  function clearSupplier() {
+    setFilters((f) => ({ ...f, supplier: undefined }));
+    setAppliedFilters((f) => ({ ...f, supplier: undefined }));
+    setPage(1);
+  }
 
   return (
     <div>
-      <PageHeader
-        title="Search chemicals"
-        description="Compare suppliers and find the cheapest option — even under different trade names."
-      />
+      {/* The toolbar is the only chrome above the results. It sticks under the
+          mobile top bar (h-14) and at the top of the desktop column, so the
+          search field and the active-filter state stay reachable while a long
+          result list scrolls — without costing a screenful at rest. */}
+      <div className="sticky top-14 z-10 -mx-4 mb-4 border-b border-line glass px-4 py-3 sm:-mx-6 sm:px-6 lg:top-0 lg:-mx-8 lg:px-8">
+        <h1 className="sr-only">Search chemicals</h1>
 
-      <div className="space-y-6">
-      <Card>
-        <CardContent className="space-y-4 pt-6">
-          <div className="space-y-2">
-            <p className="text-xs font-medium uppercase tracking-wide text-fg-subtle">
-              AI search
-            </p>
-            <AISearchBar onFilters={applyAiFilters} />
-            {aiFilters && (
-              <FilterChips
-                filters={aiFilters}
-                onChange={editAiFilters}
-                onClear={clearAiFilters}
-              />
-            )}
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <SearchBox q={q} onChange={handleQChange} onCommit={commitQ} />
           </div>
-          <div className="border-t border-line pt-4">
+
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setAiOpen((v) => !v)}
+            aria-expanded={aiOpen}
+            aria-controls="ai-search-panel"
+            title="Search in plain words"
+            // Open = active mode, so it carries the accent instead of a flat
+            // grey — the colour marks state, matching the neon field and the
+            // filter count badge.
+            className={
+              aiOpen
+                ? "border-brand/40 bg-brand-soft text-brand-soft-text hover:bg-brand-soft hover:border-brand/50"
+                : undefined
+            }
+          >
+            <Sparkles className="h-4 w-4 text-brand-text" />
+            <span className="hidden sm:inline">Ask AI</span>
+          </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setFiltersOpen((v) => !v)}
+            aria-expanded={filtersOpen}
+            aria-controls="filters-panel"
+            className={
+              filtersOpen
+                ? "border-brand/40 bg-brand-soft text-brand-soft-text hover:bg-brand-soft hover:border-brand/50"
+                : undefined
+            }
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            <span className="hidden sm:inline">Filters</span>
+            {refineCount > 0 && (
+              <span
+                className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1.5 text-[11px] font-semibold text-on-brand"
+                aria-label={`${refineCount} active`}
+              >
+                {refineCount}
+              </span>
+            )}
+            <ChevronDown
+              className={`h-4 w-4 transition-transform duration-150 ${
+                filtersOpen ? "rotate-180" : ""
+              }`}
+            />
+          </Button>
+        </div>
+
+        {/* An active supplier filter has to be visible with the panel closed —
+            arriving from Suppliers' "View products" would otherwise look like
+            nothing happened. Not shown in AI mode, where the AI's own chips
+            are the active filter set. */}
+        {!aiFilters && appliedFilters.supplier && (
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+            <span className="label-caption">Supplier</span>
+            <button
+              type="button"
+              onClick={clearSupplier}
+              title="Remove the supplier filter"
+              className="touch-target inline-flex items-center gap-1 rounded-full bg-brand-soft px-2.5 py-0.5 text-brand-soft-text ring-1 ring-inset ring-brand/20 transition-colors hover:bg-brand/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/70"
+            >
+              {appliedFilters.supplier}
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        )}
+
+        {aiOpen && (
+          <div id="ai-search-panel" className="mt-3">
+            <AISearchBar onFilters={applyAiFilters} />
+          </div>
+        )}
+
+        {aiFilters && (
+          <div className="mt-3">
+            <FilterChips
+              filters={aiFilters}
+              onChange={editAiFilters}
+              onClear={clearAiFilters}
+            />
+          </div>
+        )}
+
+        {filtersOpen && (
+          <div
+            id="filters-panel"
+            className="mt-3 space-y-4 border-t border-line pt-3"
+          >
             <SearchFilters
-              q={q}
-              onQChange={handleQChange}
-              onCommitQ={commitQ}
               filters={filters}
               onFiltersChange={setFilters}
               onApply={applyFilters}
+              onReset={resetFilters}
+              dirty={dirty}
+              activeCount={activeCount}
             />
+            <div className="border-t border-line pt-3">
+              <p className="label-caption mb-2">Browse by letter</p>
+              <AlphabetBar value={letter} onChange={pickLetter} />
+            </div>
           </div>
-          <div className="border-t border-line pt-4">
-            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-fg-subtle">
-              Browse by letter
-            </p>
-            <AlphabetBar value={letter} onChange={pickLetter} />
-          </div>
-        </CardContent>
-      </Card>
+        )}
+      </div>
 
-      <Card>
-        <CardContent className="pt-6">
+      <div className="space-y-6">
+      {/* Below lg the result cards are the surface themselves, so the wrapper
+          drops its card chrome rather than nesting one card set inside
+          another — and the page reclaims 32px of horizontal padding on a
+          phone, which is where scroll economy is tightest. */}
+      <Card className="rounded-none border-x-0 border-y-0 bg-transparent shadow-none lg:rounded-card lg:border lg:border-line lg:bg-surface">
+        <CardContent className="p-0 pt-0 lg:p-6">
           {isPending && <ResultsSkeleton />}
           {isError && (
             <p className="py-8 text-center text-sm text-danger-text">
@@ -335,9 +459,22 @@ export default function SearchPage() {
             </p>
           )}
           {!isPending && !isError && data && (
-            <div className={isFetching ? "opacity-60 transition-opacity" : ""}>
+            // Refetching used to dim the whole block to 60%, which faded the
+            // prices a user was mid-comparison on — "stale" reading as
+            // "unreliable" on the one number the product exists to deliver.
+            // A determinate bar above the results says the same thing without
+            // taking contrast away from the data.
+            <div aria-busy={isFetching}>
+              {isFetching && (
+                <div
+                  aria-hidden
+                  className="mb-2 h-0.5 overflow-hidden rounded-full bg-muted"
+                >
+                  <span className="block h-full w-1/3 animate-[results-progress_1.1s_ease-in-out_infinite] rounded-full bg-brand" />
+                </div>
+              )}
               <div className="mb-3 flex items-center justify-between text-sm text-fg-muted">
-                <span>
+                <span aria-live="polite" aria-atomic="true">
                   {data.count} result{data.count === 1 ? "" : "s"}
                   {searching ? (
                     <>

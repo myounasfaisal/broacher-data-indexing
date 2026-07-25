@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Input } from "@/components/ui/input";
+import { Search, X } from "lucide-react";
 import type { Suggestion } from "@/types/chemical";
 
 /**
@@ -25,9 +26,15 @@ export function SearchBox({
   onCommit: (v: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [focused, setFocused] = useState(false);
   const [highlight, setHighlight] = useState(-1);
   const [debounced, setDebounced] = useState(q.trim());
   const boxRef = useRef<HTMLDivElement>(null);
+
+  // The field is "live" — and earns the rotating neon accent — while it holds
+  // focus or a query. Both are the states in which it is actively narrowing the
+  // catalog; at rest it stays a quiet neutral input like every other control.
+  const active = focused || q.trim().length > 0;
 
   // Short debounce so we fetch suggestions ~5 keystrokes/sec, not per keystroke.
   useEffect(() => {
@@ -94,7 +101,16 @@ export function SearchBox({
   }
 
   return (
-    <div className="relative" ref={boxRef}>
+    <div
+      className={`search-neon relative${active ? " is-active" : ""}`}
+      ref={boxRef}
+    >
+      <Search
+        aria-hidden
+        className={`pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 transition-colors duration-200 ${
+          active ? "text-brand" : "text-fg-subtle"
+        }`}
+      />
       <Input
         id="q"
         placeholder="e.g. ethanol, 乙醇, 64-17-5, titanium dioxide, a supplier name"
@@ -103,12 +119,28 @@ export function SearchBox({
         role="combobox"
         aria-expanded={showList}
         aria-controls="search-suggestions"
+        aria-haspopup="listbox"
         aria-autocomplete="list"
+        // Point the SR at the highlighted option so arrowing announces it;
+        // aria-selected alone is silent without an active-descendant link.
+        aria-activedescendant={
+          showList && highlight >= 0 ? `search-suggestion-${highlight}` : undefined
+        }
+        // Left padding clears the icon; right padding clears the ✕ so a long
+        // query never runs underneath either. When live, the field's own hairline
+        // warms to brand so it reads as one piece with the neon ring around it.
+        className={`relative ${q ? "pl-9 pr-9" : "pl-9"} ${
+          active ? "border-brand/40" : ""
+        }`}
         onChange={(e) => {
           onChange(e.target.value);
           setOpen(true);
         }}
-        onFocus={() => setOpen(true)}
+        onFocus={() => {
+          setFocused(true);
+          setOpen(true);
+        }}
+        onBlur={() => setFocused(false)}
         onKeyDown={onKeyDown}
       />
       {q && (
@@ -120,9 +152,9 @@ export function SearchBox({
             onChange("");
             setOpen(false);
           }}
-          className="absolute right-2 top-1/2 -translate-y-1/2 rounded px-1 text-fg-subtle hover:text-fg"
+          className="touch-target absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-fg-subtle hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/70"
         >
-          ✕
+          <X className="h-4 w-4" />
         </button>
       )}
 
@@ -143,13 +175,14 @@ export function SearchBox({
             return (
               <li key={`${s.type}-${s.label}-${i}`}>
                 {showSupplierHeader && (
-                  <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-fg-subtle">
-                    Suppliers
-                  </p>
+                  // The system's label step is 11px/600/+0.06em; 10px was a
+                  // one-off literal with no step behind it.
+                  <p className="label-caption px-3 pb-1 pt-2">Suppliers</p>
                 )}
                 <button
                   type="button"
                   role="option"
+                  id={`search-suggestion-${i}`}
                   aria-selected={i === highlight}
                   // onMouseDown (not onClick) so the pick registers before the
                   // input's blur closes the list.

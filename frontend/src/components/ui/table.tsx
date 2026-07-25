@@ -35,7 +35,9 @@ export function TableRow({
   return (
     <tr
       className={cn(
-        "border-b border-line/60 transition-colors duration-150 hover:bg-hover/60",
+        // The row hover is the click affordance where rows are clickable, so
+        // it reads at full strength rather than as a faint tint.
+        "border-b border-line/60 transition-colors duration-150 hover:bg-hover",
         className,
       )}
       {...props}
@@ -50,7 +52,10 @@ export function TableHead({
   return (
     <th
       className={cn(
-        "h-10 px-3 text-left align-middle text-xs font-medium uppercase tracking-wide text-fg-subtle",
+        // Sentence case, not uppercase: column headers are read as words while
+        // scanning rows, and all-caps measurably slows that down. Uppercase in
+        // this system is reserved for sidebar section labels and stat captions.
+        "h-10 px-3 text-left align-middle text-xs font-medium text-fg-muted",
         className,
       )}
       {...props}

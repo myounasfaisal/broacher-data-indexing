@@ -2,7 +2,12 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- viewport-fit=cover lets the layout reach under the notch / home
+         indicator; index.css pays it back with env(safe-area-inset-*). -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
     <!-- Design system typeface: Geist (UI) + Geist Mono (data). -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -11,8 +16,9 @@
       rel="stylesheet"
     />
     <title>Brochure Extraction Platform</title>
-    <!-- Set the theme class before first paint to avoid a flash of the wrong
-         theme. Mirrors the logic in hooks/useTheme.tsx. -->
+    <!-- Set the theme class AND accent attribute before first paint to avoid a
+         flash of the wrong appearance. Mirrors the logic in hooks/useTheme.tsx
+         (both axes). -->
     <script>
       (function () {
         try {
@@ -22,6 +28,9 @@
             ((!t || t === "system") &&
               window.matchMedia("(prefers-color-scheme: dark)").matches);
           document.documentElement.classList.toggle("dark", dark);
+          if (localStorage.getItem("accent") === "ember") {
+            document.documentElement.setAttribute("data-accent", "ember");
+          }
         } catch (e) {}
       })();
     </script>
