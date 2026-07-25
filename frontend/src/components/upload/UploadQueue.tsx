@@ -16,11 +16,15 @@ export interface UploadingItem {
 export function UploadQueue({
   documents,
   uploading = [],
+  onPause,
+  onResume,
   onCancel,
   onRestart,
 }: {
   documents: DocumentStatus[];
   uploading?: UploadingItem[];
+  onPause: (id: string) => Promise<void> | void;
+  onResume: (id: string) => Promise<void> | void;
   onCancel: (id: string) => Promise<void> | void;
   onRestart: (id: string) => Promise<void> | void;
 }) {
@@ -47,6 +51,8 @@ export function UploadQueue({
           <UploadJobRow
             key={doc.id}
             doc={doc}
+            onPause={onPause}
+            onResume={onResume}
             onCancel={onCancel}
             onRestart={onRestart}
           />

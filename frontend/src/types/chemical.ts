@@ -23,6 +23,7 @@ export type DocumentStatusValue =
   | "splitting"
   | "split"
   | "extracting"
+  | "paused"
   | "done"
   | "failed"
   | "cancelled";

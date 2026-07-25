@@ -38,6 +38,7 @@ from app.services import (
     ocr,
     page_extract,
     pipeline_db,
+    splitter,
     supplier,
 )
 from app.services.database import get_client
@@ -158,11 +159,23 @@ def _write_page_listings(
 
 def process_document(doc: dict[str, Any]) -> None:
     doc_id = doc["id"]
+
+    # Split lazily from the retained PDF if this document has no pages yet
+    # (fresh upload, or a restart that crashed before splitting completed).
     pages = pipeline_db.list_pages(doc_id)
     if not pages:
-        logger.warning("Document %s has no pages — marking failed", doc_id)
-        pipeline_db.set_document(doc_id, status="failed")
-        return
+        pdf = pipeline_db.download_source_pdf(doc_id)
+        if pdf is None:
+            logger.warning("Document %s has no pages and no source PDF — failing", doc_id)
+            pipeline_db.set_document(doc_id, status="failed")
+            return
+        try:
+            splitter.split_document(doc_id, pdf)
+        except splitter.SplitError as exc:
+            logger.warning("Split failed for document %s: %s", doc_id, exc)
+            pipeline_db.set_document(doc_id, status="failed")
+            return
+        pages = pipeline_db.list_pages(doc_id)
 
     # Supplier resolution — independent of per-page extraction (§4). Resolved up
     # front so every listing is stamped with company_id at insert time.
@@ -175,17 +188,20 @@ def process_document(doc: dict[str, Any]) -> None:
 
     running_context = doc.get("running_context")
     all_listing_ids: list[str] = []
-    cancelled = False
+    stopped: str | None = None  # 'cancel' | 'pause'
 
     for page in pages:
         if page["status"] == "done":
             continue  # crash-resume: already extracted
-        # Cancellation is checked BETWEEN pages, never mid-page: an in-flight
-        # extraction finishes, but we stop claiming further pages. Nothing
-        # already written is rolled back.
-        if pipeline_db.is_cancel_requested(doc_id):
-            logger.info("Document %s cancelled — stopping after %d page(s)", doc_id, len(all_listing_ids))
-            cancelled = True
+        # Pause/cancel are checked BETWEEN pages, never mid-page: the in-flight
+        # extraction always finishes, then we stop claiming further pages.
+        # Nothing already written is rolled back; the PDF is retained.
+        stopped = pipeline_db.should_stop(doc_id)
+        if stopped:
+            logger.info(
+                "Document %s %sd — stopping after %d listing(s)",
+                doc_id, stopped, len(all_listing_ids),
+            )
             break
         image = pipeline_db.download_page_image(page["image_path"])
         attempts = (page.get("attempts") or 0) + 1
@@ -214,7 +230,15 @@ def process_document(doc: dict[str, Any]) -> None:
             running_context = result.next_context
             pipeline_db.set_document(doc_id, running_context=running_context)
 
-    _finalize_document(doc_id, all_listing_ids, cancelled=cancelled)
+    # A pause leaves the document 'paused' (already set by the endpoint) and
+    # keeps the PDF — do NOT finalize it as terminal.
+    if stopped == "pause":
+        pipeline_db.set_document(
+            doc_id, product_count=len(all_listing_ids), listing_ids=all_listing_ids
+        )
+        return
+
+    _finalize_document(doc_id, all_listing_ids, cancelled=(stopped == "cancel"))
 
 
 def _finalize_document(
@@ -223,23 +247,30 @@ def _finalize_document(
     *,
     cancelled: bool = False,
 ) -> None:
-    """Record the ledger fields (product_count, listing_ids) upload history/undo
-    use, and set the terminal status: 'cancelled' if the user cancelled (written
-    listings kept), else 'done' if any page succeeded, else 'failed'."""
+    """Set the terminal status and record ledger fields (product_count,
+    listing_ids) for upload history/undo. When cancelled or when a page still
+    needs another attempt, the source PDF is RETAINED; only a genuinely finished
+    document (every page terminal) is 'done' and has its PDF deleted."""
     fresh = pipeline_db.list_pages(doc_id)
     done = [p for p in fresh if p["status"] == "done"]
+    non_terminal = [p for p in fresh if p["status"] in ("pending", "failed", "extracting", "claimed")]
+
     if cancelled:
-        status = "cancelled"
-    elif done:
-        status = "done"
+        status = "cancelled"  # keep PDF — restartable
+    elif non_terminal:
+        status = "failed"  # a page still needs work — keep PDF for restart
     else:
-        status = "failed"
+        status = "done"  # every page terminal (done/dead) — finished
+
     pipeline_db.set_document(
         doc_id,
         status=status,
         product_count=len(listing_ids),
         listing_ids=listing_ids,
     )
+    # The PDF is retained until the document is genuinely finished.
+    if status == "done":
+        pipeline_db.delete_source_pdf(doc_id)
     logger.info(
         "Document %s %s — %d/%d pages done, %d listing(s)",
         doc_id, status, len(done), len(fresh), len(listing_ids),

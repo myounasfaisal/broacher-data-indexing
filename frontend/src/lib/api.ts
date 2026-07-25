@@ -247,6 +247,26 @@ async function restartDocument(docId: string): Promise<DocumentStatus> {
   return res.json();
 }
 
+/** Pause a document (worker won't claim it; an in-flight page finishes first). */
+async function pauseDocument(docId: string): Promise<DocumentStatus> {
+  const res = await fetch(`${BACKEND_URL}/upload-jobs/${docId}/pause`, {
+    method: "POST",
+    headers: { ...(await authHeader()) },
+  });
+  if (!res.ok) throw new Error(await extractError(res));
+  return res.json();
+}
+
+/** Resume a paused document; the worker picks it up at its first incomplete page. */
+async function resumeDocument(docId: string): Promise<DocumentStatus> {
+  const res = await fetch(`${BACKEND_URL}/upload-jobs/${docId}/resume`, {
+    method: "POST",
+    headers: { ...(await authHeader()) },
+  });
+  if (!res.ok) throw new Error(await extractError(res));
+  return res.json();
+}
+
 // ---------------------------------------------------------------------
 // Upload history (persistent audit — survives backend restarts)
 // ---------------------------------------------------------------------
@@ -404,6 +424,8 @@ export const api = {
   listUploadJobs,
   cancelDocument,
   restartDocument,
+  pauseDocument,
+  resumeDocument,
   listUploadHistory,
   getUploadListings,
   listSuppliers,

@@ -31,8 +31,10 @@ BUCKET = "brochure-pages"
 def create_document(
     content_hash: str, filename: str, uploaded_by: str | None
 ) -> dict[str, Any]:
-    """Insert a new work-queue document row (status='splitting'). The upload
-    path calls this after the content-hash dedup check."""
+    """Insert a new work-queue document row in the non-claimable 'splitting'
+    (preparing) state. The upload path stores the source PDF, then flips it to
+    'pending' — so a worker never claims a document before its PDF is retained.
+    The worker splits lazily (a crash before split just re-splits from the PDF)."""
     resp = (
         get_client()
         .table("documents")
@@ -84,12 +86,31 @@ def is_cancel_requested(doc_id: str) -> bool:
     return bool(doc and doc.get("cancel_requested"))
 
 
+# Statuses from which a document can still be paused/cancelled (work outstanding).
+_ACTIVE = ("pending", "splitting", "split", "extracting", "paused")
+
+
+def _claimable_status(doc: dict[str, Any]) -> str:
+    """Where a resumed/restarted document should go: 'split' if it already has
+    page rows (resume extraction), else 'pending' (needs a first split)."""
+    has_pages = bool(
+        get_client()
+        .table("pages")
+        .select("id", count="exact")
+        .eq("document_id", doc["id"])
+        .limit(1)
+        .execute()
+        .count
+    )
+    return "split" if has_pages else "pending"
+
+
 @_db_op
 def request_cancel(doc_id: str) -> dict[str, Any] | None:
-    """Flag a document for cancellation. If it hasn't been claimed yet ('split'),
-    flip it straight to 'cancelled' — there's nothing in flight. For 'splitting'
-    or 'extracting' we only set the flag; the splitter/worker stop at the next
-    safe point (never mid-page), and nothing already written is rolled back."""
+    """Flag a document for cancellation. If nothing is in flight (pending/split/
+    paused), flip it straight to 'cancelled'. For 'splitting'/'extracting' we
+    only set the flag; the worker stops at the next page boundary. Nothing
+    already written (listings, supplier) is rolled back, and the PDF is retained."""
     client = get_client()
     doc = get_document(doc_id)
     if doc is None:
@@ -97,17 +118,49 @@ def request_cancel(doc_id: str) -> dict[str, Any] | None:
     if doc.get("status") in ("done", "failed", "cancelled"):
         return doc  # already terminal — nothing to cancel
     fields: dict[str, Any] = {"cancel_requested": True}
-    if doc.get("status") == "split":
-        fields["status"] = "cancelled"
+    if doc.get("status") in ("pending", "split", "paused"):
+        fields["status"] = "cancelled"  # not in flight — cancel immediately
     client.table("documents").update(fields).eq("id", doc_id).execute()
     return get_document(doc_id)
 
 
 @_db_op
+def request_pause(doc_id: str) -> dict[str, Any] | None:
+    """Pause a document. This only sets status='paused' so claim_next_document
+    excludes it — no page rows change. A doc actively 'extracting' is left for
+    the worker to release at the next page boundary (it sees the status change);
+    the current in-flight page still finishes."""
+    doc = get_document(doc_id)
+    if doc is None:
+        return None
+    if doc.get("status") not in _ACTIVE or doc.get("status") == "paused":
+        return doc  # nothing to pause (already terminal or paused)
+    get_client().table("documents").update({"status": "paused"}).eq("id", doc_id).execute()
+    return get_document(doc_id)
+
+
+@_db_op
+def resume_document(doc_id: str) -> dict[str, Any] | None:
+    """Resume a paused document back to a claimable status. No page is
+    reprocessed — the worker resumes at the first non-done page."""
+    doc = get_document(doc_id)
+    if doc is None or doc.get("status") != "paused":
+        return doc
+    get_client().table("documents").update({
+        "status": _claimable_status(doc),
+        "claimed_by": None,
+        "claimed_at": None,
+    }).eq("id", doc_id).execute()
+    return get_document(doc_id)
+
+
+@_db_op
 def restart_document(doc_id: str) -> dict[str, Any] | None:
-    """Reset a failed/cancelled document so the worker re-claims it and resumes
-    at its first incomplete page. Pages already 'done' are kept (not
-    reprocessed); 'failed'/'dead' pages are reset to 'pending' for a retry."""
+    """Reset a failed/cancelled document so the worker re-claims it. If it has
+    page rows, resume at the first incomplete page (no re-split): 'done' pages
+    are kept, 'failed'/'dead' pages reset to 'pending'. If it has NO page rows
+    (crashed before splitting), go to 'pending' so the worker re-splits from the
+    retained PDF."""
     client = get_client()
     doc = get_document(doc_id)
     if doc is None or doc.get("status") not in ("failed", "cancelled"):
@@ -116,12 +169,32 @@ def restart_document(doc_id: str) -> dict[str, Any] | None:
         "document_id", doc_id
     ).in_("status", ["failed", "dead"]).execute()
     client.table("documents").update({
-        "status": "split",
+        "status": _claimable_status(doc),
         "cancel_requested": False,
         "claimed_by": None,
         "claimed_at": None,
     }).eq("id", doc_id).execute()
     return get_document(doc_id)
+
+
+def should_stop(doc_id: str) -> str | None:
+    """Between-page check for the worker: returns 'cancel' if the user requested
+    cancellation, 'pause' if the document was paused, else None."""
+    doc = get_document(doc_id)
+    if doc is None:
+        return None
+    if doc.get("cancel_requested"):
+        return "cancel"
+    if doc.get("status") == "paused":
+        return "pause"
+    return None
+
+
+def all_pages_terminal(doc_id: str) -> bool:
+    """True when every page of the document is in a terminal state (done/dead) —
+    the condition for deleting the retained source PDF."""
+    pages = list_pages(doc_id)
+    return bool(pages) and all(p["status"] in ("done", "dead") for p in pages)
 
 
 @_db_op
@@ -208,6 +281,43 @@ def update_page(page_id: str, **fields: Any) -> None:
 
 
 # ── Storage (page images) ────────────────────────────────────────────────
+
+def source_pdf_path(doc_id: str) -> str:
+    """Deterministic Storage key for a document's retained source PDF."""
+    return f"{doc_id}/source.pdf"
+
+
+def upload_source_pdf(doc_id: str, pdf_bytes: bytes) -> str:
+    """Retain the source PDF in Storage so the worker can (re)split it — kept
+    until every page is terminal, then deleted (see delete_source_pdf)."""
+    path = source_pdf_path(doc_id)
+    try:
+        get_client().storage.from_(BUCKET).upload(
+            path,
+            pdf_bytes,
+            {"content-type": "application/pdf", "upsert": "true"},
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise RuntimeError(f"Failed to store source PDF {path}: {exc}") from exc
+    return path
+
+
+def download_source_pdf(doc_id: str) -> bytes | None:
+    """Fetch the retained source PDF, or None if it's already been deleted."""
+    try:
+        return get_client().storage.from_(BUCKET).download(source_pdf_path(doc_id))
+    except Exception as exc:  # noqa: BLE001
+        logger.info("No source PDF for document %s: %s", doc_id, exc)
+        return None
+
+
+def delete_source_pdf(doc_id: str) -> None:
+    """Drop the retained source PDF (called once every page is terminal)."""
+    try:
+        get_client().storage.from_(BUCKET).remove([source_pdf_path(doc_id)])
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Could not delete source PDF for %s: %s", doc_id, exc)
+
 
 def page_object_path(doc_id: str, page_number: int) -> str:
     """Deterministic Storage key for a page image."""

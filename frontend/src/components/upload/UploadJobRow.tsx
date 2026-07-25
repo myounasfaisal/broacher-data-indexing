@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Ban, Check, Loader2, RotateCcw } from "lucide-react";
+import { Ban, Check, Loader2, Pause, Play, RotateCcw } from "lucide-react";
 import type { DocumentStatus } from "@/types/chemical";
 
 /**
@@ -10,6 +10,7 @@ import type { DocumentStatus } from "@/types/chemical";
  * (re-queue a failed/cancelled document, resuming at its first incomplete page).
  */
 
+// Statuses where the worker still has (or will have) work to do.
 const ACTIVE = new Set(["pending", "splitting", "split", "extracting"]);
 
 const BAR_COLORS: Record<string, string> = {
@@ -17,6 +18,7 @@ const BAR_COLORS: Record<string, string> = {
   splitting: "bg-fg-subtle",
   split: "bg-fg-subtle",
   extracting: "bg-brand",
+  paused: "bg-warn-text",
   done: "bg-ok-text",
   failed: "bg-danger",
   cancelled: "bg-line-strong",
@@ -24,9 +26,10 @@ const BAR_COLORS: Record<string, string> = {
 
 const STATUS_LABEL: Record<string, string> = {
   pending: "Queued",
-  splitting: "Splitting pages",
+  splitting: "Preparing",
   split: "Ready to extract",
   extracting: "Extracting",
+  paused: "Paused",
   done: "Done",
   failed: "Failed",
   cancelled: "Cancelled",
@@ -47,13 +50,19 @@ function stageText(doc: DocumentStatus): string {
   if (doc.duplicate) return "Duplicate — this exact PDF was already processed; skipped.";
   switch (doc.status) {
     case "splitting":
-      return "Splitting the PDF into page images…";
+      return "Preparing the upload…";
+    case "pending":
+      return "Queued — waiting for a worker.";
     case "split":
-      return "Waiting for a worker to pick it up…";
+      return "Ready — waiting for a worker to pick it up…";
     case "extracting":
       return `Extracting — ${doc.pages_done}/${doc.page_count} pages${
         doc.company_name ? ` · ${doc.company_name}` : ""
       }`;
+    case "paused":
+      return `Paused${
+        doc.product_count ? ` — ${doc.product_count} product(s) saved so far` : ""
+      }.`;
     case "done":
       return `${doc.product_count} product(s) saved${
         doc.company_name ? ` from ${doc.company_name}` : ""
@@ -69,12 +78,18 @@ function stageText(doc: DocumentStatus): string {
   }
 }
 
+type Control = "pause" | "resume" | "cancel" | "restart";
+
 export function UploadJobRow({
   doc,
+  onPause,
+  onResume,
   onCancel,
   onRestart,
 }: {
   doc: DocumentStatus;
+  onPause: (id: string) => Promise<void> | void;
+  onResume: (id: string) => Promise<void> | void;
   onCancel: (id: string) => Promise<void> | void;
   onRestart: (id: string) => Promise<void> | void;
 }) {
@@ -84,7 +99,7 @@ export function UploadJobRow({
   const label = doc.duplicate ? "Duplicate" : STATUS_LABEL[doc.status] ?? doc.status;
   const pct = percentFor(doc);
 
-  const [busy, setBusy] = useState<"cancel" | "restart" | null>(null);
+  const [busy, setBusy] = useState<Control | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const confirmTimer = useRef<number | null>(null);
   useEffect(
@@ -94,13 +109,23 @@ export function UploadJobRow({
     [],
   );
 
-  const canCancel = ACTIVE.has(doc.status) && !doc.duplicate;
+  const canPause = ACTIVE.has(doc.status) && !doc.duplicate;
+  const canResume = doc.status === "paused";
+  // A paused doc can also be cancelled; duplicates never have controls.
+  const canCancel = (ACTIVE.has(doc.status) || doc.status === "paused") && !doc.duplicate;
   const canRestart = doc.status === "failed" || doc.status === "cancelled";
 
-  async function run(kind: "cancel" | "restart") {
+  const HANDLERS: Record<Control, (id: string) => Promise<void> | void> = {
+    pause: onPause,
+    resume: onResume,
+    cancel: onCancel,
+    restart: onRestart,
+  };
+
+  async function run(kind: Control) {
     setBusy(kind);
     try {
-      await (kind === "cancel" ? onCancel(doc.id) : onRestart(doc.id));
+      await HANDLERS[kind](doc.id);
     } finally {
       setBusy(null);
     }
@@ -144,6 +169,16 @@ export function UploadJobRow({
           >
             {label}
           </span>
+          {canPause && (
+            <IconBtn title="Pause" busy={busy === "pause"} onClick={() => run("pause")}>
+              <Pause className="h-3.5 w-3.5" />
+            </IconBtn>
+          )}
+          {canResume && (
+            <IconBtn title="Resume" busy={busy === "resume"} onClick={() => run("resume")}>
+              <Play className="h-3.5 w-3.5" />
+            </IconBtn>
+          )}
           {canCancel && (
             <IconBtn
               title={confirmCancel ? "Click again to cancel" : "Cancel"}

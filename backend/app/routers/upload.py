@@ -41,7 +41,7 @@ from app.schemas.chemical import (
     UploadHistoryItem,
     UploadHistoryResponse,
 )
-from app.services import database, pipeline_db, splitter
+from app.services import database, pipeline_db
 
 logger = logging.getLogger(__name__)
 
@@ -51,13 +51,16 @@ router = APIRouter(tags=["upload"])
 _PDF_MAGIC = b"%PDF-"
 
 
-def _split_in_background(doc_id: str, pdf_bytes: bytes) -> None:
-    """Split a just-created document; on failure mark it failed so the UI shows
-    it rather than a document stuck in 'splitting' forever."""
+def _retain_and_ready(doc_id: str, pdf_bytes: bytes) -> None:
+    """Store the source PDF, then flip the document to the claimable 'pending'
+    state. Done in the background so the request returns fast; the document only
+    becomes claimable AFTER its PDF is retained, so the worker never picks up a
+    document whose PDF is missing. On failure it's marked 'failed'."""
     try:
-        splitter.split_document(doc_id, pdf_bytes)
+        pipeline_db.upload_source_pdf(doc_id, pdf_bytes)
+        pipeline_db.set_document(doc_id, status="pending")
     except Exception:  # noqa: BLE001
-        logger.exception("Split failed for document %s", doc_id)
+        logger.exception("Failed to retain source PDF for document %s", doc_id)
         try:
             pipeline_db.set_document(doc_id, status="failed")
         except Exception:  # noqa: BLE001
@@ -132,13 +135,13 @@ async def enqueue_brochure(
             duplicate=True,
         )
 
-    # Create the work-queue row, then split (to Storage + pages) in the
-    # background so the request returns immediately. The worker takes it from
-    # there once it is 'split'.
+    # Create the work-queue row, then retain the PDF + flip to 'pending' in the
+    # background so the request returns immediately. The worker splits + extracts
+    # it once it becomes claimable.
     doc = pipeline_db.create_document(
         content_hash, file.filename or "unknown.pdf", uploader_id
     )
-    background_tasks.add_task(_split_in_background, str(doc["id"]), pdf_bytes)
+    background_tasks.add_task(_retain_and_ready, str(doc["id"]), pdf_bytes)
     return _status_from_doc(doc)
 
 
@@ -164,13 +167,41 @@ def _owned_doc_or_403(doc_id: str, uploader_id: str) -> dict:
     return doc
 
 
+@router.post("/upload-jobs/{doc_id}/pause", response_model=DocumentStatusOut)
+async def pause_document(
+    doc_id: str,
+    uploader_id: str = Depends(require_uploader),
+) -> DocumentStatusOut:
+    """Pause a document so the worker won't claim it. An in-flight page finishes
+    first; no page is reprocessed on resume."""
+    _owned_doc_or_403(doc_id, uploader_id)
+    updated = pipeline_db.request_pause(doc_id)
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Upload not found.")
+    return _status_from_doc(updated)
+
+
+@router.post("/upload-jobs/{doc_id}/resume", response_model=DocumentStatusOut)
+async def resume_document(
+    doc_id: str,
+    uploader_id: str = Depends(require_uploader),
+) -> DocumentStatusOut:
+    """Resume a paused document; the worker picks it up again at its first
+    incomplete page."""
+    _owned_doc_or_403(doc_id, uploader_id)
+    updated = pipeline_db.resume_document(doc_id)
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Upload not found.")
+    return _status_from_doc(updated)
+
+
 @router.post("/upload-jobs/{doc_id}/cancel", response_model=DocumentStatusOut)
 async def cancel_document(
     doc_id: str,
     uploader_id: str = Depends(require_uploader),
 ) -> DocumentStatusOut:
-    """Request cancellation of a document still splitting/queued/extracting. The
-    worker stops at the next page boundary — anything already extracted is kept."""
+    """Request cancellation of a document still preparing/queued/extracting/paused.
+    The worker stops at the next page boundary — anything already extracted is kept."""
     _owned_doc_or_403(doc_id, uploader_id)
     updated = pipeline_db.request_cancel(doc_id)
     if updated is None:

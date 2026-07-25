@@ -73,6 +73,28 @@ export default function AdminUploadPage() {
     wasActive.current = active;
   }, [active, queryClient]);
 
+  /** Pause a document (worker won't claim it; in-flight page finishes). */
+  async function handlePause(id: string) {
+    try {
+      await api.pauseDocument(id);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Pause failed");
+    } finally {
+      queryClient.invalidateQueries({ queryKey: ["uploadJobs"] });
+    }
+  }
+
+  /** Resume a paused document from its first incomplete page. */
+  async function handleResume(id: string) {
+    try {
+      await api.resumeDocument(id);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Resume failed");
+    } finally {
+      queryClient.invalidateQueries({ queryKey: ["uploadJobs"] });
+    }
+  }
+
   /** Cancel a document (worker stops after the current page; keeps what's saved). */
   async function handleCancel(id: string) {
     try {
@@ -241,6 +263,8 @@ export default function AdminUploadPage() {
                 <UploadQueue
                   documents={documents}
                   uploading={uploading}
+                  onPause={handlePause}
+                  onResume={handleResume}
                   onCancel={handleCancel}
                   onRestart={handleRestart}
                 />

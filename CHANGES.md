@@ -1468,3 +1468,107 @@ backend edits, never trust --reload.**
   `App.tsx` + `components/layout/AppShell.tsx` (Activity route/nav),
   `lib/api.ts` (`listAuditLog`), `types/chemical.ts` (`AuditEntry`,
   `AuditLogResponse`, `ListingUpdate.details`)
+
+---
+
+## Part 17 — DB-worker extraction pipeline (2026-07-26)
+
+Re-architected extraction from the in-memory `jobs.py` queue to a **crash-safe,
+Postgres-backed worker pipeline** per `IMPLEMENTATION_BRIEF.md` /
+`nasir-data-indexing-architecture.md`. Upload no longer extracts inline; it
+retains the PDF and creates a work-queue row, and a **standalone worker process**
+(`python -m app.worker`) splits + extracts it. All state lives in the DB, so a
+reload or backend restart loses nothing.
+
+### Schema (merge migrations, applied live)
+- **`documents` evolved from the content-hash ledger into the work-queue table**
+  (not a second table — its own spec already carried `content_hash`). Added
+  `id uuid` (unique key; `content_hash` stays PK so all existing dedup/history/
+  undo queries keep working), `status` machine, `running_context jsonb`,
+  `page_count`, `claimed_by`, `claimed_at`, `cancel_requested`. Statuses:
+  `pending | splitting | split | claimed | extracting | paused | done | failed |
+  cancelled`. `company_id` kept **bigint** (matches live `companies.id`).
+- **`pages`** (new): one row per page image — `status` (`pending | claimed |
+  extracting | done | failed | dead`), `attempts`, `image_path`,
+  `markdown_output`, `raw_json`, unique `(document_id, page_number)`.
+- **`listings`**: `document_id`, `source_page_id`, `characteristics jsonb`,
+  `cas_number_raw`, `review_reason`.
+- **`companies`**: `website`, `website_domain` (partial-unique), `extra_details`.
+- **`brochure-pages`** private Storage bucket (source PDFs + page PNGs).
+- **`claim_next_document(worker_id)`** RPC — atomic longest-job-first claim
+  (`FOR UPDATE SKIP LOCKED`, not expressible via PostgREST); claims `pending`/
+  `split`, skips `cancel_requested`/`paused`, sets `extracting`.
+
+### Extraction (two-stage, config-driven)
+- **`services/page_extract.py`** — `extract(image, context) -> PageExtraction`:
+  stage 1 image→markdown (reuses `VLM_TRANSCRIPTION_PROMPT` + `running_context`),
+  stage 2 markdown→JSON. Model chosen by `PAGE_EXTRACT_PROVIDER` (`qwen` now /
+  `claude` for prod) in one function. **Claude uses genuine forced `tool_use`;
+  Qwen uses `response_format=json_object` + Pydantic** — Dashscope's OpenAI-
+  compatible endpoint rejects a forced `tool_choice` on the vision models, and
+  json_object is the same guaranteed-structured pattern the repo already uses.
+- **`services/cas.py`** — deterministic CAS normalize + checksum (raw always
+  kept). Pure, unit-tested (`tests/test_cas.py`, 13 cases).
+- **`services/supplier.py`** — domain-first supplier resolution: website domain →
+  email domain → rapidfuzz name (conservative; ambiguous → new row, never a
+  false merge). Verified live: an incoming ECHEMI identity resolved to the
+  existing `companies.id` by `website_domain=echemi.com`.
+
+### Worker + lifecycle
+- **`app/worker.py`** — claim → (lazy split if no pages) → resolve supplier →
+  sequential page loop with `running_context` carry-forward → CAS normalize +
+  the §6 review triggers → `insert_listing` (keeps the `chemicals` canonical
+  layer via `dedup.resolve_chemical`). Crash-safe: resumes at the first non-done
+  page. Fixed a null-claim spin bug (the RPC returns an all-null row when the
+  queue is empty — now guarded on a null `id`).
+- **PDF retention**: the source PDF is stored on upload and **kept until every
+  page is terminal (`done`/`dead`)**, then deleted. Retained for `failed`/
+  `cancelled`/`paused`. Split moved into the worker (lazy) so a crash before
+  split just re-splits from the retained PDF.
+- **Pause/resume**: pause sets `status='paused'` (claim excludes it; in-flight
+  page finishes, no page reprocessed). Resume → claimable (`split` if pages
+  exist, else `pending`).
+- **Cancel**: worker stops at the next page boundary; already-written listings +
+  resolved supplier are kept (never rolled back).
+- **Restart** (`failed`/`cancelled`): resumes at the first incomplete page if
+  pages exist (no re-split); re-splits from the retained PDF only if zero pages.
+- **`services/pipeline_db.py`** — queue + Storage helpers (claim, page CRUD,
+  source-PDF store/download/delete, `request_pause`/`resume_document`/
+  `request_cancel`/`restart_document`/`should_stop`/`all_pages_terminal`,
+  `list_documents_status`). **`services/splitter.py`** — PDF→page images +
+  `pages` rows (reuses `pdf_utils.render_pages`; worker owns status).
+
+### Upload path + UI (replaced the in-memory queue)
+- **`routers/upload.py`**: `POST /upload-jobs` creates the doc, retains the PDF,
+  flips to `pending` in the background (so a worker never claims a PDF-less doc).
+  `GET /upload-jobs` returns document status with derived `pages_done`. New
+  per-doc controls: `POST /upload-jobs/{id}/{pause|resume|cancel|restart}`.
+  History/undo endpoints unchanged (still work on the merged `documents`).
+  **`services/jobs.py` retired** (no longer imported).
+- **Frontend**: `AdminUploadPage` + `UploadQueue` + `UploadJobRow` +
+  `UploadSummary` repointed from in-memory jobs to `DocumentStatus`, with a
+  **real pages-done progress bar** and pause/resume/cancel/restart buttons.
+  `api.ts` (`cancel/restart/pause/resumeDocument`, new list shape),
+  `types/chemical.ts` (`DocumentStatus`/`DocumentStatusValue`, dropped
+  `UploadJob`).
+
+### Decisions kept (from the brief)
+- Keep all current listing fields + the `chemicals` canonical layer (user calls).
+- Qwen for both prod/test until a funded Sonnet 5 key exists.
+- Pause built after confirming; **reconciler loop still TODO** (stalled-claim
+  reset, page dead-lettering).
+
+### Files (part 17)
+- DB migrations: `pipeline_documents_pages_merge`, `pipeline_bucket_and_claim_rpc`,
+  `pipeline_cancel_support`, `pipeline_pause_and_pdf_retention`
+  (`schema-additions.sql` rewritten as the ALTER-based merge).
+- Backend new: `app/worker.py`, `app/services/{page_extract,cas,pipeline_db,
+  splitter,supplier}.py`, `tests/test_cas.py`.
+- Backend changed: `app/config.py` (`page_extract_provider`), `app/routers/
+  upload.py`, `app/schemas/chemical.py` (`DocumentStatusOut`,
+  `DocumentStatusListResponse`).
+- Frontend changed: `pages/AdminUploadPage.tsx`, `components/upload/{UploadQueue,
+  UploadJobRow,UploadSummary}.tsx`, `lib/api.ts`, `types/chemical.ts`.
+- Verified: `tests/test_cas.py` 13/13; frontend `tsc --noEmit` clean; backend
+  byte-compiles + imports; live pilot (ECHEMI, 3pg) split→claim→extract→48
+  products→supplier dedup, cleaned up after.
