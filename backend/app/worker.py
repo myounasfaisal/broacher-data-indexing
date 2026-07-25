@@ -114,6 +114,7 @@ def _write_page_listings(
     page: dict[str, Any],
     result: page_extract.PageExtraction,
     company_id: int | None,
+    company_website: str | None,
 ) -> list[str]:
     """Insert every listing from one page; returns the inserted listing ids."""
     from app.services import database  # local import: avoid a heavy import cycle
@@ -145,7 +146,13 @@ def _write_page_listings(
             "price": listing.price,
             "currency": listing.currency,
             "purity": listing.purity,
-            "characteristics": listing.characteristics or None,
+            # Write flexible attributes to `details` — the column the rest of the
+            # app reads (search_text/details_text index it, ProductDetail renders
+            # it, the admin editor edits it). `characteristics` is not read anywhere.
+            "details": listing.characteristics or None,
+            # Per-listing supplier website, matching the old jobs.py write shape
+            # (the suppliers directory + ProductDetail's website link read this).
+            "company_website": company_website,
             "needs_review": bool(reasons),
             "review_reason": "; ".join(reasons) or None,
             "uploaded_by": doc.get("uploaded_by"),
@@ -186,6 +193,18 @@ def process_document(doc: dict[str, Any]) -> None:
             company_id = supplier.resolve_company(identity)
             pipeline_db.set_document(doc_id, company_id=company_id)
 
+    # Denormalize the supplier website onto each listing (the suppliers directory
+    # and ProductDetail read listings.company_website). Fetched from companies so
+    # it's populated on a resume too, where identity isn't re-extracted.
+    company_website: str | None = None
+    if company_id:
+        from app.services.database import get_client
+        rows = (
+            get_client().table("companies").select("website")
+            .eq("id", company_id).limit(1).execute().data
+        )
+        company_website = (rows[0].get("website") if rows else None)
+
     running_context = doc.get("running_context")
     all_listing_ids: list[str] = []
     stopped: str | None = None  # 'cancel' | 'pause'
@@ -214,7 +233,7 @@ def process_document(doc: dict[str, Any]) -> None:
             )
             continue
 
-        listing_ids = _write_page_listings(doc, page, result, company_id)
+        listing_ids = _write_page_listings(doc, page, result, company_id, company_website)
         all_listing_ids.extend(listing_ids)
 
         pipeline_db.update_page(
@@ -234,26 +253,35 @@ def process_document(doc: dict[str, Any]) -> None:
             pipeline_db.set_document(doc_id, running_context=running_context)
 
     # A pause leaves the document 'paused' (already set by the endpoint) and
-    # keeps the PDF — do NOT finalize it as terminal.
+    # keeps the PDF — do NOT finalize it as terminal. Record what it produced.
     if stopped == "pause":
-        pipeline_db.set_document(
-            doc_id, product_count=len(all_listing_ids), listing_ids=all_listing_ids
-        )
+        ids = _document_listing_ids(doc_id)
+        pipeline_db.set_document(doc_id, product_count=len(ids), listing_ids=ids)
         return
 
-    _finalize_document(doc_id, all_listing_ids, cancelled=(stopped == "cancel"))
+    _finalize_document(doc_id, cancelled=(stopped == "cancel"))
 
 
-def _finalize_document(
-    doc_id: str,
-    listing_ids: list[str],
-    *,
-    cancelled: bool = False,
-) -> None:
+def _document_listing_ids(doc_id: str) -> list[str]:
+    """Every listing id this document has produced, read from the DB — complete
+    even across a crash + resume (undo-upload depends on the full set, which the
+    in-memory per-run list would miss for pages done in an earlier run)."""
+    from app.services.database import get_client
+    rows = (
+        get_client().table("listings").select("id").eq("document_id", doc_id).execute().data
+        or []
+    )
+    return [str(r["id"]) for r in rows]
+
+
+def _finalize_document(doc_id: str, *, cancelled: bool = False) -> None:
     """Set the terminal status and record ledger fields (product_count,
     listing_ids) for upload history/undo. When cancelled or when a page still
     needs another attempt, the source PDF is RETAINED; only a genuinely finished
-    document (every page terminal) is 'done' and has its PDF deleted."""
+    document (every page terminal) is 'done', has its PDF deleted, and writes an
+    upload audit entry (matching the old jobs.py path)."""
+    from app.services import database
+
     fresh = pipeline_db.list_pages(doc_id)
     done = [p for p in fresh if p["status"] == "done"]
     non_terminal = [p for p in fresh if p["status"] in ("pending", "failed", "extracting", "claimed")]
@@ -265,15 +293,33 @@ def _finalize_document(
     else:
         status = "done"  # every page terminal (done/dead) — finished
 
+    listing_ids = _document_listing_ids(doc_id)
     pipeline_db.set_document(
         doc_id,
         status=status,
         product_count=len(listing_ids),
         listing_ids=listing_ids,
     )
-    # The PDF is retained until the document is genuinely finished.
+
+    # A genuinely finished document: drop the retained PDF and log the upload to
+    # the activity feed (only on 'done', matching jobs.py._finalize).
     if status == "done":
         pipeline_db.delete_source_pdf(doc_id)
+        doc = pipeline_db.get_document(doc_id) or {}
+        try:
+            database.audit(
+                doc.get("uploaded_by"),
+                "upload",
+                {
+                    "filename": doc.get("filename"),
+                    "content_hash": doc.get("content_hash"),
+                    "company_id": doc.get("company_id"),
+                    "listings": len(listing_ids),
+                },
+            )
+        except Exception:  # noqa: BLE001 — audit is best-effort, never fail the doc
+            logger.exception("Failed to write upload audit for document %s", doc_id)
+
     logger.info(
         "Document %s %s — %d/%d pages done, %d listing(s)",
         doc_id, status, len(done), len(fresh), len(listing_ids),
