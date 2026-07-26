@@ -111,3 +111,23 @@ def require_uploader(user_id: str = Depends(require_user)) -> str:
             detail="Admin or manager role required.",
         )
     return user_id
+
+
+def require_manager(user_id: str = Depends(require_user)) -> str:
+    """
+    Dependency: verify the JWT AND that the user may record house knowledge
+    ('admin' or 'manager'). Returns the user id.
+
+    Same role set as require_uploader, kept as its own name because the call
+    sites mean different things: uploading a brochure is data entry, writing a
+    substitution note is BosTech asserting a professional judgement that the
+    assistant will then repeat to everyone. If those permissions ever diverge,
+    they diverge here.
+    """
+    role = get_user_role(user_id)
+    if role not in UPLOAD_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin or manager role required.",
+        )
+    return user_id

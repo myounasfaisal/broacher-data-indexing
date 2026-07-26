@@ -1,11 +1,15 @@
 """
 Upload endpoints — admin/manager brochure extraction via the DB-worker pipeline.
 
-POST /upload-jobs   accept one validated PDF: create a `documents` row, split it
-                    to page images in Storage, and return its status. The
-                    standalone worker process (app.worker) then extracts it.
-GET  /upload-jobs   the caller's recent documents with live status/progress
-                    (drives the progress UI; survives reloads — state is in the DB).
+POST /upload-jobs         accept one validated PDF: create a `documents` row and
+                          retain the PDF, leaving it 'staged' — durable but NOT
+                          claimable, so uploading costs nothing.
+POST /upload-jobs/start   release the caller's staged uploads ('staged' ->
+                          'pending'). THIS is where processing — and spending —
+                          begins; the worker (app.worker) takes it from here.
+GET  /upload-jobs         the caller's recent documents with live status/progress
+                          (drives the progress UI; survives reloads — state is in
+                          the DB).
 
 The PDF is validated here (type, size, magic bytes) and read fully into memory
 (never to disk). Splitting runs in a background task; extraction is the worker's
@@ -37,6 +41,8 @@ from app.schemas.chemical import (
     DocumentStatusListResponse,
     DocumentStatusOut,
     ListingOut,
+    StartProcessingRequest,
+    StartProcessingResult,
     UndoUploadResult,
     UploadHistoryItem,
     UploadHistoryResponse,
@@ -52,13 +58,17 @@ _PDF_MAGIC = b"%PDF-"
 
 
 def _retain_and_ready(doc_id: str, pdf_bytes: bytes) -> None:
-    """Store the source PDF, then flip the document to the claimable 'pending'
-    state. Done in the background so the request returns fast; the document only
-    becomes claimable AFTER its PDF is retained, so the worker never picks up a
-    document whose PDF is missing. On failure it's marked 'failed'."""
+    """Store the source PDF, then flip the document to 'staged'.
+
+    'staged' means uploaded and durable but NOT claimable: the user uploads a
+    whole batch, sees it listed, and only then presses "Start processing"
+    (POST /upload-jobs/start) to release it. Nothing costs an AI call before
+    that. Done in the background so the request returns fast; the status flips
+    only AFTER the PDF is retained, so a released document always has its PDF.
+    On failure it's marked 'failed'."""
     try:
         pipeline_db.upload_source_pdf(doc_id, pdf_bytes)
-        pipeline_db.set_document(doc_id, status="pending")
+        pipeline_db.set_document(doc_id, status="staged")
     except Exception:  # noqa: BLE001
         logger.exception("Failed to retain source PDF for document %s", doc_id)
         try:
@@ -165,6 +175,42 @@ def _owned_doc_or_403(doc_id: str, uploader_id: str) -> dict:
             detail="You can only act on your own uploads.",
         )
     return doc
+
+
+@router.post("/upload-jobs/start", response_model=StartProcessingResult)
+async def start_processing(
+    body: StartProcessingRequest | None = None,
+    uploader_id: str = Depends(require_uploader),
+) -> StartProcessingResult:
+    """Release the caller's staged uploads for processing ('staged' -> 'pending').
+
+    This is the "Start processing" button: uploading is free and durable, and
+    this is the point where the batch starts costing AI calls. Scoped to the
+    caller's own documents. With no body, every staged document is released;
+    pass `document_ids` to release a subset.
+    """
+    doc_ids = body.document_ids if body else None
+    rows = pipeline_db.start_documents(uploader_id, doc_ids)
+    return StartProcessingResult(
+        started=len(rows),
+        documents=[_status_from_doc(r) for r in rows],
+    )
+
+
+@router.post("/upload-jobs/{doc_id}/discard", status_code=status.HTTP_204_NO_CONTENT)
+async def discard_document(
+    doc_id: str,
+    uploader_id: str = Depends(require_uploader),
+) -> None:
+    """Delete a staged upload the user decided not to process. Only valid while
+    the document is still 'staged' (nothing extracted yet) — once processing has
+    started, use cancel, and undo-upload to remove the data it produced."""
+    _owned_doc_or_403(doc_id, uploader_id)
+    if not pipeline_db.discard_document(doc_id):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Only a staged upload can be discarded. Cancel it instead.",
+        )
 
 
 @router.post("/upload-jobs/{doc_id}/pause", response_model=DocumentStatusOut)

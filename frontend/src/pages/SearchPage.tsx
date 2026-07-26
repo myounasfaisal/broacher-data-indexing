@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   keepPreviousData,
@@ -29,7 +29,8 @@ import { Pagination } from "@/components/search/Pagination";
 import { ListingPanel } from "@/components/listing/ListingPanel";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, Sparkles, SlidersHorizontal, X } from "lucide-react";
+import { Bot, ChevronDown, Sparkles, SlidersHorizontal, X } from "lucide-react";
+import { ChatPanel } from "@/components/search/ChatPanel";
 import { Modal } from "@/components/ui/modal";
 import { SelectionBar } from "@/components/ui/selection-bar";
 import { useRole } from "@/hooks/useRole";
@@ -138,6 +139,18 @@ export default function SearchPage() {
   // count so a collapsed panel is never a hidden-state trap.
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  // Deliberately NOT persisted to sessionStorage like the search state below:
+  // the chat is ephemeral server-side, so restoring an "open" panel after a
+  // navigation would show a chat whose thread no longer exists.
+  const [chatOpen, setChatOpen] = useState(false);
+  // Focus goes into the panel when it opens (the composer autofocuses), so it
+  // has to come back here when it closes — otherwise Escape drops the caret at
+  // the top of the document and a keyboard user restarts their traversal.
+  const chatButtonRef = useRef<HTMLButtonElement>(null);
+  const closeChat = useCallback(() => {
+    setChatOpen(false);
+    chatButtonRef.current?.focus();
+  }, []);
 
   const { data: role } = useRole();
   // Bulk delete follows the listing write permission: admin + manager.
@@ -359,6 +372,26 @@ export default function SearchPage() {
             <span className="hidden sm:inline">Ask AI</span>
           </Button>
 
+          {/* Distinct from "Ask AI" above: that converts one sentence into
+              filters and drives this table. This opens a conversation that
+              can search, compare suppliers, and reason about substitutes. */}
+          <Button
+            ref={chatButtonRef}
+            type="button"
+            variant="outline"
+            onClick={() => (chatOpen ? closeChat() : setChatOpen(true))}
+            aria-expanded={chatOpen}
+            title="Chat with the sourcing assistant"
+            className={
+              chatOpen
+                ? "border-brand/40 bg-brand-soft text-brand-soft-text hover:bg-brand-soft hover:border-brand/50"
+                : undefined
+            }
+          >
+            <Bot className="h-4 w-4" />
+            <span className="hidden sm:inline">Assistant</span>
+          </Button>
+
           <Button
             type="button"
             variant="outline"
@@ -560,6 +593,40 @@ export default function SearchPage() {
         edit={openEdit}
         onClose={() => setOpenId(null)}
       />
+
+      {/* Right-hand dock. Full width on phones (Search is the one screen whose
+          small-screen form has to be genuinely good), a fixed column from sm
+          up so the results table stays visible beside it. */}
+      {chatOpen && (
+        <>
+          {/* Scrim on phones only. There the panel covers the whole viewport,
+              so it is a modal overlay and needs both a visible "there is a
+              screen behind this" and a tap-outside exit. From sm up it is a
+              dock beside the results, and a scrim would be wrong. */}
+          <div
+            className="animate-fade-in fixed inset-0 z-30 bg-fg/25 sm:hidden"
+            onClick={closeChat}
+            aria-hidden
+          />
+          <aside
+            className="animate-slide-in-right fixed inset-y-0 right-0 z-40 w-full shadow-pop sm:w-[380px] lg:w-[420px]"
+            aria-label="Sourcing assistant"
+          >
+            <ChatPanel
+              context={{
+                query: debouncedQ || undefined,
+                supplier: appliedFilters.supplier,
+                selected_listing_id: openId ?? undefined,
+                selected_listing_name:
+                  data?.results.find((r) => r.id === openId)?.name_en ??
+                  undefined,
+              }}
+              onOpenListing={(id) => setOpenId(id)}
+              onClose={closeChat}
+            />
+          </aside>
+        </>
+      )}
 
       <Modal
         open={confirmOpen}

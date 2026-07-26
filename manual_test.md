@@ -546,3 +546,390 @@ Files: `index.css` (accent axis), `hooks/useTheme.tsx`, `index.html` (pre-paint)
 - [ ] Range error ("Minimum is above the maximum") still appears under Price
       without shoving the Purity/Sort columns down (items-start holds).
 - [ ] Apply/Clear still right-aligned on desktop, full-width stacked on phone.
+
+---
+
+## Upload — "Start processing" gate + page-image cleanup (2026-07-26)
+
+Files: `routers/upload.py`, `services/pipeline_db.py`, `services/splitter.py`,
+`worker.py`, `config.py`, `schemas/chemical.py`, `pages/AdminUploadPage.tsx`,
+`upload/UploadQueue.tsx`, `upload/UploadJobRow.tsx`, `lib/api.ts`,
+`types/chemical.ts`, `db/migrations/2026-07-26_staged_status.sql`
+
+**Prerequisite:** run `db/migrations/2026-07-26_staged_status.sql` in the Supabase
+SQL editor first. Without it every upload fails with a 23514 check violation.
+
+### Staging
+- [ ] Upload one PDF → row appears as **Ready to start**, empty progress bar,
+      "Uploaded — waiting for you to start processing."
+- [ ] The worker log shows NO activity for it (it is not claimable).
+- [ ] A "N files ready to process" banner appears with **Start processing (N)**.
+- [ ] Upload more files across several separate selections → the count grows and
+      they all stay staged (a batch can be built up over time).
+- [ ] Reload the page mid-batch → staged rows are still there (DB-backed).
+
+### Start
+- [ ] Press **Start processing** → rows move Queued → Extracting; the worker log
+      shows a claim within ~3s; the banner disappears.
+- [ ] Progress bar tracks real pages-done; listings appear in search afterwards.
+- [ ] Press it with nothing staged (button hidden) — no way to fire an empty call.
+
+### Discard
+- [ ] A staged row shows a trash icon; first click arms it, second within 3s
+      deletes the row.
+- [ ] After discard the file is gone from the list and its PDF is gone from the
+      `brochure-pages` bucket (`{doc_id}/source.pdf`).
+- [ ] Discard is NOT offered on extracting/done/failed rows.
+- [ ] `POST /upload-jobs/{id}/discard` on a non-staged document → 409.
+
+### Page-image cleanup
+- [ ] While a document extracts, watch `brochure-pages/{doc_id}/` — PNGs
+      disappear one at a time as each page completes.
+- [ ] On `done`: no PNGs and no `source.pdf` left for that document.
+- [ ] Force a page failure (bad API key mid-run): the FAILED page's PNG is still
+      present, and Restart resumes without re-splitting.
+- [ ] Page rows still carry `markdown_output` / `raw_json` after their image is
+      gone (debugging data survives).
+
+### Ownership
+- [ ] User A stages files; user B pressing Start processing does not release
+      them (scoped by `uploaded_by`).
+
+## Sourcing assistant (chat)
+
+Feature ships dark. Set `CHAT_ENABLED=true` in `backend/.env` first, and pick a
+provider with `CHAT_PROVIDER` (`anthropic` | `gpt` | `qwen`).
+
+### Gating
+- [ ] With `CHAT_ENABLED=false`, `POST /chat/threads` → 503 and the Assistant
+      button's panel shows the error toast rather than an empty chat.
+- [ ] All three roles (viewer / manager / admin) can open the panel and get an
+      answer — same audience as `/search`.
+- [ ] No JWT → 401 on every `/chat` route.
+
+### Answers over the catalog
+- [ ] "Which suppliers carry an epoxy hardener for tile adhesive?" → names real
+      suppliers, cites product rows, and does **not** lead with price.
+- [ ] Ask about a chemical where every listing has `price = null` → the reply
+      never states or implies a price, and each cited row shows an em dash.
+- [ ] "Who supplies <a chemical with several suppliers>?" → uses
+      `compare_suppliers`; rows with fuller data appear before bare ones, and a
+      `needs_review` row is labelled "Pending review".
+- [ ] Ask for something not in the catalog → says so plainly. No invented
+      product, no invented supplier.
+
+### Trust boundary
+- [ ] Every product mentioned in the prose appears as a rendered row beneath it;
+      no `[[uuid]]` markers are visible in the text.
+- [ ] Cross-check one cited row against `/search` for the same product — price,
+      purity and supplier match exactly (the row comes from the DB, not the model).
+- [ ] Clicking a cited row opens the listing panel for that product.
+- [ ] Temporarily make the model cite a bogus id (edit the prompt to emit one):
+      the reply still renders, the fake row is absent, and the backend logs
+      "Chat cited a listing id not present in any tool result".
+
+### Regulatory
+- [ ] "X has been banned, what else can we use?" → accepts the premise without
+      arguing and suggests alternatives that exist in the catalog.
+- [ ] "Is X banned in the UAE?" → declines to confirm and says it needs checking
+      against a current regulatory source. It must NOT assert a status.
+
+### Inspector context
+- [ ] Open a product, then ask "is this one any good?" → resolves to that
+      product without it being named.
+- [ ] Type a query in the search box, then ask "any alternatives?" → the answer
+      relates to what's in the box.
+
+### Thread lifecycle
+- [ ] Send 10 messages → a "N messages left" hint appears at ≤4 remaining.
+- [ ] Reach 20 → input is replaced by "Start a new chat"; `POST .../messages`
+      returns 409.
+- [ ] "Start a new chat" clears the transcript and accepts messages again.
+- [ ] Close the panel, reopen it → previous conversation is gone (ephemeral).
+- [ ] Close the panel, then replay the old thread id via curl → 404 "This chat
+      has expired."
+- [ ] Navigate to another page with the panel open → thread is closed too.
+- [ ] User A's thread id used with user B's JWT → 404, never another user's chat.
+
+### Limits and failure
+- [ ] Send 11 messages inside a minute → 429.
+- [ ] Break the provider key mid-session → 502 with a readable message, and the
+      failed question returns to the input box rather than being lost.
+- [ ] The refused turn did **not** consume a slot (the remaining count is
+      unchanged).
+
+### Providers
+Run the same two questions under each configured provider:
+- [ ] `CHAT_PROVIDER=anthropic` → answers, cites rows.
+- [ ] `CHAT_PROVIDER=gpt` → same behaviour.
+- [ ] `CHAT_PROVIDER=qwen` → same behaviour.
+- [ ] Answers stay short (2–3 sentences) and open with the answer, not a
+      preamble, on all three.
+
+### Audit
+- [ ] Each exchange writes one `chat_query` row to the audit log with the
+      question, the tools called, and the cited listing ids — and it is still
+      there after the chat is closed.
+
+### Progress feedback (streaming)
+- [ ] Ask anything → an activity trail appears immediately: a pulsing icon,
+      animated dots and a sweeping bar, labelled "Thinking".
+- [ ] As it works the trail names the REAL lookups — e.g. "Searching the catalog
+      for 'floor'" — and each completed step dims with a tick and its result
+      count ("1 result" / "nothing found").
+- [ ] The named search term matches what you asked. A wrong term here means the
+      assistant misread the question, visible before the answer arrives.
+- [ ] Completed steps stay on screen while the next one runs; only the current
+      step animates.
+- [ ] Enable OS "reduce motion" → animations freeze but every step stays
+      legible from its text, icon and tick alone.
+- [ ] Kill the backend mid-answer → the stream ends without `done` and the UI
+      reports a failure rather than spinning forever.
+- [ ] Break the provider key → an `error` event arrives (HTTP is already 200 by
+      then) and the question returns to the input box.
+
+### Search-before-claiming-absence
+- [ ] Ask for something genuinely absent → the trail shows **several different**
+      search angles before it reports nothing (not one search and give up).
+- [ ] Ask "what do we stock for floor coatings?" → it must FIND the flooring
+      admixture. A "we don't stock that" here is a false negative: the product
+      is described as "abrasion resistance in flooring", not "floor coating".
+- [ ] Ask about a nonsense compound → it searches first, then says no, and
+      invents nothing.
+
+### Functional equivalence (substitution questions)
+- [ ] "What can replace titanium dioxide in coatings?" → either products that
+      are genuinely opacifying pigments, or "the catalog has nothing that does
+      that job". It must NOT offer dispersants, emulsifiers or binders that
+      merely mention pigments — those act ON a pigment and are not substitutes.
+- [ ] Any suggested alternative can be justified from that row's own `details`.
+
+### Unrecorded attributes
+- [ ] "Which are non-flammable?" / "Show REACH-compliant solvents" → says the
+      brochures do not record that attribute, rather than "we have none"
+      (which reads as "we cannot source it").
+- [ ] It never asserts REACH compliance or non-flammability for any product.
+- [ ] A supplier with no listings is reported as "that supplier has no products
+      in the catalog", distinct from "nothing matches your criteria".
+
+### Price filter must stay off the agent's path
+- [ ] Ask an availability question that hits a product with NO printed price
+      (e.g. "floor") → the product is found. A zero-result answer here means
+      `priced_only` has leaked back into the agent's tool schema; it is
+      deliberately not exposed, because most listings have no price and the
+      model sets it unprompted, turning "we stock one" into "we stock none".
+
+### Tool failures are distinguishable from empty results
+- [ ] Break the database credentials, ask a question → the trail shows "lookup
+      failed", not "nothing found". These must never look the same: a broken
+      lookup that reads as an empty catalog hides real bugs.
+
+### Query widening (phrase searches)
+- [ ] "Who supplies hydrocarbon resins?" → lists the C5/C9 and Aromatic resins.
+      A "nothing found" here means the singular/plural widening broke: the
+      catalog stores "Hydrocarbon Resin", and a literal substring match on the
+      plural phrase finds nothing.
+- [ ] "What do we stock for floor coatings?" → finds the flooring admixture,
+      described honestly as an admixture rather than as a floor coating.
+- [ ] Ask for a two-word chemical we do NOT hold (e.g. "calcium carbonate") →
+      says we don't stock it. It must NOT offer dimethyl carbonate or any other
+      product that merely shares the word "carbonate".
+
+### Substitution flow (think first, then verify)
+- [ ] "What can replace titanium dioxide in coatings?" → the activity trail
+      shows it searching the real candidate substances BY NAME (zinc oxide,
+      calcium carbonate, kaolin, barium sulphate), not a generic term.
+- [ ] The answer names those candidates even when we stock none of them —
+      "we hold none of them" is the useful answer, since it tells the team what
+      to source.
+- [ ] It never claims to stock something and also say it isn't in the catalog.
+
+---
+
+## House knowledge — substitution + regulatory notes (P4) (2026-07-26)
+
+Files: `db/migrations/2026-07-26_house_knowledge.sql`, `routers/notes.py`,
+`schemas/notes.py`, `services/database.py`, `services/agent_tools.py`,
+`prompts/chat_prompt.py`, `listing/HouseNotesCard.tsx`,
+`listing/ListingDetailBody.tsx`, `search/ChatPanel.tsx`, `lib/api.ts`
+
+**Run the migration first** — the whole feature 500s without the two tables.
+
+### Capture (Inspector)
+
+- [ ] Open any product → a **House knowledge** card appears below the details
+      header, marked "our own judgement"
+- [ ] As a **viewer**: notes are readable, no "Add" buttons, no delete buttons
+- [ ] As **admin/manager**: `Substitution note` and `Regulatory note` buttons show
+- [ ] Save a substitution ("zinc oxide", verdict *works*, context "GCC floor
+      coatings") → appears immediately, attributed to your email with today's date
+- [ ] Name a substitute we do **not** stock → saves fine and shows a
+      `not in catalog` chip. This is the point, not a validation failure
+- [ ] Name one we DO stock (exact chemical name) → saves without that chip
+- [ ] Save with verdict `avoid` → renders in the destructive colour, not as a
+      neutral suggestion
+- [ ] Save a regulatory note (jurisdiction `EU REACH`, *restricted*, a date, a
+      source URL) → jurisdiction, status badge, date and Source link all render
+- [ ] Leave the effective date blank → reads "no effective date recorded",
+      never a blank or an invented date
+- [ ] Delete a note → gone after the toast, no reload needed
+- [ ] Open a listing with **no CAS / no chemical_id** → the card explains notes
+      can't attach yet rather than rendering an empty section
+
+### Permissions
+
+- [ ] `POST /notes/substitutions` as a viewer's token → 403
+- [ ] `GET /notes?chemical_id=…` as a viewer → 200 with the notes
+- [ ] Both writes and both deletes appear in the admin audit log
+
+### The assistant reads them
+
+- [ ] Record "titanium dioxide → zinc oxide, works, GCC floor coatings", then
+      ask the chat "what can replace titanium dioxide?" → the activity trail
+      shows **Reading our substitution notes** BEFORE any catalog search
+- [ ] The answer leads with the house note, names the author, and repeats the
+      context ("for GCC floor coatings") — a substitution stated without its
+      context is wrong even when the substance is right
+- [ ] Record the same pair with verdict `avoid` instead → the assistant does
+      NOT offer it, and says it was tried
+- [ ] Ask about a substance with no notes → it falls back to its own chemistry
+      and says so. A house-note lookup returning nothing must never read as
+      "we don't stock it"
+
+### Regulatory path
+
+- [ ] Ask "is X banned?" with **no** note recorded → says it isn't recorded and
+      needs a current regulatory source. It must not answer "no, it's fine"
+      either: absence of a note is not evidence of permission
+- [ ] Record a `restricted` note for X, ask again → the answer carries the
+      jurisdiction AND the date, and repeats the partial-restriction nuance
+      rather than compressing it to "banned"
+- [ ] Ask about a jurisdiction the note doesn't cover → it does not extend the
+      recorded status to it
+- [ ] Say "X got banned, what else works?" → it accepts the premise without
+      arguing and answers the sourcing question
+
+### Trust boundary (unchanged, verify it held)
+
+- [ ] A note never renders as a product row in the chat — cited rows still come
+      only from catalog lookups
+- [ ] Prices in the chat still come from the database row, not the prose
+
+---
+
+## Semantic index — find_similar_chemicals (P3) (2026-07-26)
+
+Files: `db/migrations/2026-07-26_chemical_embeddings.sql`,
+`services/embeddings.py`, `app/embed_backfill.py`, `services/agent_tools.py`,
+`services/database.py`, `app/worker.py`, `prompts/chat_prompt.py`,
+`search/ChatPanel.tsx`, `config.py`
+
+> **Applied to production 2026-07-26**: migration run, `EMBEDDINGS_ENABLED=true`
+> in `backend/.env`, backfill complete — the index holds **324** chemicals (the
+> buyable subset of 1005). The setup steps below are for a fresh environment.
+
+### Setup
+
+- [ ] Run the migration → `select count(*) from chemical_embeddings;` returns 0
+- [ ] `EMBEDDINGS_ENABLED=false` (the default), ask the chat "what do we stock
+      for floor coatings?" → the trail shows **Looking for similar products**,
+      the answer still works, and it does NOT claim we stock nothing. The tool
+      degraded to a name match; that must never read as an empty catalog
+- [ ] `python -m app.embed_backfill` with the flag off → exits non-zero with a
+      clear message rather than silently doing nothing
+- [ ] Set `EMBEDDINGS_ENABLED=true`, run `python -m app.embed_backfill` →
+      logs `embedded=N`, and the table now holds one row per chemical
+- [ ] Run it a **second** time → `embedded=0 skipped=N`. Re-running over an
+      unchanged catalog must cost nothing; anything else means the source text
+      isn't deterministic
+- [ ] `python -m app.embed_backfill --force` → re-embeds everything
+
+### Retrieval quality
+
+- [ ] "What do we stock for floor coatings?" → finds the flooring admixture via
+      similarity, described honestly as an admixture
+- [ ] "Something to thicken a water-based coating" (a job, not a name) →
+      returns plausible rows, each cited as a real product row
+- [ ] "What can replace titanium dioxide?" → the trail shows house notes first,
+      then similar products; the answer never rates a similarity match above
+      medium confidence
+- [ ] Ask about a substance we hold → it does **not** offer that same substance
+      back as its own alternative
+- [ ] Ask for something genuinely absent ("food-grade gelatin") → says we hold
+      nothing. **This is the sharp test**: the tool DOES return 8 rows at
+      0.55-0.60 for that query (measured), because scores on this catalog sit
+      in a narrow band whether or not anything fits. The assistant must reject
+      all of them on the evidence test and say we hold nothing — if it offers
+      propylene glycol or a silica because the number "looked high", the
+      prompt-side guard has regressed
+
+### Degradation (the important part)
+
+- [ ] With the index built, break `QWEN_API_KEY` → ask a similarity question:
+      the answer still arrives, marked as a name match. It must not 500 and
+      must not say "nothing similar"
+- [ ] Truncate `chemical_embeddings`, keep the flag on → same: degraded, not
+      empty
+- [ ] Restore both → answers return to semantic quality
+
+### Incremental refresh
+
+- [ ] Upload a brochure with the flag on → after the document reaches `done`,
+      the worker log shows `Embedded N chemical(s) for document …`
+- [ ] Break the embedding key and upload again → the document still completes
+      as `done`; only a warning is logged. Indexing must never hold an upload
+      hostage
+- [ ] Re-upload an identical brochure → nothing new is embedded (unchanged
+      source text)
+
+### Trust boundary (unchanged, verify it held)
+
+- [ ] Rows from a similarity result render as live product rows with database
+      prices; the `similarity` score never appears as a price or a fact
+- [ ] The assistant never states a product exists purely because it was a
+      near neighbour — it quotes the row's own details
+
+---
+
+## Chat panel — UX pass (2026-07-26)
+
+Files: `search/ChatPanel.tsx`, `pages/SearchPage.tsx`, `lib/api.ts`
+
+### Context strip (new)
+
+- [ ] Open the assistant with no filters and nothing selected → no strip at all
+      (empty chrome that never earns its row)
+- [ ] Type a search, pick a supplier filter, click a product → the strip shows
+      "It can see" + the selected product, the query and the supplier
+- [ ] Ask "is this one any good?" → it answers about the product in the strip.
+      The strip is the promise; this is the check that it's kept
+
+### Composer
+
+- [ ] Panel opens with the caret already in the composer
+- [ ] Type a long two-clause question → the field grows to ~5 rows, then scrolls
+- [ ] Enter sends; Shift+Enter inserts a newline
+- [ ] While it answers, the send button becomes **Stop** → pressing it ends the
+      run, leaves "Stopped." in the transcript, and does NOT raise a toast
+
+### Transcript
+
+- [ ] After an answer, a "N lookups" disclosure sits under it → expands to the
+      full trail with result counts. Previously this was destroyed on completion
+- [ ] Hover an answer → Copy appears; it is also reachable by keyboard
+- [ ] Kill the backend, ask something → the failure renders as an inline block
+      **in the transcript** with "Try again", not just a toast
+- [ ] "Try again" re-asks the same question and removes the failed turn
+- [ ] Scroll up mid-answer → the view stays put and a "Jump to latest" pill
+      appears; clicking it returns and re-pins
+- [ ] Cited rows show the same warning `review` badge as the results table
+
+### Panel shell
+
+- [ ] Phone width: a scrim covers the page behind, tapping it closes the panel
+- [ ] `sm` and up: no scrim — it is a dock, not a modal
+- [ ] Escape with focus in the chat closes the chat
+- [ ] Escape with the product Inspector open closes **only** the Inspector
+      (it sits above the chat); the chat stays
+- [ ] Closing by any route returns focus to the "Assistant" toolbar button
+- [ ] `prefers-reduced-motion` → panel appears without sliding, trail still legible

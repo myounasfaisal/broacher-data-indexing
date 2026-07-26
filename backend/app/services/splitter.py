@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 
+from app.config import settings
 from app.services import pdf_utils, pipeline_db
 
 logger = logging.getLogger(__name__)
@@ -33,9 +34,13 @@ def split_document(doc_id: str, pdf_bytes: bytes) -> int:
     Idempotent per document: page images upsert on a deterministic path and
     `pages` rows are unique on (document_id, page_number), so re-splitting a
     partially-split document overwrites rather than duplicating.
+
+    Render resolution comes from `settings.split_dpi` so it can be tuned without
+    a code change — but it trades extraction recall for image size, so measure
+    before lowering it.
     """
     try:
-        images = pdf_utils.render_pages(pdf_bytes)
+        images = pdf_utils.render_pages(pdf_bytes, dpi=settings.split_dpi)
     except Exception as exc:  # noqa: BLE001
         raise SplitError(f"Could not render PDF pages: {exc}") from exc
 

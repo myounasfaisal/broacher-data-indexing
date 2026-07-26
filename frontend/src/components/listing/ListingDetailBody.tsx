@@ -9,6 +9,7 @@ import {
   ReviewBadge,
 } from "@/components/search/ResultsTable";
 import { ListingAdminCard } from "@/components/listing/ListingAdminCard";
+import { HouseNotesCard } from "@/components/listing/HouseNotesCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -190,6 +191,14 @@ export function ListingDetailBody({
           {canManage && editOpen && (
             <ListingAdminCard key={data.id} listing={data} onDeleted={onDeleted} />
           )}
+
+          {/* House knowledge sits ABOVE the brochure details on purpose: our
+              own substitution and regulatory calls outrank what a supplier
+              printed, and the assistant treats them that way too. */}
+          <HouseNotesCard
+            chemicalId={data.chemical_id}
+            chemicalName={data.name_en}
+          />
 
           {detailEntries.length > 0 && (
             <Card>

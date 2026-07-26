@@ -116,11 +116,28 @@ export default {
           from: { transform: "translateX(100%)" },
           to: { transform: "translateX(0)" },
         },
+        // Assistant "working" states. Each conveys activity WITHOUT implying
+        // measurable progress — the agent loop has no percentage to report,
+        // and a filling bar would promise one.
+        "thinking-dot": {
+          "0%, 80%, 100%": { opacity: "0.25", transform: "translateY(0)" },
+          "40%": { opacity: "1", transform: "translateY(-2px)" },
+        },
+        shimmer: {
+          "100%": { transform: "translateX(100%)" },
+        },
+        "pulse-ring": {
+          "0%": { transform: "scale(0.85)", opacity: "0.7" },
+          "70%, 100%": { transform: "scale(1.6)", opacity: "0" },
+        },
       },
       animation: {
         "fade-in": "fade-in 150ms ease-out",
         "pop-in": "pop-in 160ms cubic-bezier(0.16, 1, 0.3, 1)",
         "slide-in-right": "slide-in-right 220ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "thinking-dot": "thinking-dot 1.4s ease-in-out infinite",
+        shimmer: "shimmer 1.6s ease-in-out infinite",
+        "pulse-ring": "pulse-ring 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite",
       },
     },
   },

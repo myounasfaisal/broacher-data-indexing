@@ -125,9 +125,83 @@ class Settings(BaseSettings):
     # to claude_model below so nothing hard-codes an unfunded model.
     page_extract_claude_model: str = ""
 
+    # --- Chat assistant (services/chat_agent.py) ---
+    # Off by default: the chat endpoints 503 until this is switched on, so the
+    # feature can ship dark and be enabled per-environment after testing.
+    chat_enabled: bool = False
+    # Which provider drives the agent loop. "anthropic" | "gpt" | "qwen".
+    # ONE is active per deployment — this is not a fallback chain.
+    #
+    # There are only TWO loop implementations for these three options: Qwen's
+    # DashScope endpoint is OpenAI-compatible (it is already driven through the
+    # `openai` SDK for extraction), so "gpt" and "qwen" share one loop and
+    # differ only by base URL / key / model. Anthropic needs its own because
+    # its tool-use wire format is genuinely different.
+    chat_provider: str = "anthropic"
+    chat_anthropic_model: str = "claude-sonnet-5"
+    chat_gpt_model: str = "gpt-4o-mini"
+    # Qwen's text model (the VLM in qwen_model is for page extraction).
+    chat_qwen_model: str = "qwen-plus"
+    # Sonnet 5 defaults to "high" effort, which is more than a short-answer
+    # chat needs. Anthropic-only; ignored by the OpenAI-compatible loop.
+    chat_effort: str = "medium"
+    # Hard cap on turns in one thread. At the cap the API refuses further
+    # sends and the UI offers a new chat, rather than silently dropping the
+    # oldest turns (which reads as the assistant "forgetting").
+    chat_max_messages: int = 20
+    # Rows handed back to the model per tool call. The real token cost is tool
+    # results, not the messages — see the plan doc.
+    chat_max_rows: int = 40
+    # Safety valve on the agent loop: stop after this many tool round-trips
+    # even if the model wants more.
+    chat_max_tool_iterations: int = 6
+    chat_rate_limit: str = "10/minute"
+    # Idle sweep for the in-memory thread store. Threads are also destroyed
+    # explicitly when the user closes the chat box.
+    chat_ttl_minutes: int = 60
+
+    # --- Semantic index (services/embeddings.py, P3) ---
+    # Off by default, like the chat: with this false the assistant's
+    # find_similar_chemicals tool degrades to a name match instead of failing,
+    # and the worker skips the refresh entirely. Turning it on requires the
+    # chemical_embeddings migration AND a backfill run.
+    embeddings_enabled: bool = False
+    # Anthropic has no embeddings API. Qwen's text-embedding-v3 runs on the
+    # DashScope OpenAI-compatible endpoint already configured above (same key,
+    # same base URL), so this adds no new provider account.
+    # "qwen" | "openai".
+    embedding_provider: str = "qwen"
+    embedding_model: str = "text-embedding-v3"
+    # MUST match the vector(N) width in the migration. Changing it means
+    # rewriting the column and re-embedding everything — it is not a tuning
+    # knob you can turn at runtime.
+    embedding_dim: int = 1024
+    # DashScope caps inputs per embeddings call; 10 is comfortably inside every
+    # documented limit and keeps a failed batch cheap to retry.
+    embedding_batch_size: int = 10
+    # Neighbours returned by one find_similar_chemicals call, before the
+    # purchasability filter drops any we cannot actually buy.
+    embedding_match_count: int = 8
+    # Cosine-similarity floor — a guard against a query that is far from the
+    # whole catalog, NOT a relevance filter.
+    #
+    # MEASURED (2026-07-26, 324 indexed chemicals): every query lands in a
+    # 0.55-0.66 band, including ones the catalog cannot serve — "food-grade
+    # gelatin" scored 0.55-0.60 while a genuine epoxy-hardener match scored
+    # 0.62. No threshold in that band separates a hit from a miss, and raising
+    # this to try would start dropping real matches first. Relevance is
+    # therefore enforced where it actually works: the evidence test in the
+    # prompt and the "this is not a verdict" note on every result.
+    embedding_min_similarity: float = 0.5
+
     # --- Behaviour / limits ---
     allowed_origin: str = "http://localhost:5173"
     max_upload_size_mb: int = 20
+    # DPI used when the splitter renders PDF pages to PNGs for extraction.
+    # Lower = smaller images, cheaper/faster calls, but small print (CAS digits)
+    # degrades first. 200 is the measured-safe default; change it only against a
+    # recall comparison on `test file/` (see ARCHITECTURE.md §6).
+    split_dpi: int = 200
     claude_model: str = "claude-haiku-4-5-20251001"
 
     # Retry count for flaky external API calls (Claude, PubChem).
@@ -157,6 +231,28 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Cached accessor so the .env file is parsed only once."""
     return Settings()
+
+
+def reload_settings() -> None:
+    """Clear the cached Settings so the next access re-reads env + DB."""
+    get_settings.cache_clear()
+
+
+def get_effective(key: str) -> str | None:
+    """
+    Return the effective value of a setting: DB override first, then env var.
+    Imported by services that need a single setting value at call time (not
+    at import time).  The DB layer is imported lazily to avoid a circular
+    import at module load (config -> database -> config).
+    """
+    try:
+        from app.services.app_settings import get_raw
+        db_val = get_raw(key)
+        if db_val is not None and db_val != "":
+            return db_val
+    except Exception:
+        pass
+    return getattr(get_settings(), key, None)
 
 
 settings = get_settings()

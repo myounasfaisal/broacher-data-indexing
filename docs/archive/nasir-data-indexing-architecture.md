@@ -1,3 +1,8 @@
+> **SUPERSEDED — historical.** The single source of truth for how this system
+> works is [ARCHITECTURE.md](../../ARCHITECTURE.md). Design document that proposed the DB-worker pipeline. Now implemented — read `ARCHITECTURE.md` for what was actually built.
+
+---
+
 # Data indexing architecture — from stored images onward
 
 **Audience:** written for a senior backend engineer reviewing this design (with or without AI assistance), not the original stakeholder discussion. Language here is technical, not simplified.

@@ -1,3 +1,8 @@
+> **SUPERSEDED — historical.** The single source of truth for how this system
+> works is [ARCHITECTURE.md](../../ARCHITECTURE.md). Frontend design-session handoff (2026-07-21). The design system itself lives in `DESIGN.md`.
+
+---
+
 # Impeccable session context — handoff
 
 Snapshot of the frontend design work (via the `impeccable` skill) as of

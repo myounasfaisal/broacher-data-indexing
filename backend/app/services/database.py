@@ -889,6 +889,16 @@ SEARCH_COLUMNS = (
 # columns plus the flexible details blob and the printed supplier website.
 DETAIL_COLUMNS = SEARCH_COLUMNS + ", details, company_website"
 
+# Projection for the chat assistant (services/chat_agent.py).
+#
+# WHY THIS EXISTS: SEARCH_COLUMNS deliberately omits `details` — the results
+# table doesn't render it. But `details` is where every technical attribute
+# lives (application, grade, polymer_family, packaging, viscosity...), and most
+# brochures print NO price, so `details` — not price — is the only axis the
+# assistant can actually rank on. Handing it SEARCH_COLUMNS would give it
+# names and mostly-null prices and nothing to reason with.
+AGENT_COLUMNS = DETAIL_COLUMNS
+
 # When a (free-text) purity filter is active, rows are fetched then filtered in
 # Python BEFORE pagination. This caps how many rows we pull for that pass —
 # comfortably above the current table size; raise it if the DB grows very large.
@@ -925,6 +935,7 @@ def search_listings(
     letter: str | None = None,
     page: int = 1,
     page_size: int = 15,
+    columns: str = SEARCH_COLUMNS,
 ) -> tuple[list[dict[str, Any]], int]:
     """
     Filter listings for the viewer search page. Returns (rows, total_count),
@@ -957,11 +968,16 @@ def search_listings(
       'add_listing_details_and_website') — server-side, so counts stay right.
     - sort: 'name_asc' | 'name_desc' | 'price_asc' | 'price_desc'
       (legacy 'name' == name_asc, 'price' == price_asc).
+    - columns: the PostgREST projection. Defaults to the viewer-safe
+      SEARCH_COLUMNS; the chat assistant passes AGENT_COLUMNS to also get the
+      `details` blob. This widens the SELECT only — every filter, sort and
+      pagination rule above is shared, so there is still exactly one query
+      path (ARCHITECTURE.md §10).
     - letter: single A-Z character — restrict to chemicals whose English name
       starts with that letter (drives the alphabet pagination tabs).
     - page / page_size: server-side pagination (page is 1-based).
     """
-    query = get_client().table("listings").select(SEARCH_COLUMNS, count="exact")
+    query = get_client().table("listings").select(columns, count="exact")
 
     if q:
         # ONE broad match surface: search_text is a PostgREST computed field
@@ -1071,6 +1087,148 @@ def search_listings(
     return rows, (resp.count or 0)
 
 
+def _completeness_rank(row: dict[str, Any]) -> tuple[int, int, int, str]:
+    """
+    Sort key for supplier comparison: most *usable* offer first.
+
+    Deliberately NOT price-ordered. Most brochures print no price at all, so
+    ranking by price would sort the catalog by which supplier happened to
+    publish a number — an artefact of the source document, not a property of
+    the offer. Instead: flagged rows sink, then richer rows float.
+    Tuple is ascending, so each term is negated where "more is better".
+    """
+    return (
+        1 if row.get("needs_review") else 0,
+        -len(row.get("details") or {}),
+        -(1 if row.get("purity") else 0) - (1 if row.get("price") else 0),
+        (row.get("company_name") or "").lower(),
+    )
+
+
+@_db_op
+def compare_suppliers(
+    *,
+    cas_number: str | None = None,
+    chemical_id: str | None = None,
+    limit: int = 40,
+) -> list[dict[str, Any]]:
+    """
+    Every listing for ONE substance, so the assistant can answer "who carries
+    this". Matches on chemical_id when known (the canonical identity), else on
+    an exact CAS.
+
+    Ordered by data completeness rather than price — see _completeness_rank.
+    """
+    if not cas_number and not chemical_id:
+        return []
+
+    query = get_client().table("listings").select(AGENT_COLUMNS)
+    if chemical_id:
+        query = query.eq("chemical_id", chemical_id)
+    else:
+        safe_cas = _sanitize_filter_value(cas_number or "")
+        if not safe_cas:
+            return []
+        # Exact match, not substring: '7647-14-5' must not also pull
+        # '17647-14-5'. Substring CAS search is what /search is for.
+        query = query.eq("cas_number", safe_cas)
+
+    resp = query.limit(limit).execute()
+    rows = [_flatten_company(r) for r in (resp.data or [])]
+    rows.sort(key=_completeness_rank)
+    return rows
+
+
+@_db_op
+def list_detail_keys(limit: int = 60) -> list[dict[str, Any]]:
+    """
+    Distinct keys used across listings.details, with how often each appears.
+
+    Brochures label the same concept differently — 'application' in one,
+    'uses' or 'recommended_for' in another — because the extraction prompt
+    records whatever the page printed. The assistant needs to know the
+    vocabulary that actually exists in THIS catalog instead of guessing key
+    names that would silently match nothing.
+
+    Counted in Python: `details` is a free-form JSONB blob, so there is no
+    index or aggregate to lean on, and the row count here is small.
+    """
+    resp = (
+        get_client()
+        .table("listings")
+        .select("details")
+        .not_.is_("details", "null")
+        .limit(_PURITY_SCAN_CAP)
+        .execute()
+    )
+    counts: dict[str, int] = {}
+    for row in resp.data or []:
+        details = row.get("details")
+        if isinstance(details, dict):
+            for key in details:
+                counts[key] = counts.get(key, 0) + 1
+
+    ranked = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+    return [{"key": k, "count": n} for k, n in ranked[:limit]]
+
+
+@_db_op
+def get_listing_provenance(listing_id: str) -> dict[str, Any] | None:
+    """
+    Where a listing came from: the uploaded brochure and the page within it.
+
+    This is what makes a recommendation checkable — the user can go look at the
+    actual printed page rather than taking the assistant's word for it.
+    """
+    resp = (
+        get_client()
+        .table("listings")
+        .select("id, name_en, document_id, source_page_id")
+        .eq("id", listing_id)
+        .limit(1)
+        .execute()
+    )
+    rows = resp.data or []
+    if not rows:
+        return None
+    listing = rows[0]
+
+    out: dict[str, Any] = {
+        "listing_id": listing["id"],
+        "name_en": listing.get("name_en"),
+        "filename": None,
+        "content_hash": None,
+        "page_number": None,
+    }
+
+    if listing.get("document_id"):
+        doc = (
+            get_client()
+            .table("documents")
+            .select("content_hash, filename")
+            .eq("id", listing["document_id"])
+            .limit(1)
+            .execute()
+        )
+        if doc.data:
+            out["filename"] = doc.data[0].get("filename")
+            out["content_hash"] = doc.data[0].get("content_hash")
+
+    if listing.get("source_page_id"):
+        page = (
+            get_client()
+            .table("pages")
+            .select("page_number")
+            .eq("id", listing["source_page_id"])
+            .limit(1)
+            .execute()
+        )
+        if page.data:
+            out["page_number"] = page.data[0].get("page_number")
+
+    return out
+
+
 @_db_op
 def suggest(q: str, limit: int = 8) -> list[dict[str, Any]]:
     """
@@ -1156,6 +1314,420 @@ def suggest(q: str, limit: int = 8) -> list[dict[str, Any]]:
         )
 
     return out
+
+
+# ---------------------------------------------------------------------
+# Semantic index (P3) — one embedding per canonical chemical
+# ---------------------------------------------------------------------
+# Read/write side of chemical_embeddings. The vector itself never leaves this
+# module in either direction as anything but a list of floats or pgvector's
+# text literal; nothing above this layer knows what a vector looks like.
+
+
+@_db_op
+def list_all_chemical_ids() -> list[str]:
+    """
+    Every chemical id, paginated.
+
+    NOT `list_chemicals()`: that issues one unbounded select, and PostgREST
+    caps a request at 1000 rows by default. With 1005 chemicals live, the
+    backfill silently never saw the last five — and the symptom was a progress
+    counter reading "1000/1000", which looks like success. Page explicitly so
+    the count is the truth.
+    """
+    ids: list[str] = []
+    page_size = 1000
+    offset = 0
+    while True:
+        resp = (
+            get_client()
+            .table("chemicals")
+            .select("id")
+            .order("id")
+            .range(offset, offset + page_size - 1)
+            .execute()
+        )
+        rows = resp.data or []
+        ids.extend(str(r["id"]) for r in rows)
+        if len(rows) < page_size:
+            return ids
+        offset += page_size
+
+
+@_db_op
+def chemical_ids_for_document(document_id: str) -> list[str]:
+    """
+    The canonical chemicals a finished document touched.
+
+    Drives the worker's post-upload refresh: only what changed gets
+    re-embedded, so a completed brochure costs a handful of embedding calls
+    rather than a full re-index.
+    """
+    resp = (
+        get_client()
+        .table("listings")
+        .select("chemical_id")
+        .eq("document_id", document_id)
+        .not_.is_("chemical_id", "null")
+        .execute()
+    )
+    return list(dict.fromkeys(str(r["chemical_id"]) for r in (resp.data or [])))
+
+
+@_db_op
+def listings_for_chemicals(chemical_ids: list[str]) -> list[dict[str, Any]]:
+    """
+    The listing rows behind a set of chemicals, for composing embedding source
+    text: trade names as printed plus whatever technical attributes the
+    brochures carried.
+    """
+    ids = [i for i in dict.fromkeys(chemical_ids) if i]
+    if not ids:
+        return []
+    resp = (
+        get_client()
+        .table("listings")
+        .select("chemical_id, name_en, name_raw, cas_number, details")
+        .in_("chemical_id", ids)
+        .execute()
+    )
+    return resp.data or []
+
+
+@_db_op
+def get_embedding_source_texts(chemical_ids: list[str]) -> dict[str, str]:
+    """
+    Map chemical id → the text currently embedded for it.
+
+    The refresh job compares against this and skips anything unchanged, which
+    is what makes re-running the backfill over a settled catalog free.
+    """
+    ids = [i for i in dict.fromkeys(chemical_ids) if i]
+    if not ids:
+        return {}
+    resp = (
+        get_client()
+        .table("chemical_embeddings")
+        .select("chemical_id, source_text")
+        .in_("chemical_id", ids)
+        .execute()
+    )
+    return {str(r["chemical_id"]): r.get("source_text") or "" for r in (resp.data or [])}
+
+
+@_db_op
+def upsert_chemical_embeddings(rows: list[dict[str, Any]]) -> int:
+    """
+    Write embeddings. Each row: {chemical_id, embedding (list[float]),
+    source_text}. `updated_at` is set here so a stale-index check has one
+    honest source of truth.
+    """
+    if not rows:
+        return 0
+    now = datetime.now(timezone.utc).isoformat()
+    payload = [
+        {
+            "chemical_id": r["chemical_id"],
+            "embedding": r["embedding"],
+            "source_text": r["source_text"],
+            "updated_at": now,
+        }
+        for r in rows
+    ]
+    get_client().table("chemical_embeddings").upsert(
+        payload, on_conflict="chemical_id"
+    ).execute()
+    return len(payload)
+
+
+@_db_op
+def count_chemical_embeddings() -> int:
+    """
+    How many chemicals are indexed. Used to detect an index that was never
+    backfilled — the difference between "no similar chemicals" (a real answer)
+    and "similarity search is not available here" (an operational gap).
+    """
+    resp = (
+        get_client()
+        .table("chemical_embeddings")
+        .select("chemical_id", count="exact")
+        .limit(1)
+        .execute()
+    )
+    return resp.count or 0
+
+
+def to_vector_literal(embedding: list[float]) -> str:
+    """
+    pgvector's own text form, '[0.1,0.2,…]'.
+
+    Sent as a JSON string and cast inside match_chemicals, rather than relying
+    on PostgREST coercing a JSON array into a vector — that behaviour has
+    differed across PostgREST versions.
+    """
+    return "[" + ",".join(repr(float(v)) for v in embedding) + "]"
+
+
+@_db_op
+def match_chemicals(
+    embedding: list[float],
+    *,
+    limit: int = 8,
+    exclude_chemical_id: str | None = None,
+    min_similarity: float = 0.0,
+) -> list[dict[str, Any]]:
+    """
+    Nearest chemicals by cosine similarity (the match_chemicals RPC).
+
+    Returns [] rather than raising when the index is empty; the caller decides
+    whether that means "nothing similar" or "not indexed yet".
+    """
+    resp = get_client().rpc(
+        "match_chemicals",
+        {
+            "query_embedding": to_vector_literal(embedding),
+            "match_count": limit,
+            "exclude_id": exclude_chemical_id,
+            "min_similarity": min_similarity,
+        },
+    ).execute()
+    return resp.data or []
+
+
+# ---------------------------------------------------------------------
+# House knowledge (P4) — curated substitution + regulatory notes
+# ---------------------------------------------------------------------
+# BosTech's own judgement, written by managers from the Inspector. Read by the
+# chat assistant, which is instructed to treat these as OVERRIDING its own
+# chemistry knowledge (docs/AI_SEARCH_ARCHITECTURE.md §5). Everything here is
+# keyed by canonical chemical, never by listing: a substitution holds for a
+# substance, not for one supplier's packaging of it.
+
+
+@_db_op
+def find_chemicals_by_name(name: str, limit: int = 5) -> list[dict[str, Any]]:
+    """
+    Canonical chemicals whose English name contains `name`.
+
+    Used to turn the name a user typed ("titanium dioxide") into the ids the
+    notes tables are keyed by. Returns several rather than one because a
+    substring can legitimately match a family ("epoxy resin", "epoxy resin
+    hardener") and the caller wants the notes on all of them.
+    """
+    safe = _sanitize_filter_value(name)
+    if not safe:
+        return []
+    resp = (
+        get_client()
+        .table("chemicals")
+        .select("id, cas_number, name_en")
+        .ilike("name_en", f"%{safe}%")
+        .limit(limit)
+        .execute()
+    )
+    return resp.data or []
+
+
+@_db_op
+def get_chemicals_by_ids(ids: list[str]) -> dict[str, dict[str, Any]]:
+    """Map chemical id → {name_en, cas_number}, for labelling note rows."""
+    unique = [i for i in dict.fromkeys(ids) if i]
+    if not unique:
+        return {}
+    resp = (
+        get_client()
+        .table("chemicals")
+        .select("id, name_en, cas_number")
+        .in_("id", unique)
+        .execute()
+    )
+    return {r["id"]: r for r in (resp.data or [])}
+
+
+def _label_notes(
+    rows: list[dict[str, Any]], id_keys: tuple[str, ...]
+) -> list[dict[str, Any]]:
+    """
+    Attach `<key>_name` / `<key>_cas` for every chemical id on a note.
+
+    Done as a second query rather than a PostgREST embed because
+    substitution_notes has TWO foreign keys to `chemicals`, which forces
+    embeds to be disambiguated by generated constraint name — a string that
+    would silently break if the constraint were ever recreated.
+    """
+    prefixes = {
+        "from_chemical_id": "from",
+        "to_chemical_id": "to",
+        "chemical_id": "chemical",
+    }
+    wanted = [str(row[k]) for row in rows for k in id_keys if row.get(k)]
+    names = get_chemicals_by_ids(wanted)
+    for row in rows:
+        for key in id_keys:
+            chem = names.get(str(row.get(key) or ""))
+            prefix = prefixes[key]
+            row[f"{prefix}_name"] = chem.get("name_en") if chem else None
+            row[f"{prefix}_cas"] = chem.get("cas_number") if chem else None
+    return rows
+
+
+@_db_op
+def list_substitution_notes(chemical_ids: list[str]) -> list[dict[str, Any]]:
+    """
+    Every substitution note touching these chemicals, newest first.
+
+    Matches BOTH directions. A note saying "we used zinc oxide in place of
+    titanium dioxide" is relevant when looking at either substance — from the
+    zinc oxide side it is the fact that we have already deployed it as a
+    replacement, which is exactly the sourcing knowledge worth surfacing.
+    """
+    ids = [i for i in dict.fromkeys(chemical_ids) if i]
+    if not ids:
+        return []
+    client = get_client()
+    columns = (
+        "id, from_chemical_id, to_chemical_id, to_name, verdict, context, "
+        "author_id, created_at"
+    )
+    rows: dict[str, dict[str, Any]] = {}
+    for column in ("from_chemical_id", "to_chemical_id"):
+        resp = (
+            client.table("substitution_notes")
+            .select(columns)
+            .in_(column, ids)
+            .order("created_at", desc=True)
+            .execute()
+        )
+        for row in resp.data or []:
+            rows[row["id"]] = row
+    ordered = sorted(
+        rows.values(), key=lambda r: str(r.get("created_at") or ""), reverse=True
+    )
+    return _label_notes(ordered, ("from_chemical_id", "to_chemical_id"))
+
+
+@_db_op
+def create_substitution_note(
+    *,
+    from_chemical_id: str,
+    to_chemical_id: str | None,
+    to_name: str,
+    verdict: str,
+    context: str,
+    author_id: str | None,
+) -> dict[str, Any]:
+    resp = (
+        get_client()
+        .table("substitution_notes")
+        .insert(
+            {
+                "from_chemical_id": from_chemical_id,
+                "to_chemical_id": to_chemical_id,
+                "to_name": to_name,
+                "verdict": verdict,
+                "context": context,
+                "author_id": author_id,
+            }
+        )
+        .execute()
+    )
+    return _label_notes(list(resp.data or []), ("from_chemical_id", "to_chemical_id"))[0]
+
+
+@_db_op
+def get_substitution_note(note_id: str) -> dict[str, Any] | None:
+    resp = (
+        get_client()
+        .table("substitution_notes")
+        .select("id, author_id")
+        .eq("id", note_id)
+        .limit(1)
+        .execute()
+    )
+    return resp.data[0] if resp.data else None
+
+
+@_db_op
+def delete_substitution_note(note_id: str) -> bool:
+    resp = (
+        get_client()
+        .table("substitution_notes")
+        .delete()
+        .eq("id", note_id)
+        .execute()
+    )
+    return bool(resp.data)
+
+
+@_db_op
+def list_regulatory_notes(chemical_ids: list[str]) -> list[dict[str, Any]]:
+    """Recorded regulatory statuses for these chemicals, newest first."""
+    ids = [i for i in dict.fromkeys(chemical_ids) if i]
+    if not ids:
+        return []
+    resp = (
+        get_client()
+        .table("regulatory_notes")
+        .select(
+            "id, chemical_id, jurisdiction, status, effective_date, note, "
+            "source_url, author_id, created_at"
+        )
+        .in_("chemical_id", ids)
+        .order("created_at", desc=True)
+        .execute()
+    )
+    return _label_notes(list(resp.data or []), ("chemical_id",))
+
+
+@_db_op
+def create_regulatory_note(
+    *,
+    chemical_id: str,
+    jurisdiction: str,
+    status: str,
+    effective_date: str | None,
+    note: str,
+    source_url: str | None,
+    author_id: str | None,
+) -> dict[str, Any]:
+    resp = (
+        get_client()
+        .table("regulatory_notes")
+        .insert(
+            {
+                "chemical_id": chemical_id,
+                "jurisdiction": jurisdiction,
+                "status": status,
+                "effective_date": effective_date,
+                "note": note,
+                "source_url": source_url,
+                "author_id": author_id,
+            }
+        )
+        .execute()
+    )
+    return _label_notes(list(resp.data or []), ("chemical_id",))[0]
+
+
+@_db_op
+def get_regulatory_note(note_id: str) -> dict[str, Any] | None:
+    resp = (
+        get_client()
+        .table("regulatory_notes")
+        .select("id, author_id")
+        .eq("id", note_id)
+        .limit(1)
+        .execute()
+    )
+    return resp.data[0] if resp.data else None
+
+
+@_db_op
+def delete_regulatory_note(note_id: str) -> bool:
+    resp = (
+        get_client().table("regulatory_notes").delete().eq("id", note_id).execute()
+    )
+    return bool(resp.data)
 
 
 def _order_nulls_last(query: Any, column: str, *, desc: bool) -> Any:

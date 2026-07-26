@@ -1,3 +1,8 @@
+> **SUPERSEDED — historical.** The single source of truth for how this system
+> works is [ARCHITECTURE.md](../../ARCHITECTURE.md). Migration plan for the move off the in-memory queue. The migration is complete.
+
+---
+
 # Migration Plan — moving to the DB-indexed, worker-per-document architecture
 
 **Source design:** [nasir-data-indexing-architecture.md](nasir-data-indexing-architecture.md)

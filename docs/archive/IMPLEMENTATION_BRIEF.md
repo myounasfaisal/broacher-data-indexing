@@ -1,3 +1,8 @@
+> **SUPERSEDED — historical.** The single source of truth for how this system
+> works is [ARCHITECTURE.md](../../ARCHITECTURE.md). Build spec for the pipeline migration. Note it assumed a Node/TypeScript worker; the implementation is Python.
+
+---
+
 # Implementation brief — brochure extraction pipeline
 
 Read this file and `schema-additions.sql` fully before writing any code. This brief reflects decisions already made — do not re-litigate them; ask only if something here conflicts with the existing codebase.

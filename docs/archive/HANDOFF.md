@@ -1,3 +1,8 @@
+> **SUPERSEDED — historical.** The single source of truth for how this system
+> works is [ARCHITECTURE.md](../../ARCHITECTURE.md). Operational session handoff. Its architecture summary is pre-migration; run instructions are in `readme.md`.
+
+---
+
 # Handoff — session context
 
 Paste-ready context for continuing work in a new chat. For the strategic "why"

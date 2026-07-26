@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Ban, Check, Loader2, Pause, Play, RotateCcw } from "lucide-react";
+import { Ban, Check, Loader2, Pause, Play, RotateCcw, Trash2 } from "lucide-react";
 import type { DocumentStatus } from "@/types/chemical";
 
 /**
@@ -8,12 +8,17 @@ import type { DocumentStatus } from "@/types/chemical";
  * machine. Controls are limited to what the worker model supports: Cancel (stop
  * after the current page — nothing already written is rolled back) and Restart
  * (re-queue a failed/cancelled document, resuming at its first incomplete page).
+ *
+ * A 'staged' document hasn't started: it is waiting for "Start processing", so
+ * its only control is Discard (delete it outright — safe, nothing has run yet).
  */
 
-// Statuses where the worker still has (or will have) work to do.
+// Statuses where the worker still has (or will have) work to do. 'staged' is
+// deliberately NOT here — it is waiting on the user, not on a worker.
 const ACTIVE = new Set(["pending", "splitting", "split", "extracting"]);
 
 const BAR_COLORS: Record<string, string> = {
+  staged: "bg-line-strong",
   pending: "bg-fg-subtle",
   splitting: "bg-fg-subtle",
   split: "bg-fg-subtle",
@@ -25,6 +30,7 @@ const BAR_COLORS: Record<string, string> = {
 };
 
 const STATUS_LABEL: Record<string, string> = {
+  staged: "Ready to start",
   pending: "Queued",
   splitting: "Preparing",
   split: "Ready to extract",
@@ -39,6 +45,8 @@ const STATUS_LABEL: Record<string, string> = {
 function percentFor(doc: DocumentStatus): number {
   if (doc.duplicate || doc.status === "done") return 100;
   if (doc.status === "failed" || doc.status === "cancelled") return 100;
+  // Staged = uploaded but not started. An empty bar is the honest reading.
+  if (doc.status === "staged") return 0;
   if (doc.status === "splitting" || doc.status === "pending") return 6;
   if (doc.page_count > 0) {
     return Math.max(10, Math.round((doc.pages_done / doc.page_count) * 100));
@@ -49,6 +57,8 @@ function percentFor(doc: DocumentStatus): number {
 function stageText(doc: DocumentStatus): string {
   if (doc.duplicate) return "Duplicate — this exact PDF was already processed; skipped.";
   switch (doc.status) {
+    case "staged":
+      return "Uploaded — waiting for you to start processing.";
     case "splitting":
       return "Preparing the upload…";
     case "pending":
@@ -78,7 +88,7 @@ function stageText(doc: DocumentStatus): string {
   }
 }
 
-type Control = "pause" | "resume" | "cancel" | "restart";
+type Control = "pause" | "resume" | "cancel" | "restart" | "discard";
 
 export function UploadJobRow({
   doc,
@@ -86,12 +96,14 @@ export function UploadJobRow({
   onResume,
   onCancel,
   onRestart,
+  onDiscard,
 }: {
   doc: DocumentStatus;
   onPause: (id: string) => Promise<void> | void;
   onResume: (id: string) => Promise<void> | void;
   onCancel: (id: string) => Promise<void> | void;
   onRestart: (id: string) => Promise<void> | void;
+  onDiscard: (id: string) => Promise<void> | void;
 }) {
   const barColor = doc.duplicate
     ? "bg-line-strong"
@@ -100,7 +112,7 @@ export function UploadJobRow({
   const pct = percentFor(doc);
 
   const [busy, setBusy] = useState<Control | null>(null);
-  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [confirming, setConfirming] = useState<"cancel" | "discard" | null>(null);
   const confirmTimer = useRef<number | null>(null);
   useEffect(
     () => () => {
@@ -114,12 +126,15 @@ export function UploadJobRow({
   // A paused doc can also be cancelled; duplicates never have controls.
   const canCancel = (ACTIVE.has(doc.status) || doc.status === "paused") && !doc.duplicate;
   const canRestart = doc.status === "failed" || doc.status === "cancelled";
+  // Discard only before anything has run — afterwards it's cancel + undo.
+  const canDiscard = doc.status === "staged" && !doc.duplicate;
 
   const HANDLERS: Record<Control, (id: string) => Promise<void> | void> = {
     pause: onPause,
     resume: onResume,
     cancel: onCancel,
     restart: onRestart,
+    discard: onDiscard,
   };
 
   async function run(kind: Control) {
@@ -131,16 +146,17 @@ export function UploadJobRow({
     }
   }
 
-  // Cancel destroys further processing, so first click arms, second within 3s commits.
-  function handleCancel() {
+  // Cancel and Discard are destructive, so the first click arms and a second
+  // within 3s commits.
+  function armOrRun(kind: "cancel" | "discard") {
     if (confirmTimer.current) window.clearTimeout(confirmTimer.current);
-    if (!confirmCancel) {
-      setConfirmCancel(true);
-      confirmTimer.current = window.setTimeout(() => setConfirmCancel(false), 3000);
+    if (confirming !== kind) {
+      setConfirming(kind);
+      confirmTimer.current = window.setTimeout(() => setConfirming(null), 3000);
       return;
     }
-    setConfirmCancel(false);
-    run("cancel");
+    setConfirming(null);
+    run(kind);
   }
 
   return (
@@ -181,13 +197,36 @@ export function UploadJobRow({
           )}
           {canCancel && (
             <IconBtn
-              title={confirmCancel ? "Click again to cancel" : "Cancel"}
+              title={confirming === "cancel" ? "Click again to cancel" : "Cancel"}
               busy={busy === "cancel"}
-              confirming={confirmCancel}
+              confirming={confirming === "cancel"}
               danger
-              onClick={handleCancel}
+              onClick={() => armOrRun("cancel")}
             >
-              {confirmCancel ? <Check className="h-3.5 w-3.5" /> : <Ban className="h-3.5 w-3.5" />}
+              {confirming === "cancel" ? (
+                <Check className="h-3.5 w-3.5" />
+              ) : (
+                <Ban className="h-3.5 w-3.5" />
+              )}
+            </IconBtn>
+          )}
+          {canDiscard && (
+            <IconBtn
+              title={
+                confirming === "discard"
+                  ? "Click again to discard this upload"
+                  : "Discard — delete this upload without processing it"
+              }
+              busy={busy === "discard"}
+              confirming={confirming === "discard"}
+              danger
+              onClick={() => armOrRun("discard")}
+            >
+              {confirming === "discard" ? (
+                <Check className="h-3.5 w-3.5" />
+              ) : (
+                <Trash2 className="h-3.5 w-3.5" />
+              )}
             </IconBtn>
           )}
           {canRestart && (

@@ -1,3 +1,8 @@
+> **SUPERSEDED — historical.** The single source of truth for how this system
+> works is [ARCHITECTURE.md](../../ARCHITECTURE.md). Client-facing project proposal (July 2026). Sales document, not a technical reference.
+
+---
+
 # Chemical Brochure Intelligence Platform
 ### Project Proposal
 

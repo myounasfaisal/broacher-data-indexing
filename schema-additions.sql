@@ -66,9 +66,20 @@ begin
 end$$;
 
 -- Status check constraint (added separately so the ADD COLUMN above stays simple).
+--   staged    — uploaded, PDF retained, NOT claimable. Waits for the user to
+--               press "Start processing" (POST /upload-jobs/start).
+--   paused /
+--   cancelled — lifecycle controls (were live in the DB before being written
+--               down here; see ARCHITECTURE.md §12.1 on this file's drift).
 alter table public.documents drop constraint if exists documents_status_check;
 alter table public.documents add constraint documents_status_check
-  check (status in ('pending', 'splitting', 'split', 'claimed', 'extracting', 'done', 'failed'));
+  check (status in ('staged', 'pending', 'splitting', 'split', 'claimed',
+                    'extracting', 'paused', 'done', 'failed', 'cancelled'));
+
+-- Staged documents are the queue's waiting room; the upload UI reads them on
+-- every poll.
+create index if not exists idx_documents_uploaded_by_status
+  on public.documents (uploaded_by, status);
 
 -- ---------------------------------------------------------------------
 -- 2. pages: one row per page image, belonging to a document.
@@ -155,3 +166,123 @@ create policy "admin_manager read pages"
         and profiles.role in ('admin', 'manager')
     )
   );
+
+-- ---------------------------------------------------------------------
+-- 7. House knowledge (P4): curated substitution + regulatory notes.
+--    Full commentary lives in db/migrations/2026-07-26_house_knowledge.sql;
+--    repeated here so a from-scratch setup gets the whole schema from the
+--    two repo SQL files (see ARCHITECTURE.md §12.1 on why this matters).
+-- ---------------------------------------------------------------------
+create table if not exists public.substitution_notes (
+  id               uuid primary key default gen_random_uuid(),
+  from_chemical_id uuid not null references public.chemicals (id) on delete cascade,
+  -- Nullable: the most useful notes are often about substances we do NOT
+  -- stock, which is a sourcing instruction rather than missing data.
+  to_chemical_id   uuid references public.chemicals (id) on delete set null,
+  to_name          text not null,
+  verdict          text not null default 'works'
+                     check (verdict in ('works', 'conditional', 'avoid')),
+  context          text not null,
+  author_id        uuid references auth.users (id) on delete set null,
+  created_at       timestamptz not null default now()
+);
+
+create table if not exists public.regulatory_notes (
+  id             uuid primary key default gen_random_uuid(),
+  chemical_id    uuid not null references public.chemicals (id) on delete cascade,
+  jurisdiction   text not null,
+  status         text not null
+                   check (status in ('banned', 'restricted', 'phase_out',
+                                     'permitted', 'unclear')),
+  effective_date date,
+  note           text not null,
+  source_url     text,
+  author_id      uuid references auth.users (id) on delete set null,
+  created_at     timestamptz not null default now()
+);
+
+create index if not exists idx_substitution_notes_from
+  on public.substitution_notes (from_chemical_id);
+create index if not exists idx_substitution_notes_to
+  on public.substitution_notes (to_chemical_id);
+create index if not exists idx_regulatory_notes_chemical
+  on public.regulatory_notes (chemical_id);
+
+alter table public.substitution_notes enable row level security;
+alter table public.regulatory_notes   enable row level security;
+
+drop policy if exists "authenticated read substitution_notes" on public.substitution_notes;
+create policy "authenticated read substitution_notes"
+  on public.substitution_notes for select
+  to authenticated
+  using (true);
+
+drop policy if exists "authenticated read regulatory_notes" on public.regulatory_notes;
+create policy "authenticated read regulatory_notes"
+  on public.regulatory_notes for select
+  to authenticated
+  using (true);
+
+-- ---------------------------------------------------------------------
+-- 8. Semantic index (P3): one embedding per canonical chemical.
+--    Full commentary in db/migrations/2026-07-26_chemical_embeddings.sql.
+--    Used ONLY for "find chemicals like this one" — never for fact retrieval.
+-- ---------------------------------------------------------------------
+-- Into `extensions` (Supabase convention), not public: keeps the security
+-- advisor quiet and matches where pgcrypto/uuid-ossp already live.
+create extension if not exists vector with schema extensions;
+
+create table if not exists public.chemical_embeddings (
+  chemical_id uuid primary key
+                references public.chemicals (id) on delete cascade,
+  -- Must match settings.embedding_dim (Qwen text-embedding-v3 → 1024).
+  embedding   extensions.vector(1024) not null,
+  source_text text not null,   -- also the change detector for the refresh job
+  updated_at  timestamptz not null default now()
+);
+
+create index if not exists idx_chemical_embeddings_hnsw
+  on public.chemical_embeddings
+  using hnsw (embedding extensions.vector_cosine_ops);
+
+-- ANN search as an RPC — PostgREST cannot express `order by <=>`.
+-- query_embedding is TEXT and cast here; see the migration for why.
+create or replace function public.match_chemicals(
+  query_embedding text,
+  match_count     int  default 8,
+  exclude_id      uuid default null,
+  min_similarity  real default 0.0
+)
+returns table (
+  chemical_id uuid,
+  name_en     text,
+  cas_number  text,
+  similarity  real
+)
+language sql
+stable
+-- Explicit: the <=> operator and the vector type live in `extensions`, and
+-- this must not depend on PostgREST's runtime search_path.
+set search_path = public, extensions
+as $$
+  select
+    ce.chemical_id,
+    c.name_en,
+    c.cas_number,
+    (1 - (ce.embedding <=> query_embedding::extensions.vector))::real as similarity
+  from public.chemical_embeddings ce
+  join public.chemicals c on c.id = ce.chemical_id
+  where (exclude_id is null or ce.chemical_id <> exclude_id)
+    and (1 - (ce.embedding <=> query_embedding::extensions.vector)) >= min_similarity
+  order by ce.embedding <=> query_embedding::extensions.vector
+  limit match_count;
+$$;
+
+alter table public.chemical_embeddings enable row level security;
+
+drop policy if exists "authenticated read chemical_embeddings"
+  on public.chemical_embeddings;
+create policy "authenticated read chemical_embeddings"
+  on public.chemical_embeddings for select
+  to authenticated
+  using (true);

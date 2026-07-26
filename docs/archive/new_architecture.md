@@ -1,3 +1,8 @@
+> **SUPERSEDED — historical.** The single source of truth for how this system
+> works is [ARCHITECTURE.md](../../ARCHITECTURE.md). Current-state description of the DB-worker pipeline, folded into `ARCHITECTURE.md` (which corrects it on the `characteristics`/`details` column and the missing `claim_next_document` SQL).
+
+---
+
 # New Architecture — DB-worker extraction pipeline
 
 **Status:** implemented and running (2026-07-26). This documents the system **as

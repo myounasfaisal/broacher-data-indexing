@@ -24,3 +24,6 @@ Thumbs.db
 
 # run.sh logs
 .run-logs/
+
+# Contains a plaintext Supabase access token
+.mcp.json

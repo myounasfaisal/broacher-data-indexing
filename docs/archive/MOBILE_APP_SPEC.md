@@ -1,3 +1,8 @@
+> **SUPERSEDED — historical.** The single source of truth for how this system
+> works is [ARCHITECTURE.md](../../ARCHITECTURE.md). Spec for a mobile version that was never built.
+
+---
+
 # Chemical Brochure Scanner — Mobile App Specification
 
 **Product handoff document for the implementing developer.**

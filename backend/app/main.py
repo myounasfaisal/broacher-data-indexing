@@ -17,7 +17,17 @@ from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
 from app.rate_limit import limiter
-from app.routers import dashboard, listings, search, suppliers, upload, users
+from app.routers import (
+    admin_settings,
+    chat,
+    dashboard,
+    listings,
+    notes,
+    search,
+    suppliers,
+    upload,
+    users,
+)
 from app.services.database import DatabaseError, DuplicateListingError
 
 logger = logging.getLogger(__name__)
@@ -70,6 +80,9 @@ app.include_router(suppliers.router)
 app.include_router(upload.router)
 app.include_router(users.router)
 app.include_router(dashboard.router)
+app.include_router(chat.router)
+app.include_router(notes.router)
+app.include_router(admin_settings.router)
 
 
 @app.get("/health")

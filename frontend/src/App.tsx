@@ -8,6 +8,7 @@ import SearchPage from "./pages/SearchPage";
 import SuppliersPage from "./pages/SuppliersPage";
 import ReviewQueuePage from "./pages/ReviewQueuePage";
 import AuditLogPage from "./pages/AuditLogPage";
+import AdminSettingsPage from "./pages/AdminSettingsPage";
 import ProductDetail from "./pages/ProductDetail";
 import { AppShell } from "@/components/layout/AppShell";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -71,6 +72,14 @@ export default function App() {
           element={
             <ProtectedRoute role="admin">
               <AuditLogPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/settings"
+          element={
+            <ProtectedRoute role="admin">
+              <AdminSettingsPage />
             </ProtectedRoute>
           }
         />

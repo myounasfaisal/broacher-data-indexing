@@ -38,8 +38,10 @@ def create_document(
 ) -> dict[str, Any]:
     """Insert a new work-queue document row in the non-claimable 'splitting'
     (preparing) state. The upload path stores the source PDF, then flips it to
-    'pending' — so a worker never claims a document before its PDF is retained.
-    The worker splits lazily (a crash before split just re-splits from the PDF)."""
+    'staged' — uploaded and durable, but deliberately NOT claimable until the
+    user presses "Start processing" (start_documents), so nothing costs an AI
+    call until they say so. The worker splits lazily once released (a crash
+    before split just re-splits from the PDF)."""
     resp = (
         get_client()
         .table("documents")
@@ -130,7 +132,7 @@ def request_cancel(doc_id: str) -> dict[str, Any] | None:
     if doc.get("status") in ("done", "failed", "cancelled"):
         return doc  # already terminal — nothing to cancel
     fields: dict[str, Any] = {"cancel_requested": True}
-    if doc.get("status") in ("pending", "split", "paused"):
+    if doc.get("status") in ("staged", "pending", "split", "paused"):
         fields["status"] = "cancelled"  # not in flight — cancel immediately
     client.table("documents").update(fields).eq("id", doc_id).execute()
     return get_document(doc_id)
@@ -187,6 +189,55 @@ def restart_document(doc_id: str) -> dict[str, Any] | None:
         "claimed_at": None,
     }).eq("id", doc_id).execute()
     return get_document(doc_id)
+
+
+@_db_op
+def start_documents(uploader_id: str, doc_ids: list[str] | None = None) -> list[dict[str, Any]]:
+    """Release staged documents for processing: 'staged' -> 'pending', which is
+    the only thing standing between an uploaded PDF and the worker's claim query.
+
+    Scoped to one uploader so a shared "Start processing" press can never release
+    somebody else's staged batch. `doc_ids` narrows it further (None = all of the
+    caller's staged documents). Documents already flagged for cancellation are
+    skipped — releasing one would produce a document no worker will ever claim.
+
+    Returns the released rows.
+    """
+    query = (
+        get_client()
+        .table("documents")
+        .update({"status": "pending"})
+        .eq("uploaded_by", uploader_id)
+        .eq("status", "staged")
+        .or_("cancel_requested.is.null,cancel_requested.is.false")
+    )
+    if doc_ids is not None:
+        if not doc_ids:
+            return []
+        query = query.in_("id", doc_ids)
+    rows = query.execute().data or []
+    if rows:
+        logger.info("Released %d staged document(s) for processing", len(rows))
+    return rows
+
+
+@_db_op
+def discard_document(doc_id: str) -> bool:
+    """Delete a staged document outright — the user changed their mind before
+    spending anything on it. Safe precisely because 'staged' means nothing has
+    run yet: no pages, no listings, no supplier. Drops the retained PDF too, so
+    an abandoned upload leaves nothing behind.
+
+    Returns False (and deletes nothing) if the document has moved past 'staged'
+    — anything with extracted data must go through cancel/undo instead.
+    """
+    doc = get_document(doc_id)
+    if doc is None or doc.get("status") != "staged":
+        return False
+    delete_source_pdf(doc_id)
+    get_client().table("documents").delete().eq("id", doc_id).execute()
+    logger.info("Discarded staged document %s (%s)", doc_id, doc.get("filename"))
+    return True
 
 
 def should_stop(doc_id: str) -> str | None:
@@ -365,6 +416,37 @@ def download_page_image(path: str) -> bytes:
     """Fetch a page PNG back from Storage (the worker reads what the splitter
     wrote, so a page image is never held in memory across the split→extract gap)."""
     return get_client().storage.from_(BUCKET).download(path)
+
+
+def delete_page_image(path: str) -> None:
+    """Drop one page image once its page is 'done'.
+
+    Called from the worker's page loop the moment a page succeeds, so peak
+    Storage tracks work-in-progress rather than the whole corpus. Safe because a
+    'done' page is never reprocessed (the worker skips it, restart only resets
+    failed/dead pages) — so nothing will ever ask for this object again.
+
+    NEVER call this for a page that isn't 'done': restart deliberately does not
+    re-split when page rows exist, so a missing image would fail that page
+    forever until it dead-letters. Best-effort — a failed delete leaks one
+    object, which must not fail the page.
+    """
+    try:
+        get_client().storage.from_(BUCKET).remove([path])
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Could not delete page image %s: %s", path, exc)
+
+
+def delete_page_images(doc_id: str, page_numbers: list[int]) -> None:
+    """Bulk variant of delete_page_image for a document's finished pages."""
+    if not page_numbers:
+        return
+    try:
+        get_client().storage.from_(BUCKET).remove(
+            [page_object_path(doc_id, n) for n in page_numbers]
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Could not delete page images for %s: %s", doc_id, exc)
 
 
 def signed_page_url(path: str, expires_in: int = 3600) -> str | None:

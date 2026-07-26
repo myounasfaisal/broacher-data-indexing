@@ -19,6 +19,9 @@ export type UploadJobStatus =
  * documents/pages status machine, so it survives reloads and backend restarts.
  */
 export type DocumentStatusValue =
+  // Uploaded and durable, but deliberately not claimable: waits for the user to
+  // press "Start processing". Nothing costs an AI call until it leaves this state.
+  | "staged"
   | "pending"
   | "splitting"
   | "split"
@@ -227,4 +230,99 @@ export interface Listing {
   details?: Record<string, unknown> | null;
   /** Website printed on the brochure (the company's GENERAL site). */
   company_website?: string | null;
+}
+
+/* ------------------------------------------------------------------ */
+/* House knowledge — curated notes managers write from the Inspector   */
+/* ------------------------------------------------------------------ */
+
+/** Did the swap work? `avoid` records one that was tried and failed. */
+export type SubstitutionVerdict = "works" | "conditional" | "avoid";
+
+export type RegulatoryStatus =
+  | "banned"
+  | "restricted"
+  | "phase_out"
+  | "permitted"
+  /** Suspected but unconfirmed — kept distinct so it can't harden into a fact. */
+  | "unclear";
+
+/**
+ * "We used B in place of A, in this context." BosTech's own judgement, and the
+ * one source the assistant ranks above its own chemistry.
+ */
+export interface SubstitutionNote {
+  id: string;
+  from_chemical_id: string;
+  from_name: string | null;
+  from_cas: string | null;
+  /** Null when the substitute isn't in the catalog — a sourcing lead, not a gap. */
+  to_chemical_id: string | null;
+  to_name: string;
+  to_cas: string | null;
+  verdict: SubstitutionVerdict;
+  /** Free text, and the point of the note: "GCC floor coatings, summer cure". */
+  context: string;
+  author_id: string | null;
+  author_email: string | null;
+  created_at: string;
+}
+
+/** A jurisdiction-scoped, dated regulatory status recorded by a manager. */
+export interface RegulatoryNote {
+  id: string;
+  chemical_id: string;
+  chemical_name: string | null;
+  chemical_cas: string | null;
+  jurisdiction: string;
+  status: RegulatoryStatus;
+  effective_date: string | null;
+  note: string;
+  source_url: string | null;
+  author_id: string | null;
+  author_email: string | null;
+  created_at: string;
+}
+
+/** Everything the house knows about one chemical. */
+export interface HouseNotes {
+  substitutions: SubstitutionNote[];
+  regulatory: RegulatoryNote[];
+}
+
+/** A single admin-configurable setting. */
+export interface AppSetting {
+  key: string;
+  value: string;
+  is_secret: boolean;
+  category: string;
+  label: string;
+  description: string;
+  updated_at: string | null;
+}
+
+export interface SettingsCategory {
+  key: string;
+  label: string;
+}
+
+export interface SettingsResponse {
+  settings: AppSetting[];
+  categories: SettingsCategory[];
+}
+
+export interface SystemStatus {
+  workers_active: number;
+  documents_processing: number;
+  total_listings: number;
+  total_chemicals: number;
+  embeddings_indexed: number;
+  extraction_provider: string;
+  chat_enabled: boolean;
+  embeddings_enabled: boolean;
+}
+
+export interface TestKeyResult {
+  ok: boolean;
+  message: string;
 }

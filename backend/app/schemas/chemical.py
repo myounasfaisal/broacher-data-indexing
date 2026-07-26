@@ -310,6 +310,20 @@ class DocumentStatusListResponse(BaseModel):
     documents: list[DocumentStatusOut]
 
 
+class StartProcessingRequest(BaseModel):
+    """Body for POST /upload-jobs/start. Omit `document_ids` (or the whole body)
+    to release every staged upload the caller owns."""
+
+    document_ids: list[str] | None = None
+
+
+class StartProcessingResult(BaseModel):
+    """How many staged uploads were released, and their updated status rows."""
+
+    started: int
+    documents: list[DocumentStatusOut]
+
+
 class JobActionRequest(BaseModel):
     """Body for POST /upload-jobs/{id}/action."""
 

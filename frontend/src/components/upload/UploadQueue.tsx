@@ -20,6 +20,7 @@ export function UploadQueue({
   onResume,
   onCancel,
   onRestart,
+  onDiscard,
 }: {
   documents: DocumentStatus[];
   uploading?: UploadingItem[];
@@ -27,6 +28,7 @@ export function UploadQueue({
   onResume: (id: string) => Promise<void> | void;
   onCancel: (id: string) => Promise<void> | void;
   onRestart: (id: string) => Promise<void> | void;
+  onDiscard: (id: string) => Promise<void> | void;
 }) {
   if (documents.length === 0 && uploading.length === 0) return null;
 
@@ -37,12 +39,14 @@ export function UploadQueue({
       d.status === "split" ||
       d.status === "extracting",
   ).length;
+  const staged = documents.filter((d) => d.status === "staged").length;
 
   return (
     <div className="space-y-2">
-      {(active > 0 || uploading.length > 0) && (
+      {(active > 0 || staged > 0 || uploading.length > 0) && (
         <p className="text-xs text-fg-muted">
           {uploading.length > 0 && <>{uploading.length} uploading · </>}
+          {staged > 0 && <>{staged} ready to start · </>}
           {active} in progress
         </p>
       )}
@@ -55,6 +59,7 @@ export function UploadQueue({
             onResume={onResume}
             onCancel={onCancel}
             onRestart={onRestart}
+            onDiscard={onDiscard}
           />
         ))}
         {uploading.map((u) => (

@@ -9,6 +9,7 @@ import {
   Menu,
   ScrollText,
   Search,
+  Settings,
   Upload,
   Users,
   X,
@@ -66,6 +67,12 @@ const NAV_ITEMS: NavItem[] = [
     to: "/admin/audit",
     icon: ScrollText,
     label: "Activity",
+    show: (r) => r === "admin",
+  },
+  {
+    to: "/admin/settings",
+    icon: Settings,
+    label: "Settings",
     show: (r) => r === "admin",
   },
 ];

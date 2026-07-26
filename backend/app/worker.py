@@ -243,6 +243,12 @@ def process_document(doc: dict[str, Any]) -> None:
             markdown_output=result.markdown,
             raw_json=json.loads(result.model_dump_json())["listings"],
         )
+        # The page is banked — drop its image immediately rather than at document
+        # completion, so peak Storage tracks work-in-progress instead of the whole
+        # corpus. Only ever for 'done' pages: a failed/dead page keeps its image
+        # because restart resumes without re-splitting. markdown_output/raw_json
+        # above are what debugging actually needs, and they persist.
+        pipeline_db.delete_page_image(page["image_path"])
         # Heartbeat after each page so the reconciler sees ongoing progress and
         # doesn't reset a live worker on a long document.
         pipeline_db.touch_claim(doc_id)
@@ -319,6 +325,22 @@ def _finalize_document(doc_id: str, *, cancelled: bool = False) -> None:
             )
         except Exception:  # noqa: BLE001 — audit is best-effort, never fail the doc
             logger.exception("Failed to write upload audit for document %s", doc_id)
+
+        # Refresh the semantic index for just the chemicals this upload
+        # touched (P3). Best-effort by design: a finished document must never
+        # be held back by an embedding provider, and the index is rebuildable
+        # at any time with `python -m app.embed_backfill`.
+        try:
+            from app.services import embeddings
+
+            stats = embeddings.refresh_document(doc_id)
+            if stats["embedded"]:
+                logger.info(
+                    "Embedded %d chemical(s) for document %s",
+                    stats["embedded"], doc_id,
+                )
+        except Exception:  # noqa: BLE001
+            logger.exception("Embedding refresh failed for document %s", doc_id)
 
     logger.info(
         "Document %s %s — %d/%d pages done, %d listing(s)",

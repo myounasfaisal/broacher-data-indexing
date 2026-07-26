@@ -1,3 +1,8 @@
+> **SUPERSEDED — historical.** The single source of truth for how this system
+> works is [ARCHITECTURE.md](../../ARCHITECTURE.md). Historical change log through the pipeline migration. Kept for archaeology; not a description of the current system.
+
+---
+
 # Changes — Roles, Upload Queue, Paginated Search (2026-07-14)
 
 Companion to [`changes.json`](changes.json) (machine-readable summary of the same

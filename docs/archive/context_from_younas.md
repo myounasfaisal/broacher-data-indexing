@@ -1,3 +1,8 @@
+> **SUPERSEDED — historical.** The single source of truth for how this system
+> works is [ARCHITECTURE.md](../../ARCHITECTURE.md). Session handoff from the migration work (2026-07-26).
+
+---
+
 # Session context — DB-worker extraction pipeline migration
 
 **Handoff written:** 2026-07-26. Covers the full working session that migrated the

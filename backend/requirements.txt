@@ -3,8 +3,9 @@ fastapi==0.112.0
 uvicorn[standard]==0.30.5
 python-multipart==0.0.9          # required for file uploads
 
-# Claude API (recent enough for the claude-haiku-4-5 model + document blocks)
-anthropic>=0.40.0
+# Claude API. >=0.69 is required for claude-sonnet-5 and the chat assistant's
+# tool-use loop; the older >=0.40 pin predates both.
+anthropic>=0.69.0
 
 # Supabase (Postgres reads/writes)
 supabase==2.7.0

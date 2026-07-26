@@ -4,12 +4,20 @@ import type {
   DashboardSummary,
   DocumentListings,
   DocumentStatus,
+  HouseNotes,
   Listing,
   ListingUpdate,
   ManagedUser,
+  RegulatoryNote,
+  RegulatoryStatus,
   ReviewQueueResponse,
+  SettingsResponse,
+  SubstitutionNote,
+  SubstitutionVerdict,
   Suggestion,
   SuppliersResponse,
+  SystemStatus,
+  TestKeyResult,
   UploadHistoryResponse,
   UploadRange,
   UserRole,
@@ -81,6 +89,174 @@ export interface SearchResponse {
 
 export interface AISearchResponse extends SearchResponse {
   interpreted_filters: InterpretedFilters;
+}
+
+/* ------------------------------------------------------------------ */
+/* Chat assistant                                                      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * What the user is currently looking at in the search screen. Sent on every
+ * turn so "is this one any good?" resolves without retyping a chemical name.
+ */
+export interface InspectorContext {
+  query?: string;
+  supplier?: string;
+  cas_number?: string;
+  selected_listing_id?: string;
+  selected_listing_name?: string;
+}
+
+export interface ChatThread {
+  thread_id: string;
+  messages_remaining: number;
+}
+
+export interface ChatReply {
+  thread_id: string;
+  answer: string;
+  /**
+   * The products the assistant cited, fetched server-side from the database
+   * by id. Render THESE — never numbers parsed out of `answer`. The model can
+   * only cite ids that its tools actually returned; anything else is dropped
+   * before the response leaves the backend.
+   */
+  listings: Listing[];
+  messages_remaining: number;
+}
+
+/** Open an ephemeral chat. Cheap — no model call. */
+async function openChatThread(): Promise<ChatThread> {
+  const res = await fetch(`${BACKEND_URL}/chat/threads`, {
+    method: "POST",
+    headers: { ...(await authHeader()) },
+  });
+  if (!res.ok) throw new Error(await extractError(res));
+  return res.json();
+}
+
+/**
+ * Progress events from the assistant while it works. These describe what it is
+ * ACTUALLY doing — the tool names and search terms are the real ones — so the
+ * UI never has to invent plausible-looking status text.
+ */
+export type ChatEvent =
+  | { type: "thinking" }
+  | { type: "tool"; name: string; detail: string }
+  | {
+      type: "tool_done";
+      name: string;
+      count: number;
+      failed?: boolean;
+      /** Blocked as a repeat of a search already run this turn. */
+      duplicate?: boolean;
+    }
+  | ({ type: "done" } & ChatReply)
+  | { type: "error"; status: number; detail: string };
+
+/**
+ * Streaming send. Calls `onEvent` for each progress update and resolves with
+ * the final reply.
+ *
+ * The stream returns HTTP 200 as soon as it opens, so a failure arrives as an
+ * `error` EVENT, not a status code — a stream that ends without `done` is a
+ * failure, and that case is turned back into a thrown Error here so callers
+ * can treat it like any other rejected request.
+ */
+async function streamChatMessage(
+  threadId: string,
+  message: string,
+  context: InspectorContext | undefined,
+  onEvent: (event: ChatEvent) => void,
+  /**
+   * Lets the user abort a run in flight. The answer takes ~30s, so "I asked
+   * the wrong thing" needs an exit that isn't waiting it out. Aborting rejects
+   * with an AbortError, which callers treat as a cancellation, not a failure.
+   */
+  signal?: AbortSignal,
+): Promise<ChatReply> {
+  const res = await fetch(
+    `${BACKEND_URL}/chat/threads/${encodeURIComponent(threadId)}/messages/stream`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(await authHeader()) },
+      body: JSON.stringify({ message, context }),
+      signal,
+    },
+  );
+  // Pre-stream failures (rate limit, auth, feature disabled) still arrive as
+  // real status codes, because nothing has been written to the body yet.
+  if (!res.ok) throw new Error(await extractError(res));
+  if (!res.body) throw new Error("The assistant returned an empty stream.");
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let final: ChatReply | null = null;
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    // SSE frames are separated by a blank line; a partial frame stays in the
+    // buffer until its terminator arrives.
+    const frames = buffer.split("\n\n");
+    buffer = frames.pop() ?? "";
+
+    for (const frame of frames) {
+      const line = frame.split("\n").find((l) => l.startsWith("data:"));
+      if (!line) continue;
+      let event: ChatEvent;
+      try {
+        event = JSON.parse(line.slice(5).trim()) as ChatEvent;
+      } catch {
+        continue;
+      }
+      if (event.type === "error") throw new Error(event.detail);
+      if (event.type === "done") {
+        const { type: _t, ...reply } = event;
+        final = reply as ChatReply;
+      }
+      onEvent(event);
+    }
+  }
+
+  if (!final) throw new Error("The assistant stopped before finishing.");
+  return final;
+}
+
+async function sendChatMessage(
+  threadId: string,
+  message: string,
+  context?: InspectorContext,
+): Promise<ChatReply> {
+  const res = await fetch(
+    `${BACKEND_URL}/chat/threads/${encodeURIComponent(threadId)}/messages`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(await authHeader()) },
+      body: JSON.stringify({ message, context }),
+    },
+  );
+  if (!res.ok) throw new Error(await extractError(res));
+  return res.json();
+}
+
+/**
+ * Close the chat — the conversation is destroyed server-side. Fire-and-forget:
+ * a failed close is harmless (the thread expires on its own), and surfacing an
+ * error while the user is closing a panel would be noise.
+ */
+async function closeChatThread(threadId: string): Promise<void> {
+  try {
+    await fetch(`${BACKEND_URL}/chat/threads/${encodeURIComponent(threadId)}`, {
+      method: "DELETE",
+      headers: { ...(await authHeader()) },
+    });
+  } catch {
+    /* ignore */
+  }
 }
 
 async function search(params: SearchParams): Promise<SearchResponse> {
@@ -223,6 +399,33 @@ async function listUploadJobs(): Promise<{ documents: DocumentStatus[] }> {
   });
   if (!res.ok) throw new Error(await extractError(res));
   return res.json();
+}
+
+/**
+ * Release staged uploads for processing — the "Start processing" button.
+ * Uploading is free and durable; this is where the batch starts costing AI
+ * calls. Omit `docIds` to release everything the caller has staged.
+ */
+async function startProcessing(
+  docIds?: string[],
+): Promise<{ started: number; documents: DocumentStatus[] }> {
+  const res = await fetch(`${BACKEND_URL}/upload-jobs/start`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...(await authHeader()) },
+    body: JSON.stringify({ document_ids: docIds ?? null }),
+  });
+  if (!res.ok) throw new Error(await extractError(res));
+  return res.json();
+}
+
+/** Delete a staged upload the user decided not to process. Only valid before
+ * processing starts — afterwards use cancel + undo. */
+async function discardDocument(docId: string): Promise<void> {
+  const res = await fetch(`${BACKEND_URL}/upload-jobs/${docId}/discard`, {
+    method: "POST",
+    headers: { ...(await authHeader()) },
+  });
+  if (!res.ok) throw new Error(await extractError(res));
 }
 
 /** Request cancellation of a document (stops after the current page; keeps
@@ -371,6 +574,84 @@ async function listAuditLog(page = 1): Promise<AuditLogResponse> {
 }
 
 // ---------------------------------------------------------------------
+// House knowledge — curated substitution / regulatory notes
+// ---------------------------------------------------------------------
+// Reads are open to every authenticated user (a note nobody can read is
+// pointless); writes need admin/manager and are re-checked server-side.
+
+/** Every note touching one canonical chemical. */
+async function getNotes(chemicalId: string): Promise<HouseNotes> {
+  const res = await fetch(
+    `${BACKEND_URL}/notes?chemical_id=${encodeURIComponent(chemicalId)}`,
+    { headers: { ...(await authHeader()) } },
+  );
+  if (!res.ok) throw new Error(await extractError(res));
+  return res.json();
+}
+
+export interface SubstitutionNoteInput {
+  from_chemical_id: string;
+  /**
+   * The substitute BY NAME. The server resolves it to a chemical id when one
+   * exists, but a note about something we don't stock is still valid — that is
+   * a sourcing instruction, not an incomplete record.
+   */
+  to_name: string;
+  verdict: SubstitutionVerdict;
+  context: string;
+}
+
+async function createSubstitutionNote(
+  body: SubstitutionNoteInput,
+): Promise<SubstitutionNote> {
+  const res = await fetch(`${BACKEND_URL}/notes/substitutions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...(await authHeader()) },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await extractError(res));
+  return res.json();
+}
+
+async function deleteSubstitutionNote(noteId: string): Promise<void> {
+  const res = await fetch(
+    `${BACKEND_URL}/notes/substitutions/${encodeURIComponent(noteId)}`,
+    { method: "DELETE", headers: { ...(await authHeader()) } },
+  );
+  if (!res.ok) throw new Error(await extractError(res));
+}
+
+export interface RegulatoryNoteInput {
+  chemical_id: string;
+  jurisdiction: string;
+  status: RegulatoryStatus;
+  /** ISO date, or null when the change is announced but undated. */
+  effective_date: string | null;
+  note: string;
+  source_url: string | null;
+}
+
+async function createRegulatoryNote(
+  body: RegulatoryNoteInput,
+): Promise<RegulatoryNote> {
+  const res = await fetch(`${BACKEND_URL}/notes/regulatory`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...(await authHeader()) },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await extractError(res));
+  return res.json();
+}
+
+async function deleteRegulatoryNote(noteId: string): Promise<void> {
+  const res = await fetch(
+    `${BACKEND_URL}/notes/regulatory/${encodeURIComponent(noteId)}`,
+    { method: "DELETE", headers: { ...(await authHeader()) } },
+  );
+  if (!res.ok) throw new Error(await extractError(res));
+}
+
+// ---------------------------------------------------------------------
 // User management (admin only)
 // ---------------------------------------------------------------------
 
@@ -393,6 +674,57 @@ async function setUserRole(
       ...(await authHeader()),
     },
     body: JSON.stringify({ role }),
+  });
+  if (!res.ok) throw new Error(await extractError(res));
+  return res.json();
+}
+
+// ---------------------------------------------------------------------------
+// Admin settings
+// ---------------------------------------------------------------------------
+
+async function getSettings(): Promise<SettingsResponse> {
+  const res = await fetch(`${BACKEND_URL}/admin/settings`, {
+    headers: await authHeader(),
+  });
+  if (!res.ok) throw new Error(await extractError(res));
+  return res.json();
+}
+
+async function updateSettings(
+  changes: Record<string, string>,
+): Promise<void> {
+  const res = await fetch(`${BACKEND_URL}/admin/settings`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...(await authHeader()),
+    },
+    body: JSON.stringify({ changes }),
+  });
+  if (!res.ok) throw new Error(await extractError(res));
+}
+
+async function testApiKey(
+  provider: string,
+  apiKey: string,
+  apiBase: string = "",
+): Promise<TestKeyResult> {
+  const res = await fetch(`${BACKEND_URL}/admin/settings/test-key`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(await authHeader()),
+    },
+    body: JSON.stringify({ provider, api_key: apiKey, api_base: apiBase }),
+  });
+  if (!res.ok) throw new Error(await extractError(res));
+  return res.json();
+}
+
+async function getSystemStatus(): Promise<SystemStatus> {
+  const res = await fetch(`${BACKEND_URL}/admin/settings/status`, {
+    headers: await authHeader(),
   });
   if (!res.ok) throw new Error(await extractError(res));
   return res.json();
@@ -422,6 +754,8 @@ export const api = {
   suggest,
   enqueueUpload,
   listUploadJobs,
+  startProcessing,
+  discardDocument,
   cancelDocument,
   restartDocument,
   pauseDocument,
@@ -434,4 +768,17 @@ export const api = {
   listAuditLog,
   listUsers,
   setUserRole,
+  getNotes,
+  createSubstitutionNote,
+  deleteSubstitutionNote,
+  createRegulatoryNote,
+  deleteRegulatoryNote,
+  openChatThread,
+  sendChatMessage,
+  streamChatMessage,
+  closeChatThread,
+  getSettings,
+  updateSettings,
+  testApiKey,
+  getSystemStatus,
 };

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { AlertTriangle, X } from "lucide-react";
+import { AlertTriangle, Loader2, Play, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { useRole } from "@/hooks/useRole";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FolderPicker } from "@/components/upload/FolderPicker";
 import { UploadReview } from "@/components/upload/UploadReview";
@@ -44,6 +45,7 @@ export default function AdminUploadPage() {
   // stray folder selection can be caught before a single byte is uploaded.
   const [staged, setStaged] = useState<File[]>([]);
   const [isSending, setIsSending] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
   // Files that never entered the pipeline — too large, or the upload call failed.
   const [rejected, setRejected] = useState<RejectedFile[]>([]);
 
@@ -117,6 +119,36 @@ export default function AdminUploadPage() {
     }
   }
 
+  /** Delete a staged upload that was never started. */
+  async function handleDiscard(id: string) {
+    try {
+      await api.discardDocument(id);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Discard failed");
+    } finally {
+      queryClient.invalidateQueries({ queryKey: ["uploadJobs"] });
+    }
+  }
+
+  /**
+   * Release every staged upload to the worker. This is the point where the
+   * batch starts costing AI calls — uploading before this was free.
+   */
+  async function handleStartProcessing() {
+    setIsStarting(true);
+    try {
+      const { started } = await api.startProcessing();
+      toast.success(
+        `Processing ${started} file(s) — pages are extracted in the background; you can leave this page.`,
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not start processing");
+    } finally {
+      setIsStarting(false);
+      queryClient.invalidateQueries({ queryKey: ["uploadJobs"] });
+    }
+  }
+
   /** Record a file that couldn't be uploaded, in the surface and as a toast. */
   function reject(name: string, reason: string) {
     setRejected((prev) => [
@@ -165,18 +197,19 @@ export default function AdminUploadPage() {
     if (queued > 0) {
       queryClient.invalidateQueries({ queryKey: ["uploadJobs"] });
       toast.success(
-        `${queued} file(s) uploaded — the worker extracts them in the background; progress keeps updating even if you reload or leave.`,
+        `${queued} file(s) uploaded — press "Start processing" when the batch is complete. Nothing is extracted until you do.`,
       );
     }
   }
 
+  const stagedDocs = documents.filter((d) => d.status === "staged");
   const showCard = documents.length > 0 || uploading.length > 0 || isLoading;
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Upload brochures"
-        description="Drop or pick brochures, review the list, then upload — each is split into pages and extracted by the background worker."
+        description="Upload as many brochures as you like, then press Start processing — nothing is extracted until you do."
       />
 
       <Card>
@@ -197,8 +230,11 @@ export default function AdminUploadPage() {
           <p className="text-xs text-fg-muted">
             Drop a <strong className="font-medium text-fg">folder</strong> or{" "}
             <strong className="font-medium text-fg">PDF files</strong>, review the
-            list, then upload. Each file is split into page images and handed to
-            the background worker, which extracts it page by page. Progress is
+            list, then upload. Uploading only stores the files — they wait until
+            you press{" "}
+            <strong className="font-medium text-fg">Start processing</strong>, so
+            you can build a batch across several selections. From there each file
+            is split into page images and extracted page by page. Progress is
             stored in the database, so it{" "}
             <strong className="font-medium text-fg">survives page reloads</strong>{" "}
             and backend restarts. Only{" "}
@@ -260,6 +296,37 @@ export default function AdminUploadPage() {
               </p>
             ) : (
               <>
+                {stagedDocs.length > 0 && (
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-brand/30 bg-brand-soft p-4">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-fg">
+                        {stagedDocs.length} file
+                        {stagedDocs.length === 1 ? "" : "s"} ready to process
+                      </p>
+                      <p className="mt-0.5 text-xs text-fg-muted">
+                        Uploaded and safe. Add more files first if you want — nothing
+                        is extracted until you start.
+                      </p>
+                    </div>
+                    <Button
+                      onClick={handleStartProcessing}
+                      disabled={isStarting || isSending}
+                      className="shrink-0"
+                    >
+                      {isStarting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                          Starting…
+                        </>
+                      ) : (
+                        <>
+                          <Play className="h-4 w-4" aria-hidden />
+                          Start processing ({stagedDocs.length})
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
                 <UploadQueue
                   documents={documents}
                   uploading={uploading}
@@ -267,6 +334,7 @@ export default function AdminUploadPage() {
                   onResume={handleResume}
                   onCancel={handleCancel}
                   onRestart={handleRestart}
+                  onDiscard={handleDiscard}
                 />
                 <UploadSummary documents={documents} />
               </>
