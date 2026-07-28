@@ -32,7 +32,8 @@ services:
     restart: unless-stopped
 
   worker:
-    image: brochure-backend      # reuses the image built by `backend`
+    build: ./backend             # same image as `backend`; Compose builds it once
+    image: brochure-backend
     command: ["python", "-m", "app.worker"]
     env_file:
       - ./backend/.env
@@ -43,6 +44,7 @@ services:
       replicas: 4        # 4 workers keeps a batch moving without tripping 429s
 
   reconciler:
+    build: ./backend             # same image as `backend`; Compose builds it once
     image: brochure-backend
     command: ["python", "-m", "app.reconciler"]
     env_file:
