@@ -933,3 +933,24 @@ Files: `search/ChatPanel.tsx`, `pages/SearchPage.tsx`, `lib/api.ts`
       (it sits above the chat); the chat stays
 - [ ] Closing by any route returns focus to the "Assistant" toolbar button
 - [ ] `prefers-reduced-motion` → panel appears without sliding, trail still legible
+
+## Production deployment (GCP VM 34.18.9.118, docker-compose.prod.yml — demo mode)
+
+Standalone single-app, no-domain, self-signed HTTPS. The `web` nginx serves the
+SPA and proxies /api to the backend on the same origin, and terminates TLS
+itself. Run from `/opt/<repo>` after
+`docker compose -f docker-compose.prod.yml up -d --build`.
+
+- [ ] `docker compose -f docker-compose.prod.yml ps` shows backend, reconciler,
+      web `Up`, and 4 `worker` replicas `Up`
+- [ ] `curl -k https://34.18.9.118/api/health` returns 200 (nginx → backend)
+- [ ] `http://34.18.9.118` 301-redirects to `https://34.18.9.118`
+- [ ] Browser at `https://34.18.9.118`: after the one-time self-signed warning
+      (Advanced → proceed), the SPA loads and login via Supabase succeeds
+- [ ] Upload a brochure → it does NOT sit at "queued": a worker picks it up and
+      it reaches extracted/review (proves workers are actually running)
+- [ ] If CHAT_ENABLED=true: a chat reply streams token-by-token (SSE not buffered)
+- [ ] `docker compose -f docker-compose.prod.yml logs -f worker` shows heartbeat
+      + jobs across replicas, no restart loop
+- [ ] Reboot the VM → `docker compose ... ps` shows everything back Up
+      (restart: unless-stopped) without manual intervention

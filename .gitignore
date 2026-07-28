@@ -25,5 +25,8 @@ Thumbs.db
 # run.sh logs
 .run-logs/
 
+# TLS material — self-signed certs generated on the VM, never committed
+certs/
+
 # Contains a plaintext Supabase access token
 .mcp.json
