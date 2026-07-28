@@ -28,7 +28,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from app.config import settings
+from app.config import eff_int, settings
 
 
 class ThreadNotFound(Exception):
@@ -109,11 +109,11 @@ def append(thread: ChatThread, message: dict[str, Any]) -> None:
     messages ago, which reads as a bug. Refusing and offering a new chat is
     honest and keeps cost per thread bounded.
     """
-    if len(thread.messages) >= settings.chat_max_messages:
+    if len(thread.messages) >= eff_int("chat_max_messages"):
         raise ThreadFull(thread.id)
     thread.messages.append(message)
     thread.touch()
 
 
 def remaining(thread: ChatThread) -> int:
-    return max(0, settings.chat_max_messages - len(thread.messages))
+    return max(0, eff_int("chat_max_messages") - len(thread.messages))

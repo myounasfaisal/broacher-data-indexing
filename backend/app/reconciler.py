@@ -28,7 +28,7 @@ import time
 from datetime import datetime, timezone
 from typing import Any
 
-from app.config import settings
+from app.config import eff_int
 from app.services import pipeline_db
 from app.services.database import get_client
 
@@ -157,8 +157,8 @@ def reconcile_documents(stale_seconds: int) -> dict[str, int]:
 def reconcile_once() -> None:
     """A single reconciliation sweep."""
     try:
-        dead_letter_pages(settings.max_page_attempts)
-        tally = reconcile_documents(settings.document_stale_seconds)
+        dead_letter_pages(eff_int("max_page_attempts"))
+        tally = reconcile_documents(eff_int("document_stale_seconds"))
         if any(tally.values()):
             logger.info("Reconcile sweep: %s", tally)
     except Exception:  # noqa: BLE001 — a bad sweep must never kill the loop
@@ -168,10 +168,10 @@ def reconcile_once() -> None:
 def run_forever(interval: float | None = None) -> None:
     signal.signal(signal.SIGTERM, _handle_stop)
     signal.signal(signal.SIGINT, _handle_stop)
-    interval = interval or settings.reconciler_interval_seconds
+    interval = interval or eff_int("reconciler_interval_seconds")
     logger.info(
         "Reconciler started (interval=%ss, stale=%ss, max_attempts=%s)",
-        interval, settings.document_stale_seconds, settings.max_page_attempts,
+        interval, eff_int("document_stale_seconds"), eff_int("max_page_attempts"),
     )
     while not _stop:
         reconcile_once()

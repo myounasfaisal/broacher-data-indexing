@@ -304,6 +304,13 @@ export interface AppSetting {
 export interface SettingsCategory {
   key: string;
   label: string;
+  /**
+   * Whether this category gets a rail entry. False for `credentials` and
+   * `models`, whose rows are rendered inside the feature sections that use
+   * them (see lib/settingsLayout.ts) rather than in a section of their own.
+   * They still arrive so search results can label their matches.
+   */
+  nav: boolean;
 }
 
 export interface SettingsResponse {

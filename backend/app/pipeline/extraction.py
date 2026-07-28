@@ -58,25 +58,16 @@ from tenacity import (
     wait_exponential,
 )
 
-from app.config import settings
+from app.config import eff_str, settings
 from app.pipeline.schema import ChemicalBrochure
 from app.prompts.extraction_prompt import EXTRACTION_PROMPT
+from app.services import llm_clients
 
 logger = logging.getLogger(__name__)
 
-_client: OpenAI | None = None
-
-
-def _get_client() -> OpenAI:
-    """Text-extraction client. Same OpenAI-compatible base/key as the VLM/OCR
-    calls — Qwen3 8B is served alongside the VLM on the same endpoint."""
-    global _client
-    if _client is None:
-        _client = OpenAI(
-            api_key=settings.qwen_api_key,
-            base_url=settings.qwen_api_base,
-        )
-    return _client
+# Text-extraction client. Same OpenAI-compatible base/key as the VLM/OCR
+# calls — Qwen3 8B is served alongside the VLM on the same endpoint.
+_get_client = llm_clients.qwen_client
 
 
 class Stage2Error(Exception):
@@ -139,7 +130,7 @@ def _call_extraction(markdown: str, schema: dict) -> str:
         "--- END TRANSCRIPTION ---"
     )
     response = _get_client().chat.completions.create(
-        model=settings.qwen_text_model,
+        model=eff_str("qwen_text_model"),
         max_tokens=settings.pipeline_max_tokens,
         temperature=0,
         messages=[{"role": "user", "content": user_content}],
@@ -181,7 +172,7 @@ def extract_structured(markdown: str) -> dict:
     schema = _relax_details_subtree(ChemicalBrochure.model_json_schema())
     logger.info(
         "Stage 2 (structured extraction): model=%s guided=%s",
-        settings.qwen_text_model,
+        eff_str("qwen_text_model"),
         settings.pipeline_guided_decoding,
     )
     try:

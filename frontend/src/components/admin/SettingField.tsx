@@ -34,11 +34,17 @@ const NUMBER_KEYS = new Set([
 
 /** Fixed vocabularies that are not model names. */
 const CHOICE_KEYS: Record<string, { value: string; label: string }[]> = {
+  // GLM and NuExtract are listed because extraction.py has always accepted
+  // them (see _PROVIDER_ALIASES) and their keys, endpoints and model rows
+  // already shipped — they were simply unreachable from the UI, which made
+  // those rows look like clutter rather than the options they are.
   extraction_provider: [
     { value: "qwen", label: "Qwen · vision OCR + extraction" },
     { value: "gpt", label: "OpenAI GPT · Qwen OCRs, GPT writes JSON" },
     { value: "gemini", label: "Google Gemini" },
     { value: "claude", label: "Anthropic Claude" },
+    { value: "glm", label: "GLM-4.6V via OpenRouter · one-shot, all pages" },
+    { value: "nuextract", label: "NuExtract · hosted extraction project" },
   ],
   search_provider: [
     { value: "", label: "Same as extraction provider" },

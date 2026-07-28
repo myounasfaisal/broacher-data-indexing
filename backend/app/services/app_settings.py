@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 from typing import Any
 
 from app.services.database import get_client, _db_op, DatabaseError
@@ -20,17 +21,32 @@ logger = logging.getLogger(__name__)
 # In-memory cache: {key: {key, value, is_secret, category, label, description}}
 _cache: dict[str, dict[str, Any]] = {}
 _loaded = False
+_loaded_at = 0.0
+
+# How long a process trusts its cached copy before re-reading. See
+# `ensure_loaded` for why this exists at all.
+_CACHE_TTL_SECONDS = 30.0
 
 # Categories in display order.
+#
+# Four task-shaped sections, not eight type-shaped ones. Each is one complete
+# decision the admin makes: what extracts brochures, what answers chat, what
+# powers similarity search, and how the box behaves. The old split (API Keys /
+# Models / Extraction Pipeline as peers) forced three section visits to
+# configure one provider and never said so.
+#
+# 'credentials' and 'models' are deliberately NOT sections. Their rows are
+# shared — qwen_api_key serves extraction, chat and search — so the frontend
+# renders each one inside whichever feature is using it, filtered by that
+# feature's selected provider. They appear here only so search results can
+# still label them.
 CATEGORIES = [
     "extraction",
-    "api_keys",
-    "models",
     "chat",
-    "embeddings",
-    "enrichment",
-    "limits",
-    "reconciler",
+    "search",
+    "system",
+    "credentials",
+    "models",
 ]
 
 # Display order within a category. Postgres returns rows in no guaranteed
@@ -39,10 +55,21 @@ CATEGORIES = [
 # Ordering here rather than in SQL keeps it semantic (concurrency next to DPI)
 # instead of alphabetical, and needs no migration.
 SETTING_ORDER: list[str] = [
-    # extraction
-    "extraction_provider", "search_provider", "page_extract_provider",
+    # extraction — who extracts, then how, then what gets attached afterwards
+    "extraction_provider", "page_extract_provider", "search_provider",
     "page_concurrency", "split_dpi",
-    # api_keys — live keys first, endpoints after (the UI folds those away)
+    "pubchem_enrichment", "pubchem_cas_lookup",
+    # chat — the on/off switch first, then who runs it, then its limits
+    "chat_enabled", "chat_provider", "chat_effort", "chat_max_messages",
+    "chat_max_tool_iterations", "chat_rate_limit",
+    # search
+    "embeddings_enabled", "embedding_provider",
+    "embedding_match_count", "embedding_min_similarity", "embedding_dim",
+    # system
+    "max_upload_size_mb", "api_max_retries", "allowed_origin",
+    "reconciler_interval_seconds", "document_stale_seconds",
+    "max_page_attempts",
+    # credentials — live keys first, endpoints after
     "anthropic_api_key", "openai_api_key", "qwen_api_key", "gemini_api_key",
     "openrouter_api_key", "nuextract_api_key",
     "openai_api_base", "qwen_api_base", "openrouter_api_base",
@@ -50,35 +77,23 @@ SETTING_ORDER: list[str] = [
     # models
     "claude_model", "openai_model", "qwen_model", "qwen_vlm_model",
     "qwen_text_model", "gemini_model", "openrouter_model",
-    "page_extract_claude_model",
-    # chat — the on/off switch first, then who runs it, then its limits
-    "chat_enabled", "chat_provider", "chat_anthropic_model", "chat_gpt_model",
-    "chat_qwen_model", "chat_effort", "chat_max_messages",
-    "chat_max_tool_iterations", "chat_rate_limit",
-    # embeddings
-    "embeddings_enabled", "embedding_provider", "embedding_model",
-    "embedding_match_count", "embedding_min_similarity", "embedding_dim",
-    # enrichment
-    "pubchem_enrichment", "pubchem_cas_lookup",
-    # limits
-    "max_upload_size_mb", "api_max_retries", "allowed_origin",
-    # reconciler
-    "reconciler_interval_seconds", "document_stale_seconds",
-    "max_page_attempts",
+    "page_extract_claude_model", "embedding_model",
+    "chat_anthropic_model", "chat_gpt_model", "chat_qwen_model",
 ]
 
 _ORDER_INDEX = {key: i for i, key in enumerate(SETTING_ORDER)}
 
 CATEGORY_LABELS: dict[str, str] = {
-    "extraction": "Extraction Pipeline",
-    "api_keys": "API Keys",
+    "extraction": "Extraction",
+    "chat": "Chat assistant",
+    "search": "Semantic search",
+    "system": "System",
+    "credentials": "API keys",
     "models": "Models",
-    "chat": "Chat Assistant",
-    "embeddings": "Semantic Search",
-    "enrichment": "PubChem Enrichment",
-    "limits": "Behaviour & Limits",
-    "reconciler": "Reconciler",
 }
+
+# Sections the rail offers. The two omitted ones are rendered inside these.
+NAV_CATEGORIES = ["extraction", "chat", "search", "system"]
 
 
 def _mask(value: str) -> str:
@@ -95,22 +110,49 @@ def _load_all() -> list[dict[str, Any]]:
 
 
 def load_cache() -> None:
-    """(Re)load every setting from the DB into the in-memory cache."""
-    global _loaded
+    """(Re)load every setting from the DB into the in-memory cache.
+
+    Rebuilds the provider SDK clients if any value actually moved, so a key
+    changed in the API process reaches this one's next model call.
+    """
+    global _loaded, _loaded_at
     try:
         rows = _load_all()
+        before = {k: v["value"] for k, v in _cache.items()}
         _cache.clear()
         for row in rows:
             _cache[row["key"]] = row
         _loaded = True
-        logger.info("Loaded %d app_settings from DB", len(_cache))
+        _loaded_at = time.monotonic()
+
+        after = {k: v["value"] for k, v in _cache.items()}
+        if before and before != after:
+            # Imported lazily: llm_clients imports config, config imports this.
+            from app.services import llm_clients
+            llm_clients.reset()
+            logger.info("app_settings changed — provider clients reset")
+        else:
+            logger.info("Loaded %d app_settings from DB", len(_cache))
     except DatabaseError:
         logger.warning("Could not load app_settings — table may not exist yet")
         _loaded = False
 
 
 def ensure_loaded() -> None:
-    if not _loaded:
+    """Load on first use, then re-check periodically.
+
+    The TTL is what makes the Settings page work outside the API process. The
+    worker and the reconciler are separate processes: they never call
+    `update_settings`, so without a refresh their cache would hold whatever
+    the DB said when they booted, and a key saved in the admin UI would never
+    reach the extraction that actually consumes it. That is the original bug
+    (settings that don't apply) surviving in the one process that matters most.
+
+    30s is chosen against the alternatives: a listen/notify channel is a lot of
+    machinery for a table written by hand a few times a month, and per-read
+    fetching would put a network round-trip in front of every model call.
+    """
+    if not _loaded or (time.monotonic() - _loaded_at) > _CACHE_TTL_SECONDS:
         load_cache()
 
 
@@ -194,10 +236,28 @@ def update_settings(changes: dict[str, str], user_id: str) -> None:
 
     load_cache()
 
+    # Provider SDK clients are built from the values we just replaced. Dropping
+    # them here means the next extraction/chat/embedding call rebuilds against
+    # the new key — without this the page would save correctly and still run on
+    # the old credentials, which is indistinguishable from not saving at all.
+    # Imported lazily: llm_clients imports config, config imports this module.
+    from app.services import llm_clients
+    llm_clients.reset()
+
 
 def get_categories() -> list[dict[str, str]]:
-    """Return ordered category metadata for the frontend."""
+    """Return ordered category metadata for the frontend.
+
+    `nav` marks the four that get a rail entry. Credentials and models are
+    returned too — search results still need a label for them — but the rail
+    skips them, because their rows are rendered inside the feature sections
+    that use them rather than in a section of their own.
+    """
     return [
-        {"key": k, "label": CATEGORY_LABELS.get(k, k)}
+        {
+            "key": k,
+            "label": CATEGORY_LABELS.get(k, k),
+            "nav": k in NAV_CATEGORIES,
+        }
         for k in CATEGORIES
     ]

@@ -255,4 +255,53 @@ def get_effective(key: str) -> str | None:
     return getattr(get_settings(), key, None)
 
 
+# ── Typed accessors ───────────────────────────────────────────────────
+#
+# Every admin-editable setting must be read through one of these at CALL time,
+# never as `settings.x` at import time. `settings.x` is the env snapshot taken
+# at process start, so a module reading it (or worse, baking it into a
+# decorator argument) can never see an admin's saved change — which is the bug
+# these replace: the settings page wrote rows that nothing read.
+#
+# The DB stores everything as text, so the int/float/bool variants parse and
+# fall back to the typed env default when the stored text is junk. A settings
+# page can put "" or "abc" in a numeric field; that must degrade to the default
+# rather than take down the pipeline with a ValueError.
+
+
+def eff_str(key: str, default: str = "") -> str:
+    val = get_effective(key)
+    return default if val is None else str(val)
+
+
+def eff_int(key: str, default: int | None = None) -> int:
+    val = get_effective(key)
+    try:
+        return int(str(val))
+    except (TypeError, ValueError):
+        if default is not None:
+            return default
+        return int(getattr(get_settings(), key, 0))
+
+
+def eff_float(key: str, default: float | None = None) -> float:
+    val = get_effective(key)
+    try:
+        return float(str(val))
+    except (TypeError, ValueError):
+        if default is not None:
+            return default
+        return float(getattr(get_settings(), key, 0.0))
+
+
+def eff_bool(key: str, default: bool = False) -> bool:
+    """Accepts the DB's "true"/"false" text and pydantic's real bools alike."""
+    val = get_effective(key)
+    if isinstance(val, bool):
+        return val
+    if val is None:
+        return default
+    return str(val).strip().lower() in ("true", "1", "yes", "on")
+
+
 settings = get_settings()

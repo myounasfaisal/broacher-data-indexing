@@ -19,7 +19,7 @@ from __future__ import annotations
 import json
 import logging
 
-from app.config import settings
+from app.config import eff_str
 from app.prompts.nl_search_prompt import build_nl_search_prompt
 from app.schemas.chemical import InterpretedFilters
 from app.services import extraction
@@ -33,7 +33,7 @@ class NLSearchError(Exception):
 
 def parse_query(query: str) -> InterpretedFilters:
     """Ask the configured provider to turn `query` into InterpretedFilters."""
-    provider = (settings.search_provider or settings.extraction_provider).lower()
+    provider = (eff_str("search_provider") or eff_str("extraction_provider")).lower()
     prompt = build_nl_search_prompt(query)
 
     try:

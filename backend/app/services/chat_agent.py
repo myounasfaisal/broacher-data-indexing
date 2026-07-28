@@ -26,7 +26,7 @@ import logging
 import re
 from typing import Any
 
-from app.config import settings
+from app.config import eff_bool, eff_str
 from app.prompts.chat_prompt import (
     CITATION_PATTERN,
     build_system_prompt,
@@ -97,7 +97,7 @@ def send(
     the 30-odd seconds an answer takes. It is called from this thread; the
     router bridges it onto the event loop.
     """
-    if not settings.chat_enabled:
+    if not eff_bool("chat_enabled"):
         raise ChatDisabled()
 
     thread = chat_session.get(thread_id, user_id)
@@ -155,7 +155,7 @@ def _record_audit(
             user_id,
             "chat_query",
             {
-                "provider": settings.chat_provider,
+                "provider": eff_str("chat_provider"),
                 "question": message[:500],
                 "tools": [t["name"] for t in result.trace],
                 "cited_listing_ids": cited_ids,

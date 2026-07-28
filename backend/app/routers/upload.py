@@ -33,7 +33,7 @@ from fastapi import (
     status,
 )
 
-from app.config import settings
+from app.config import eff_int
 from app.dependencies import require_admin, require_uploader
 from app.rate_limit import limiter
 from app.schemas.chemical import (
@@ -120,10 +120,10 @@ async def enqueue_brochure(
     # --- Validate size server-side (don't trust the client) ---
     if len(pdf_bytes) == 0:
         raise HTTPException(status_code=400, detail="Empty file.")
-    if len(pdf_bytes) > settings.max_upload_size_bytes:
+    if len(pdf_bytes) > eff_int("max_upload_size_mb") * 1024 * 1024:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"File exceeds the {settings.max_upload_size_mb}MB limit.",
+            detail=f"File exceeds the {eff_int("max_upload_size_mb")}MB limit.",
         )
 
     # --- Validate magic bytes ---

@@ -36,77 +36,25 @@ from tenacity import (
     wait_exponential,
 )
 
-from app.config import settings
+from app.config import eff_int, eff_str, settings
 from app.prompts.extraction_prompt import EXTRACTION_PROMPT
 from app.schemas.chemical import ExtractionResult
-from app.services import enrich, ocr, pdf_utils
+from app.services import enrich, llm_clients, ocr, pdf_utils
 
 logger = logging.getLogger(__name__)
 
 
-# ── Clients (created once, lazily) ────────────────────────────────────
+# ── Clients ───────────────────────────────────────────────────────────
+#
+# Construction lives in llm_clients, which reads keys at call time and rebuilds
+# when they change — so a key saved on the Settings page applies to the next
+# extraction without a restart.
 
-_anthropic_client: anthropic.Anthropic | None = None
-_gemini_client: genai.Client | None = None
-_qwen_client: OpenAI | None = None
-
-
-def _get_anthropic() -> anthropic.Anthropic:
-    global _anthropic_client
-    if _anthropic_client is None:
-        _anthropic_client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
-    return _anthropic_client
-
-
-def _get_gemini() -> genai.Client:
-    global _gemini_client
-    if _gemini_client is None:
-        _gemini_client = genai.Client(api_key=settings.gemini_api_key)
-    return _gemini_client
-
-
-def _get_qwen() -> OpenAI:
-    """Qwen client for extraction (shared base URL / key with OCR)."""
-    global _qwen_client
-    if _qwen_client is None:
-        _qwen_client = OpenAI(
-            api_key=settings.qwen_api_key,
-            base_url=settings.qwen_api_base,
-        )
-    return _qwen_client
-
-
-_openai_client: OpenAI | None = None
-
-
-def _get_openai() -> OpenAI:
-    """
-    Real OpenAI (GPT) client — distinct from the Qwen client above, which
-    points the same SDK at Qwen's OpenAI-compatible endpoint. This one uses
-    OpenAI's default base URL (api.openai.com).
-    """
-    global _openai_client
-    if _openai_client is None:
-        kwargs: dict = {"api_key": settings.openai_api_key}
-        if settings.openai_api_base:
-            # Point at a free / self-hosted OpenAI-compatible GPT endpoint.
-            kwargs["base_url"] = settings.openai_api_base
-        _openai_client = OpenAI(**kwargs)
-    return _openai_client
-
-
-_openrouter_client: OpenAI | None = None
-
-
-def _get_openrouter() -> OpenAI:
-    """OpenRouter client (OpenAI-compatible) used for GLM 4.6 whole-doc extraction."""
-    global _openrouter_client
-    if _openrouter_client is None:
-        _openrouter_client = OpenAI(
-            api_key=settings.openrouter_api_key,
-            base_url=settings.openrouter_api_base,
-        )
-    return _openrouter_client
+_get_anthropic = llm_clients.anthropic_client
+_get_gemini = llm_clients.gemini_client
+_get_qwen = llm_clients.qwen_client
+_get_openai = llm_clients.openai_client
+_get_openrouter = llm_clients.openrouter_client
 
 
 class ExtractionError(Exception):
@@ -160,7 +108,7 @@ _CLAUDE_RETRYABLE = (
 def _call_claude_pdf(pdf_b64: str) -> str:
     """Send a native PDF to Claude as a document block and return raw text."""
     message = _get_anthropic().messages.create(
-        model=settings.claude_model,
+        model=eff_str("claude_model"),
         max_tokens=8000,
         messages=[
             {
@@ -196,7 +144,7 @@ def _call_claude_text(text: str) -> str:
         f"--- OCR TEXT ---\n{text}\n--- END OCR TEXT ---\n\n"
     )
     message = _get_anthropic().messages.create(
-        model=settings.claude_model,
+        model=eff_str("claude_model"),
         max_tokens=8000,
         messages=[
             {
@@ -223,7 +171,7 @@ _GEMINI_RETRYABLE = (Exception,)
 def _call_gemini_pdf(pdf_bytes: bytes) -> str:
     """Send a native PDF to Gemini as inline data and return raw text."""
     response = _get_gemini().models.generate_content(
-        model=settings.gemini_model,
+        model=eff_str("gemini_model"),
         contents=[
             genai_types.Content(
                 parts=[
@@ -256,7 +204,7 @@ def _call_gemini_text(text: str) -> str:
         f"--- OCR TEXT ---\n{text}\n--- END OCR TEXT ---\n\n"
     )
     response = _get_gemini().models.generate_content(
-        model=settings.gemini_model,
+        model=eff_str("gemini_model"),
         contents=[preamble + EXTRACTION_PROMPT],
         config=genai_types.GenerateContentConfig(
             max_output_tokens=8000,
@@ -295,7 +243,7 @@ def _call_qwen_images(page_images: list[bytes], extra_context: str = "") -> str:
     content.append({"type": "text", "text": EXTRACTION_PROMPT + extra_context})
 
     response = _get_qwen().chat.completions.create(
-        model=settings.qwen_model,
+        model=eff_str("qwen_model"),
         max_tokens=8000,
         temperature=0,  # deterministic per-page extraction
         messages=[{"role": "user", "content": content}],
@@ -317,7 +265,7 @@ def _call_qwen_text(text: str) -> str:
         f"--- OCR TEXT ---\n{text}\n--- END OCR TEXT ---\n\n"
     )
     response = _get_qwen().chat.completions.create(
-        model=settings.qwen_model,
+        model=eff_str("qwen_model"),
         max_tokens=8000,
         messages=[{"role": "user", "content": preamble + EXTRACTION_PROMPT}],
     )
@@ -348,7 +296,7 @@ def _call_gpt_text(text: str, extra_context: str = "") -> str:
         f"--- OCR TEXT ---\n{text}\n--- END OCR TEXT ---\n\n"
     )
     response = _get_openai().chat.completions.create(
-        model=settings.openai_model,
+        model=eff_str("openai_model"),
         max_tokens=8000,
         response_format={"type": "json_object"},
         messages=[{"role": "user", "content": preamble + EXTRACTION_PROMPT + extra_context}],
@@ -382,7 +330,7 @@ def _call_glm_page(png_bytes: bytes, extra_context: str = "") -> str:
     which is both fast and truncation-proof."""
     b64 = base64.standard_b64encode(png_bytes).decode("ascii")
     response = _get_openrouter().chat.completions.create(
-        model=settings.openrouter_model,
+        model=eff_str("openrouter_model"),
         max_tokens=8000,
         temperature=0,  # deterministic: same page → same products, run to run
         response_format={"type": "json_object"},
@@ -406,7 +354,7 @@ def _glm_page_call(img: bytes, hint: str) -> str:
 )
 def _complete_glm(prompt: str, max_tokens: int) -> str:
     response = _get_openrouter().chat.completions.create(
-        model=settings.openrouter_model,
+        model=eff_str("openrouter_model"),
         max_tokens=max_tokens,
         messages=[{"role": "user", "content": prompt}],
     )
@@ -441,17 +389,18 @@ def _call_nuextract_text(text: str) -> str:
     The GET returns 200 with `result` once the job is done; earlier polls
     return a non-200 (still processing), so we poll until 200.
     """
-    if not settings.nuextract_project_id:
+    project_id = eff_str("nuextract_project_id")
+    if not project_id:
         raise ExtractionError(
-            "NUEXTRACT_PROJECT_ID is not set — create a structured-extraction "
-            "project on nuextract.ai and put its id in the backend .env."
+            "NuExtract project ID is not set — create a structured-extraction "
+            "project on nuextract.ai and put its id in Settings → Extraction."
         )
-    base = settings.nuextract_api_base.rstrip("/")
-    headers = {"Authorization": f"Bearer {settings.nuextract_api_key}"}
+    base = eff_str("nuextract_api_base").rstrip("/")
+    headers = {"Authorization": f"Bearer {eff_str('nuextract_api_key')}"}
     try:
         with httpx.Client(timeout=60.0) as client:
             create = client.post(
-                f"{base}/structured-extraction/{settings.nuextract_project_id}/jobs/text",
+                f"{base}/structured-extraction/{project_id}/jobs/text",
                 headers=headers,
                 json={"text": text},
             )
@@ -508,7 +457,7 @@ def _call_nuextract_text(text: str) -> str:
 )
 def _complete_claude(prompt: str, max_tokens: int) -> str:
     message = _get_anthropic().messages.create(
-        model=settings.claude_model,
+        model=eff_str("claude_model"),
         max_tokens=max_tokens,
         messages=[{"role": "user", "content": prompt}],
     )
@@ -523,7 +472,7 @@ def _complete_claude(prompt: str, max_tokens: int) -> str:
 )
 def _complete_gemini(prompt: str, max_tokens: int) -> str:
     response = _get_gemini().models.generate_content(
-        model=settings.gemini_model,
+        model=eff_str("gemini_model"),
         contents=[prompt],
         config=genai_types.GenerateContentConfig(max_output_tokens=max_tokens),
     )
@@ -538,7 +487,7 @@ def _complete_gemini(prompt: str, max_tokens: int) -> str:
 )
 def _complete_qwen(prompt: str, max_tokens: int) -> str:
     response = _get_qwen().chat.completions.create(
-        model=settings.qwen_model,
+        model=eff_str("qwen_model"),
         max_tokens=max_tokens,
         messages=[{"role": "user", "content": prompt}],
     )
@@ -553,7 +502,7 @@ def _complete_qwen(prompt: str, max_tokens: int) -> str:
 )
 def _complete_gpt(prompt: str, max_tokens: int) -> str:
     response = _get_openai().chat.completions.create(
-        model=settings.openai_model,
+        model=eff_str("openai_model"),
         max_tokens=max_tokens,
         messages=[{"role": "user", "content": prompt}],
     )
@@ -568,7 +517,7 @@ def complete_text(
     configured extraction provider). Raises ExtractionError on failure, like
     the extraction paths.
     """
-    chosen = _normalize_provider(provider or settings.extraction_provider)
+    chosen = _normalize_provider(provider or eff_str("extraction_provider"))
     try:
         if chosen == "claude":
             return _complete_claude(prompt, max_tokens)
@@ -795,7 +744,7 @@ def _extract_pages(page_images: list[bytes], per_page_call) -> dict:
              bundle-split + (preferably) the whole-document GLM path.
     """
     total = len(page_images)
-    workers = max(1, min(settings.page_concurrency, total))
+    workers = max(1, min(eff_int("page_concurrency"), total))
 
     if workers == 1:
         page_results: list[dict] = []
@@ -908,7 +857,7 @@ def extract_brochure(pdf_bytes: bytes) -> ExtractionResult:
     caller logs/rejects it rather than inserting garbage. The PDF bytes are
     never written to disk here.
     """
-    provider = _normalize_provider(settings.extraction_provider)
+    provider = _normalize_provider(eff_str("extraction_provider"))
     logger.info("Extraction provider: %s", provider)
 
     # Step 1: detect scanned PDF

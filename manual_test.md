@@ -980,3 +980,66 @@ test-saved-key resolution.
       folded away by default and expand on demand
 - [ ] Saving persists; reload shows saved values; the embeddings category reads
       "Semantic Search"
+
+## Settings tab regroup — task-shaped sections, and saves that actually apply
+
+Four sections (Extraction / Chat assistant / Semantic search / System) replace
+the eight type-shaped ones. Each provider choice pulls its own key and model
+inline. Backend: every runtime read now goes through `config.eff_*` against the
+DB overlay instead of the env snapshot, via `services/llm_clients.py`.
+
+Run `db/migrations/2026-07-28_settings_regroup.sql` first.
+
+### Saves take effect (the point of the whole change)
+- [ ] Settings → Extraction: paste a WRONG Anthropic key, provider = Claude,
+      save. Upload a brochure → extraction fails with an auth error, not a
+      success. (Before this change it would have silently used the .env key.)
+- [ ] Correct the key, save, upload again → extraction succeeds with NO
+      backend restart
+- [ ] Change Extraction provider qwen → claude, save, upload → backend logs
+      show the Claude path, not Qwen
+- [ ] Same for the worker process: with the worker running the whole time,
+      change the extraction model and confirm the next job picks it up within
+      ~30s (cache TTL) — no worker restart
+- [ ] Chat assistant → toggle "Enable chat" off, save → chat endpoints 503
+      immediately; toggle back on → chat works again, no restart
+- [ ] `settings_audit` has a row per change, with secrets masked
+
+### Section layout
+- [ ] The rail shows exactly four entries: Extraction, Chat assistant,
+      Semantic search, System — no "API Keys" or "Models" section
+- [ ] Extraction with provider = Qwen shows the Qwen key + Qwen vision model,
+      and does NOT show the Anthropic / OpenAI / Gemini keys
+- [ ] Switching Extraction provider to Claude swaps the visible key to
+      Anthropic and the model to the Claude list, without a save
+- [ ] The Qwen key shows "One account, shared with Chat assistant and Semantic
+      search…"; editing it under Extraction and saving changes the same value
+      seen under Chat assistant
+- [ ] Extraction provider dropdown now offers GLM-4.6V (OpenRouter) and
+      NuExtract; picking NuExtract reveals the key AND the project-ID field
+- [ ] Picking a provider with no model to choose does not render an empty
+      model dropdown
+- [ ] "Test" still works on the currently-shown key, saved or freshly typed
+
+### Dirty state and search
+- [ ] Edit the OpenAI key under Extraction, then switch the provider to Qwen:
+      the Extraction rail dot STAYS lit and the save bar still counts the edit
+- [ ] Edits in two different sections both light their own rail dots and are
+      saved together by the one save bar
+- [ ] Search "concurrency" / "qwen" returns flat results across all sections,
+      each labelled with its category, and editing from a search result works
+- [ ] An edit hidden inside a collapsed "endpoints & advanced" fold shows the
+      dot on the disclosure button, not just in the save bar
+
+### Restart-required settings are honest
+- [ ] `api_max_retries`, `chat_rate_limit` and `allowed_origin` descriptions
+      end with "(takes effect after a backend restart)"
+
+### DashScope endpoint split (mainland vs international)
+- [ ] Extraction → endpoints & advanced: "Qwen endpoint" is a dropdown offering
+      mainland and international, not a free-text URL
+- [ ] With an INTERNATIONAL key and the endpoint left on mainland, Test fails
+      with a message naming the intl URL as the likely fix — not a bare 401
+- [ ] Switch the endpoint to international, save, Test → passes
+- [ ] The reverse case (mainland key, intl endpoint) names the mainland URL
+- [ ] Extraction against an intl key + intl endpoint actually runs end to end

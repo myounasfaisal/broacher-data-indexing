@@ -24,22 +24,14 @@ from tenacity import (
     wait_exponential,
 )
 
-from app.config import settings
+from app.config import eff_int, eff_str, settings
+from app.services import llm_clients
 
 logger = logging.getLogger(__name__)
 
-# Lazy-initialised client (only created when OCR is actually needed).
-_client: OpenAI | None = None
-
-
-def _get_client() -> OpenAI:
-    global _client
-    if _client is None:
-        _client = OpenAI(
-            api_key=settings.qwen_api_key,
-            base_url=settings.qwen_api_base,
-        )
-    return _client
+# Shared with extraction and the two-stage pipeline — same DashScope key and
+# base URL, so they must not drift apart when an admin changes one.
+_get_client = llm_clients.qwen_client
 
 
 # The OCR prompt asks Qwen to be a faithful text extractor — no
@@ -73,7 +65,7 @@ def _ocr_single_page(png_bytes: bytes, page_number: int) -> str:
     b64 = base64.standard_b64encode(png_bytes).decode("ascii")
 
     response = _get_client().chat.completions.create(
-        model=settings.qwen_model,
+        model=eff_str("qwen_model"),
         max_tokens=4096,
         messages=[
             {
@@ -119,7 +111,7 @@ def ocr_pages(page_images: list[bytes]) -> str:
     if not page_images:
         return ""
 
-    workers = max(1, min(settings.page_concurrency, len(page_images)))
+    workers = max(1, min(eff_int("page_concurrency"), len(page_images)))
     logger.info(
         "Starting Qwen OCR for %d page(s) (concurrency=%d)",
         len(page_images), workers,

@@ -25,6 +25,11 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin/settings", tags=["admin-settings"])
 
+# DashScope's two deployments. Separate key namespaces: a key issued by one is
+# a 401 at the other, which is the single most common Qwen setup failure.
+_QWEN_MAINLAND = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+_QWEN_INTL = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+
 # provider -> (api-key setting, base-url setting). The base-url entry is None
 # where the provider has a fixed endpoint.
 _PROVIDER_SETTINGS: dict[str, tuple[str, str | None]] = {
@@ -41,7 +46,8 @@ _PROVIDER_SETTINGS: dict[str, tuple[str, str | None]] = {
 
 class SettingsResponse(BaseModel):
     settings: list[dict[str, Any]]
-    categories: list[dict[str, str]]
+    # `nav` is a bool, so this can't narrow to dict[str, str].
+    categories: list[dict[str, Any]]
 
 
 class SettingsUpdate(BaseModel):
@@ -153,11 +159,31 @@ async def test_key(
             return TestKeyResponse(ok=False, message=f"Anthropic returned {r.status_code}.")
 
         elif provider == "qwen":
-            url = (base or "https://dashscope.aliyuncs.com/compatible-mode/v1") + "/models"
+            effective_base = base or _QWEN_MAINLAND
+            url = effective_base + "/models"
             async with httpx.AsyncClient(timeout=10) as c:
                 r = await c.get(url, headers={"Authorization": f"Bearer {key}"})
             if r.status_code == 200:
                 return TestKeyResponse(ok=True, message="Connected to Qwen/Dashscope successfully.")
+            if r.status_code == 401:
+                # DashScope is two deployments with two key namespaces, and each
+                # rejects the other's keys with a bare 401. That reads as "bad
+                # key" and sends the admin off to regenerate a key that was
+                # fine, so name the likely cause and the other endpoint.
+                other, other_name = (
+                    (_QWEN_INTL, "international")
+                    if effective_base == _QWEN_MAINLAND
+                    else (_QWEN_MAINLAND, "mainland China")
+                )
+                return TestKeyResponse(
+                    ok=False,
+                    message=(
+                        f"Qwen rejected this key at {effective_base}. If the key came "
+                        f"from the {other_name} DashScope console, set Qwen base URL to "
+                        f"{other} (under 'endpoints & advanced') and test again — "
+                        "keys are not valid across the two."
+                    ),
+                )
             return TestKeyResponse(ok=False, message=f"Qwen returned {r.status_code}.")
 
         elif provider == "gemini":

@@ -21,7 +21,7 @@ from typing import Any, AsyncIterator
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 
-from app.config import settings
+from app.config import eff_bool, eff_int, settings
 from app.dependencies import require_user
 from app.rate_limit import limiter
 from app.schemas.chat import (
@@ -36,7 +36,7 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 
 def _require_enabled() -> None:
     """The feature ships dark; CHAT_ENABLED turns it on per environment."""
-    if not settings.chat_enabled:
+    if not eff_bool("chat_enabled"):
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="The chat assistant is not enabled on this deployment.",
@@ -86,7 +86,7 @@ async def send_message(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=(
-                f"This chat has reached its {settings.chat_max_messages}-message "
+                f"This chat has reached its {eff_int('chat_max_messages')}-message "
                 "limit. Start a new chat to continue."
             ),
         ) from exc
@@ -160,7 +160,7 @@ async def send_message_stream(
                         "detail": "This chat has expired. Start a new one."})
         except chat_session.ThreadFull:
             events.put({"type": "error", "status": 409, "detail": (
-                f"This chat has reached its {settings.chat_max_messages}-message "
+                f"This chat has reached its {eff_int('chat_max_messages')}-message "
                 "limit. Start a new chat to continue.")})
         except chat_agent.ChatDisabled:
             events.put({"type": "error", "status": 503,

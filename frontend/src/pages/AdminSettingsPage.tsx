@@ -2,16 +2,13 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  Activity,
   ChevronRight,
-  KeyRound,
   Loader2,
   MessageSquare,
   RefreshCw,
   Save,
   Search,
   Settings2,
-  Sliders,
   Sparkles,
   Zap,
   type LucideIcon,
@@ -27,48 +24,41 @@ import {
   TESTABLE_KEYS,
   type TestState,
 } from "@/components/admin/SettingField";
+import {
+  SECTIONS,
+  activeProvider,
+  modelKeyFor,
+  sectionsUsingProvider,
+  type SectionSpec,
+} from "@/lib/settingsLayout";
 import { cn } from "@/lib/utils";
 
-const CATEGORY_ICONS: Record<string, LucideIcon> = {
+const SECTION_ICONS: Record<string, LucideIcon> = {
   extraction: Zap,
-  api_keys: KeyRound,
-  models: Sparkles,
   chat: MessageSquare,
-  embeddings: Search,
-  enrichment: Activity,
-  limits: Sliders,
-  reconciler: RefreshCw,
+  search: Sparkles,
+  system: RefreshCw,
 };
-
-/**
- * Set-once infrastructure values — endpoint URLs, the vector width that has to
- * match the migration. They belong on the page (an admin pointing Qwen at a
- * local vLLM needs them) but not in the reading path, where they doubled the
- * length of API Keys with fields nobody touches after setup.
- */
-const ADVANCED_KEYS = new Set([
-  "openai_api_base",
-  "qwen_api_base",
-  "openrouter_api_base",
-  "nuextract_api_base",
-  "nuextract_project_id",
-  "embedding_dim",
-  "allowed_origin",
-]);
 
 /**
  * Admin settings.
  *
- * Forty-six settings in one scroll is a list, not an interface — so the page is
- * a rail plus one visible section, the shape every settings surface the admin
- * already uses has taught them. Two rules carry the rest:
+ * Four sections, each one complete decision. The old page had eight, split by
+ * what a setting *is* rather than what it configures — so switching extraction
+ * to Claude meant visiting "Extraction" for the provider, "API Keys" for the
+ * key and "Models" for the model, with nothing saying the last two existed.
+ * Here the provider choice reshapes its own section: pick Claude and the
+ * Anthropic key and Claude model appear directly beneath it, and the five keys
+ * you are not using stay out of the way.
+ *
+ * Two rules carry the rest:
  *
  * - **Edits are a sparse diff, not a mirror.** State holds only the keys the
  *   admin actually changed, so a background refetch can never clobber typing,
  *   the dirty check is `Object.keys(edits).length`, and the save payload is
  *   exactly what changed. Mirroring every setting into state and diffing it
  *   back out is the version of this that loses work.
- * - **One save, not eight.** Changes are found by search as easily as by
+ * - **One save, not four.** Changes are found by search as easily as by
  *   section, so a per-section button would strand edits behind a section the
  *   admin has already navigated away from. The rail marks which sections are
  *   dirty; the bar saves all of them.
@@ -93,24 +83,66 @@ export default function AdminSettingsPage() {
   const [active, setActive] = useState<string>("extraction");
   const [query, setQuery] = useState("");
   const [tests, setTests] = useState<Record<string, TestState>>({});
-  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const settings = data?.settings ?? [];
   const categories = data?.categories ?? [];
   const dirtyCount = Object.keys(edits).length;
 
-  const byCategory = useMemo(() => {
-    const map: Record<string, AppSetting[]> = {};
-    for (const s of settings) (map[s.category] ??= []).push(s);
+  const byKey = useMemo(() => {
+    const map: Record<string, AppSetting> = {};
+    for (const s of settings) map[s.key] = s;
     return map;
   }, [settings]);
 
-  /** Sections carrying unsaved edits — drives the rail's dots. */
-  const dirtyCategories = useMemo(() => {
+  /** Effective value of a key: the pending edit if there is one, else stored. */
+  function valueOf(key: string): string {
+    return edits[key] ?? byKey[key]?.value ?? "";
+  }
+
+  /**
+   * Every setting a section can show, including the provider branches it is
+   * not currently on. Used for the rail's dirty dots: an edit to the OpenAI
+   * key made before switching the provider to Qwen still belongs to this
+   * section and still needs saving, so the dot has to survive the switch.
+   */
+  const sectionKeys = useMemo(() => {
+    const map: Record<string, Set<string>> = {};
+    for (const s of SECTIONS) {
+      const keys = new Set<string>([
+        ...(s.leadKeys ?? []),
+        ...s.tailKeys,
+        ...(s.advancedKeys ?? []),
+      ]);
+      if (s.provider) {
+        keys.add(s.provider.setting);
+        for (const value of Object.keys(s.provider.providerValues)) {
+          const prov = activeProvider(s, value);
+          if (prov) {
+            keys.add(prov.spec.keyKey);
+            if (prov.spec.baseKey) keys.add(prov.spec.baseKey);
+            for (const k of prov.spec.extraKeys ?? []) keys.add(k);
+          }
+          const model = modelKeyFor(s, value);
+          if (model) keys.add(model);
+        }
+      }
+      map[s.key] = keys;
+    }
+    return map;
+  }, []);
+
+  const dirtySections = useMemo(() => {
     const set = new Set<string>();
-    for (const s of settings) if (s.key in edits) set.add(s.category);
+    for (const s of SECTIONS) {
+      for (const k of Object.keys(edits)) {
+        if (sectionKeys[s.key].has(k)) {
+          set.add(s.key);
+          break;
+        }
+      }
+    }
     return set;
-  }, [settings, edits]);
+  }, [edits, sectionKeys]);
 
   const q = query.trim().toLowerCase();
   const matches = useMemo(() => {
@@ -175,20 +207,21 @@ export default function AdminSettingsPage() {
     }
   }
 
-  const visible = matches ?? byCategory[active] ?? [];
-  const primary = visible.filter((s) => !ADVANCED_KEYS.has(s.key));
-  const advanced = visible.filter((s) => ADVANCED_KEYS.has(s.key));
-  // A hidden edit that the save bar counts but the admin can't see is a trap —
-  // the disclosure carries its own dot when one is in there.
-  const advancedDirty = advanced.filter((s) => s.key in edits).length;
-  const activeLabel =
-    categories.find((c) => c.key === active)?.label ?? "Settings";
+  const activeSection = SECTIONS.find((s) => s.key === active) ?? SECTIONS[0];
+
+  const fieldProps = {
+    edits,
+    onChange: setValue,
+    onRevert: revert,
+    onTest: runTest,
+    tests,
+  };
 
   return (
     <div className={cn(dirtyCount > 0 && "pb-24")}>
       <PageHeader
         title="Settings"
-        description="API keys, models, and pipeline behaviour. Changes apply as soon as you save — no restart."
+        description="Providers, keys, and pipeline behaviour. Changes apply as soon as you save — no restart."
         actions={
           <div className="relative w-full sm:w-72">
             <Search
@@ -229,17 +262,17 @@ export default function AdminSettingsPage() {
           aria-hidden={q ? true : undefined}
         >
           {isLoading
-            ? Array.from({ length: 6 }).map((_, i) => (
+            ? Array.from({ length: 4 }).map((_, i) => (
                 <Skeleton key={i} className="h-9 w-32 shrink-0 lg:w-full" />
               ))
-            : categories.map((c) => (
+            : SECTIONS.map((s) => (
                 <RailItem
-                  key={c.key}
-                  category={c}
-                  icon={CATEGORY_ICONS[c.key] ?? Settings2}
-                  active={!q && c.key === active}
-                  dirty={dirtyCategories.has(c.key)}
-                  onSelect={() => setActive(c.key)}
+                  key={s.key}
+                  label={s.title}
+                  icon={SECTION_ICONS[s.key] ?? Settings2}
+                  active={!q && s.key === active}
+                  dirty={dirtySections.has(s.key)}
+                  onSelect={() => setActive(s.key)}
                 />
               ))}
         </nav>
@@ -251,79 +284,20 @@ export default function AdminSettingsPage() {
         >
           {isLoading ? (
             <FieldsSkeleton />
+          ) : q ? (
+            <SearchResults
+              matches={matches ?? []}
+              query={query.trim()}
+              categories={categories}
+              {...fieldProps}
+            />
           ) : (
-            <>
-              <h2 className="text-[15px] font-medium tracking-tight text-fg">
-                {q
-                  ? `${visible.length} setting${visible.length === 1 ? "" : "s"} matching “${query.trim()}”`
-                  : activeLabel}
-              </h2>
-
-              {visible.length === 0 ? (
-                <p className="mt-6 text-sm text-fg-muted">
-                  Nothing matches that. Try a provider name (
-                  <span className="text-fg">qwen</span>,{" "}
-                  <span className="text-fg">claude</span>) or a word from the
-                  setting you want, like{" "}
-                  <span className="text-fg">concurrency</span>.
-                </p>
-              ) : (
-                <>
-                  <FieldList
-                    fields={primary}
-                    showCategory={Boolean(q)}
-                    categories={categories}
-                    edits={edits}
-                    onChange={setValue}
-                    onRevert={revert}
-                    onTest={runTest}
-                    tests={tests}
-                  />
-
-                  {advanced.length > 0 && (
-                    <div className="border-t border-line pt-4">
-                      <button
-                        type="button"
-                        onClick={() => setShowAdvanced((v) => !v)}
-                        aria-expanded={showAdvanced}
-                        className="touch-target flex items-center gap-1.5 rounded-btn text-sm font-medium text-fg-muted transition-colors duration-150 hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/70"
-                      >
-                        <ChevronRight
-                          className={cn(
-                            "h-4 w-4 transition-transform duration-150 motion-reduce:transition-none",
-                            showAdvanced && "rotate-90",
-                          )}
-                          aria-hidden
-                        />
-                        {showAdvanced ? "Hide" : "Show"} endpoints &amp; advanced
-                        <span className="font-normal text-fg-subtle">
-                          ({advanced.length})
-                        </span>
-                        {advancedDirty > 0 && (
-                          <span
-                            className="h-1.5 w-1.5 rounded-full bg-brand"
-                            aria-label={`${advancedDirty} unsaved`}
-                          />
-                        )}
-                      </button>
-
-                      {showAdvanced && (
-                        <FieldList
-                          fields={advanced}
-                          showCategory={Boolean(q)}
-                          categories={categories}
-                          edits={edits}
-                          onChange={setValue}
-                          onRevert={revert}
-                          onTest={runTest}
-                          tests={tests}
-                        />
-                      )}
-                    </div>
-                  )}
-                </>
-              )}
-            </>
+            <SectionView
+              section={activeSection}
+              byKey={byKey}
+              valueOf={valueOf}
+              {...fieldProps}
+            />
           )}
         </section>
       </div>
@@ -340,36 +314,151 @@ export default function AdminSettingsPage() {
   );
 }
 
-function FieldList({
-  fields,
-  showCategory,
-  categories,
+interface FieldProps {
+  edits: Record<string, string>;
+  onChange: (setting: AppSetting, value: string) => void;
+  onRevert: (key: string) => void;
+  onTest: (key: string) => void;
+  tests: Record<string, TestState>;
+}
+
+/**
+ * One task-shaped section: the switch that turns it on, the provider that runs
+ * it with that provider's key and model inline, then its tuning.
+ */
+function SectionView({
+  section,
+  byKey,
+  valueOf,
+  ...field
+}: {
+  section: SectionSpec;
+  byKey: Record<string, AppSetting>;
+  valueOf: (key: string) => string;
+} & FieldProps) {
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  const providerValue = section.provider ? valueOf(section.provider.setting) : "";
+  const prov = activeProvider(section, providerValue);
+  const modelKey = modelKeyFor(section, providerValue);
+
+  // Endpoint overrides are set once, at install, by someone pointing a
+  // provider at a self-hosted gateway. Keeping them next to the key but folded
+  // means the common path is "paste key, test, done".
+  const endpointKeys = [
+    ...(prov?.spec.baseKey ? [prov.spec.baseKey] : []),
+    ...(section.advancedKeys ?? []),
+  ];
+
+  const advancedDirty = endpointKeys.filter((k) => k in field.edits).length;
+
+  return (
+    <>
+      <div>
+        <h2 className="text-[15px] font-medium tracking-tight text-fg">
+          {section.title}
+        </h2>
+        <p className="mt-1 max-w-[68ch] text-sm text-fg-muted">{section.blurb}</p>
+      </div>
+
+      <Fields keys={section.leadKeys ?? []} byKey={byKey} {...field} />
+
+      {section.provider && (
+        <>
+          <Fields keys={[section.provider.setting]} byKey={byKey} {...field} />
+
+          {prov ? (
+            <Fields
+              keys={[
+                prov.spec.keyKey,
+                ...(prov.spec.extraKeys ?? []),
+                ...(modelKey ? [modelKey] : []),
+              ]}
+              byKey={byKey}
+              sharedNote={sharedNoteFor(prov.id, section.title)}
+              {...field}
+            />
+          ) : (
+            <p className="border-t border-line py-6 text-sm text-fg-muted">
+              No credentials are needed for this provider.
+            </p>
+          )}
+        </>
+      )}
+
+      <Fields keys={section.tailKeys} byKey={byKey} {...field} />
+
+      {endpointKeys.length > 0 && (
+        <div className="border-t border-line pt-4">
+          <button
+            type="button"
+            onClick={() => setShowAdvanced((v) => !v)}
+            aria-expanded={showAdvanced}
+            className="touch-target flex items-center gap-1.5 rounded-btn text-sm font-medium text-fg-muted transition-colors duration-150 hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/70"
+          >
+            <ChevronRight
+              className={cn(
+                "h-4 w-4 transition-transform duration-150 motion-reduce:transition-none",
+                showAdvanced && "rotate-90",
+              )}
+              aria-hidden
+            />
+            {showAdvanced ? "Hide" : "Show"} endpoints &amp; advanced
+            <span className="font-normal text-fg-subtle">
+              ({endpointKeys.length})
+            </span>
+            {/* A hidden edit that the save bar counts but the admin can't see
+                is a trap — the disclosure carries its own dot when one is in
+                there. */}
+            {advancedDirty > 0 && (
+              <span
+                className="h-1.5 w-1.5 rounded-full bg-brand"
+                aria-label={`${advancedDirty} unsaved`}
+              />
+            )}
+          </button>
+
+          {showAdvanced && <Fields keys={endpointKeys} byKey={byKey} {...field} />}
+        </div>
+      )}
+    </>
+  );
+}
+
+/**
+ * "Also used by X" for a key more than one feature runs on. Editing the Qwen
+ * key in Extraction also changes the key Chat uses, because it is one account
+ * and one row — showing three independent-looking fields would imply three
+ * keys the admin does not have.
+ */
+function sharedNoteFor(providerId: string, current: string): string | undefined {
+  const others = sectionsUsingProvider(providerId).filter((t) => t !== current);
+  if (others.length === 0) return undefined;
+  return `One account, shared with ${others.join(" and ")} — editing it here changes it there too.`;
+}
+
+/** Renders the settings for a list of keys, skipping any the API didn't send. */
+function Fields({
+  keys,
+  byKey,
+  sharedNote,
   edits,
   onChange,
   onRevert,
   onTest,
   tests,
 }: {
-  fields: AppSetting[];
-  showCategory: boolean;
-  categories: SettingsCategory[];
-  edits: Record<string, string>;
-  onChange: (setting: AppSetting, value: string) => void;
-  onRevert: (key: string) => void;
-  onTest: (key: string) => void;
-  tests: Record<string, TestState>;
-}) {
+  keys: string[];
+  byKey: Record<string, AppSetting>;
+  sharedNote?: string;
+} & FieldProps) {
+  const present = keys.map((k) => byKey[k]).filter(Boolean);
+  if (present.length === 0) return null;
+
   return (
     <div className="divide-y divide-line">
-      {fields.map((s, i) => (
+      {present.map((s) => (
         <div key={s.key}>
-          {/* Only where the section changes — repeating it on every row of a
-              run turns a wayfinding cue into noise. */}
-          {showCategory && s.category !== fields[i - 1]?.category && (
-            <p className="pt-6 text-xs font-medium text-fg-subtle">
-              {categories.find((c) => c.key === s.category)?.label}
-            </p>
-          )}
           <SettingField
             setting={s}
             draft={edits[s.key]}
@@ -378,20 +467,90 @@ function FieldList({
             onTest={TESTABLE_KEYS[s.key] ? () => onTest(s.key) : undefined}
             testState={tests[s.key]}
           />
+          {sharedNote && s.is_secret && (
+            <p className="-mt-3 pb-5 text-xs text-fg-subtle">{sharedNote}</p>
+          )}
         </div>
       ))}
     </div>
   );
 }
 
+/**
+ * Search is deliberately flat and unfiltered by section — it is the escape
+ * hatch for an admin who knows the setting's name but not which decision it
+ * belongs to, so hiding a match because its section isn't open would defeat
+ * the point. Category labels mark the runs.
+ */
+function SearchResults({
+  matches,
+  query,
+  categories,
+  edits,
+  onChange,
+  onRevert,
+  onTest,
+  tests,
+}: {
+  matches: AppSetting[];
+  query: string;
+  categories: SettingsCategory[];
+} & FieldProps) {
+  if (matches.length === 0) {
+    return (
+      <>
+        <h2 className="text-[15px] font-medium tracking-tight text-fg">
+          Nothing matching &ldquo;{query}&rdquo;
+        </h2>
+        <p className="mt-6 text-sm text-fg-muted">
+          Try a provider name (<span className="text-fg">qwen</span>,{" "}
+          <span className="text-fg">claude</span>) or a word from the setting you
+          want, like <span className="text-fg">concurrency</span>.
+        </p>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <h2 className="text-[15px] font-medium tracking-tight text-fg">
+        {matches.length} setting{matches.length === 1 ? "" : "s"} matching
+        &ldquo;{query}&rdquo;
+      </h2>
+      <div className="divide-y divide-line">
+        {matches.map((s, i) => (
+          <div key={s.key}>
+            {/* Only where the section changes — repeating it on every row of a
+                run turns a wayfinding cue into noise. */}
+            {s.category !== matches[i - 1]?.category && (
+              <p className="pt-6 text-xs font-medium text-fg-subtle">
+                {categories.find((c) => c.key === s.category)?.label ??
+                  s.category}
+              </p>
+            )}
+            <SettingField
+              setting={s}
+              draft={edits[s.key]}
+              onChange={(v) => onChange(s, v)}
+              onRevert={() => onRevert(s.key)}
+              onTest={TESTABLE_KEYS[s.key] ? () => onTest(s.key) : undefined}
+              testState={tests[s.key]}
+            />
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
 function RailItem({
-  category,
+  label,
   icon: Icon,
   active,
   dirty,
   onSelect,
 }: {
-  category: SettingsCategory;
+  label: string;
   icon: LucideIcon;
   active: boolean;
   dirty: boolean;
@@ -413,7 +572,7 @@ function RailItem({
       )}
     >
       <Icon className="h-[18px] w-[18px] shrink-0" aria-hidden />
-      <span className="truncate">{category.label}</span>
+      <span className="truncate">{label}</span>
       {dirty && (
         <span
           className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-brand"

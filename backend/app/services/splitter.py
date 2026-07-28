@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import logging
 
-from app.config import settings
+from app.config import eff_int, settings
 from app.services import pdf_utils, pipeline_db
 
 logger = logging.getLogger(__name__)
@@ -40,7 +40,7 @@ def split_document(doc_id: str, pdf_bytes: bytes) -> int:
     before lowering it.
     """
     try:
-        images = pdf_utils.render_pages(pdf_bytes, dpi=settings.split_dpi)
+        images = pdf_utils.render_pages(pdf_bytes, dpi=eff_int("split_dpi"))
     except Exception as exc:  # noqa: BLE001
         raise SplitError(f"Could not render PDF pages: {exc}") from exc
 

@@ -72,11 +72,29 @@ const EMBEDDING_MODELS: ModelOption[] = [
   { value: "text-embedding-3-large", label: "OpenAI 3-large · 3072 dim" },
 ];
 
+// --- Endpoints -----------------------------------------------------------
+//
+// DashScope is two separate deployments with two separate key namespaces, and
+// a key from one gets a bare 401 from the other — which reads as "bad key" and
+// sends you to regenerate a key that was fine. There are exactly two right
+// answers here, so this is a choice, not a URL to type from memory.
+const QWEN_ENDPOINTS: ModelOption[] = [
+  {
+    value: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    label: "Mainland China · dashscope.aliyuncs.com",
+  },
+  {
+    value: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+    label: "International · dashscope-intl.aliyuncs.com",
+  },
+];
+
 /**
- * Setting key -> the models valid for it. A key absent from this map renders
- * as a plain text field.
+ * Setting key -> the values valid for it, rendered as a select with a
+ * "Custom…" escape. A key absent from this map renders as a plain text field.
  */
 export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
+  qwen_api_base: QWEN_ENDPOINTS,
   claude_model: CLAUDE_MODELS,
   chat_anthropic_model: CLAUDE_MODELS,
   page_extract_claude_model: CLAUDE_MODELS,

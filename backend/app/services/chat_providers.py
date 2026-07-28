@@ -40,8 +40,8 @@ from typing import Any, Callable, Protocol
 import anthropic
 from openai import OpenAI
 
-from app.config import settings
-from app.services import agent_tools
+from app.config import eff_int, eff_str
+from app.services import agent_tools, llm_clients
 
 logger = logging.getLogger(__name__)
 
@@ -127,14 +127,7 @@ class ChatProvider(Protocol):
 # Anthropic
 # ---------------------------------------------------------------------------
 
-_anthropic_client: anthropic.Anthropic | None = None
-
-
-def _get_anthropic() -> anthropic.Anthropic:
-    global _anthropic_client
-    if _anthropic_client is None:
-        _anthropic_client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
-    return _anthropic_client
+_get_anthropic = llm_clients.anthropic_client
 
 
 class AnthropicChatProvider:
@@ -172,16 +165,16 @@ class AnthropicChatProvider:
         result = ChatResult(text="")
         guard = agent_tools.CallGuard()
 
-        for _ in range(settings.chat_max_tool_iterations):
+        for _ in range(eff_int("chat_max_tool_iterations")):
             on_event({"type": "thinking"})
             try:
                 response = client.messages.create(
-                    model=settings.chat_anthropic_model,
+                    model=eff_str("chat_anthropic_model"),
                     max_tokens=2048,
                     system=system,
                     tools=tools,
                     messages=history,
-                    output_config={"effort": settings.chat_effort},
+                    output_config={"effort": eff_str("chat_effort")},
                 )
             except anthropic.APIStatusError as exc:
                 raise ChatProviderError(f"Anthropic API error: {exc}") from exc
@@ -244,30 +237,15 @@ class AnthropicChatProvider:
 # OpenAI-compatible (GPT and Qwen)
 # ---------------------------------------------------------------------------
 
-_openai_clients: dict[str, OpenAI] = {}
-
-
 def _get_openai_compat(flavour: str) -> tuple[OpenAI, str]:
     """
-    Returns (client, model) for "gpt" or "qwen". Cached per flavour so the two
-    never share a client — they have different keys and base URLs.
+    Returns (client, model) for "gpt" or "qwen". The two never share a client —
+    different keys and base URLs — and both come from llm_clients, so a key
+    saved in Settings applies to the next message without a restart.
     """
-    if flavour not in _openai_clients:
-        if flavour == "qwen":
-            _openai_clients[flavour] = OpenAI(
-                api_key=settings.qwen_api_key,
-                base_url=settings.qwen_api_base,
-            )
-        else:
-            kwargs: dict[str, Any] = {"api_key": settings.openai_api_key}
-            if settings.openai_api_base:
-                kwargs["base_url"] = settings.openai_api_base
-            _openai_clients[flavour] = OpenAI(**kwargs)
-
-    model = (
-        settings.chat_qwen_model if flavour == "qwen" else settings.chat_gpt_model
-    )
-    return _openai_clients[flavour], model
+    if flavour == "qwen":
+        return llm_clients.qwen_client(), eff_str("chat_qwen_model")
+    return llm_clients.openai_client(), eff_str("chat_gpt_model")
 
 
 class OpenAICompatProvider:
@@ -297,7 +275,7 @@ class OpenAICompatProvider:
         result = ChatResult(text="")
         guard = agent_tools.CallGuard()
 
-        for _ in range(settings.chat_max_tool_iterations):
+        for _ in range(eff_int("chat_max_tool_iterations")):
             on_event({"type": "thinking"})
             try:
                 response = client.chat.completions.create(
@@ -384,7 +362,7 @@ class OpenAICompatProvider:
 
 def get_provider() -> ChatProvider:
     """The single active provider for this deployment. Not a fallback chain."""
-    name = (settings.chat_provider or "anthropic").lower()
+    name = (eff_str("chat_provider") or "anthropic").lower()
     if name == "anthropic":
         return AnthropicChatProvider()
     if name in ("gpt", "openai"):

@@ -25,7 +25,7 @@ from concurrent.futures import ThreadPoolExecutor
 import httpx
 from rapidfuzz import fuzz
 
-from app.config import settings
+from app.config import eff_bool, settings
 from app.schemas.chemical import ExtractionResult
 
 logger = logging.getLogger(__name__)
@@ -208,7 +208,7 @@ def enrich_result(result: ExtractionResult) -> None:
         the provenance so it's clear the CAS was looked up, not printed.
     Lookups run concurrently (bounded) to keep upload time reasonable.
     """
-    if not settings.pubchem_enrichment:
+    if not eff_bool("pubchem_enrichment"):
         return
 
     def _one(product) -> None:
@@ -222,7 +222,7 @@ def enrich_result(result: ExtractionResult) -> None:
                 logger.info("Enriched CAS %s from PubChem (CID %s)", cas, ref.get("pubchem_cid"))
             return
         # No printed CAS → try to resolve one from the name.
-        if not settings.pubchem_cas_lookup:
+        if not eff_bool("pubchem_cas_lookup"):
             return
         ref = lookup_cas_by_name(product.name_en or product.name_raw or "")
         if not ref:

@@ -30,7 +30,7 @@ import socket
 import time
 from typing import Any
 
-from app.config import settings
+from app.config import eff_str
 from app.services import (
     cas,
     dedup,
@@ -73,7 +73,7 @@ def _extract_identity(pages: list[dict[str, Any]]) -> dict[str, Any]:
             return {}
         raw = extraction.complete_text(
             f"{extraction._COMPANY_PROMPT}\n\n--- PAGE TEXT ---\n{text}\n--- END ---",
-            provider=settings.page_extract_provider,
+            provider=eff_str("page_extract_provider"),
             max_tokens=300,
         )
         return extraction._parse_json_soft(raw, page_no=0)
@@ -353,7 +353,7 @@ def _finalize_document(doc_id: str, *, cancelled: bool = False) -> None:
 def run_forever(poll_interval: float = _POLL_INTERVAL) -> None:
     signal.signal(signal.SIGTERM, _handle_stop)
     signal.signal(signal.SIGINT, _handle_stop)
-    logger.info("Extraction worker %s started (provider=%s)", WORKER_ID, settings.page_extract_provider)
+    logger.info("Extraction worker %s started (provider=%s)", WORKER_ID, eff_str("page_extract_provider"))
     while not _stop:
         try:
             doc = pipeline_db.claim_next_document(WORKER_ID)

@@ -39,7 +39,7 @@ from tenacity import (
     wait_exponential,
 )
 
-from app.config import settings
+from app.config import eff_str, settings
 from app.prompts.extraction_prompt import VLM_TRANSCRIPTION_PROMPT
 from app.services import extraction  # reuse the Qwen/Claude clients + retry policy
 
@@ -195,7 +195,7 @@ def _running_context_hint(context: dict[str, Any] | None) -> str:
 def _stage1_qwen(image: bytes, context: dict[str, Any] | None) -> str:
     b64 = base64.standard_b64encode(image).decode("ascii")
     resp = extraction._get_qwen().chat.completions.create(
-        model=settings.qwen_model,
+        model=eff_str("qwen_model"),
         max_tokens=4096,
         temperature=0,
         messages=[{
@@ -256,7 +256,7 @@ def _stage2_qwen(markdown: str) -> dict[str, Any]:
     # the same guaranteed-structured-output pattern the repo already uses for
     # GLM/GPT. The production path (Claude) uses genuine forced tool_use below.
     resp = extraction._get_qwen().chat.completions.create(
-        model=settings.qwen_model,
+        model=eff_str("qwen_model"),
         max_tokens=8000,
         temperature=0,
         response_format={"type": "json_object"},
@@ -299,13 +299,13 @@ def _stage2_claude(markdown: str) -> dict[str, Any]:
 
 def _claude_model() -> str:
     """Stage-2 Claude model: the page-extract override if set, else claude_model."""
-    return settings.page_extract_claude_model or settings.claude_model
+    return eff_str("page_extract_claude_model") or eff_str("claude_model")
 
 
 # ── Provider routing (the one config-driven switch) ──────────────────────
 
 def _normalize_page_provider(raw: str | None) -> str:
-    key = (raw or settings.page_extract_provider or "qwen").strip().lower()
+    key = (raw or eff_str("page_extract_provider") or "qwen").strip().lower()
     if key in ("qwen", "dashscope"):
         return "qwen"
     if key in ("claude", "anthropic", "sonnet"):

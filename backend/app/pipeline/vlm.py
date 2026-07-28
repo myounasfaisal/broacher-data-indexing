@@ -29,24 +29,14 @@ from tenacity import (
     wait_exponential,
 )
 
-from app.config import settings
+from app.config import eff_str, settings
 from app.prompts.extraction_prompt import VLM_TRANSCRIPTION_PROMPT
-from app.services import pdf_utils
+from app.services import llm_clients, pdf_utils
 
 logger = logging.getLogger(__name__)
 
-# Lazy singleton — only built when the pipeline actually runs.
-_client: OpenAI | None = None
-
-
-def _get_client() -> OpenAI:
-    global _client
-    if _client is None:
-        _client = OpenAI(
-            api_key=settings.qwen_api_key,
-            base_url=settings.qwen_api_base,
-        )
-    return _client
+# Same DashScope client as OCR/extraction — see app/services/llm_clients.py.
+_get_client = llm_clients.qwen_client
 
 
 # Broad retry — the OpenAI SDK raises a range of transient error types against
@@ -64,7 +54,7 @@ def transcribe_page(png_bytes: bytes, page_number: int = 1) -> str:
     """Transcribe ONE brochure page image (PNG bytes) to structured markdown."""
     b64 = base64.standard_b64encode(png_bytes).decode("ascii")
     response = _get_client().chat.completions.create(
-        model=settings.qwen_vlm_model,
+        model=eff_str("qwen_vlm_model"),
         max_tokens=settings.pipeline_max_tokens,
         # Deterministic transcription — we do NOT want the model paraphrasing.
         temperature=0,

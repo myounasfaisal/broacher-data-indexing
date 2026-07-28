@@ -28,8 +28,8 @@ from typing import Any, Iterable
 
 from openai import OpenAI
 
-from app.config import settings
-from app.services import database
+from app.config import eff_bool, eff_float, eff_int, eff_str, settings
+from app.services import database, llm_clients
 
 logger = logging.getLogger(__name__)
 
@@ -71,28 +71,16 @@ _NOISE_KEYS = frozenset(
     }
 )
 
-_client: OpenAI | None = None
-
-
 def _get_client() -> OpenAI:
-    """Lazily built; the same SDK the extractor points at DashScope."""
-    global _client
-    if _client is None:
-        if settings.embedding_provider == "openai":
-            kwargs: dict[str, Any] = {"api_key": settings.openai_api_key}
-            if settings.openai_api_base:
-                kwargs["base_url"] = settings.openai_api_base
-            _client = OpenAI(**kwargs)
-        else:
-            _client = OpenAI(
-                api_key=settings.qwen_api_key,
-                base_url=settings.qwen_api_base,
-            )
-    return _client
+    """The provider is re-read per call, so switching Qwen -> OpenAI in
+    Settings takes effect on the next batch rather than at the next restart."""
+    if eff_str("embedding_provider") == "openai":
+        return llm_clients.openai_client()
+    return llm_clients.qwen_client()
 
 
 def enabled() -> bool:
-    return bool(settings.embeddings_enabled)
+    return eff_bool("embeddings_enabled")
 
 
 def index_size() -> int:
@@ -200,9 +188,9 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
         batch = texts[start : start + size]
         try:
             resp = client.embeddings.create(
-                model=settings.embedding_model,
+                model=eff_str("embedding_model"),
                 input=batch,
-                dimensions=settings.embedding_dim,
+                dimensions=eff_int("embedding_dim"),
             )
         except Exception as exc:  # noqa: BLE001 — normalised for the callers
             raise EmbeddingError(f"embedding request failed: {exc}") from exc
@@ -214,10 +202,10 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
         ordered = sorted(resp.data, key=lambda d: d.index)
         for item in ordered:
             vector = list(item.embedding)
-            if len(vector) != settings.embedding_dim:
+            if len(vector) != eff_int("embedding_dim"):
                 raise EmbeddingError(
                     f"provider returned {len(vector)} dimensions, "
-                    f"expected {settings.embedding_dim}"
+                    f"expected {eff_int('embedding_dim')}"
                 )
             out.append(vector)
 
@@ -365,9 +353,9 @@ def similar_chemicals(
     try:
         return database.match_chemicals(
             vector,
-            limit=limit or settings.embedding_match_count,
+            limit=limit or eff_int("embedding_match_count"),
             exclude_chemical_id=exclude_chemical_id,
-            min_similarity=settings.embedding_min_similarity,
+            min_similarity=eff_float("embedding_min_similarity"),
         )
     except Exception as exc:  # noqa: BLE001
         raise EmbeddingError(f"similarity search failed: {exc}") from exc
