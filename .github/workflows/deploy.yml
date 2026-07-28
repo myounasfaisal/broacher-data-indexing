@@ -1,0 +1,49 @@
+# Auto-deploy: on every push to `deployment`, SSH into the VM and redeploy.
+#
+# How it works: GitHub runs this on its own machine, connects to the VM over
+# SSH using the secrets configured in the repo, pulls the latest code, and
+# rebuilds/restarts the containers. The VM's own git deploy key handles the
+# `git fetch` from GitHub; the SSH_* secrets handle GitHub -> VM login.
+#
+# One-time setup required before this runs — see docs/DEVOPS_EXPLAINED.md
+# (Auto-deploy section) for the full checklist:
+#   Repo secrets:  SSH_HOST=34.18.9.118, SSH_USER=younasf69, SSH_KEY=<private key>
+#   On the VM:     the matching PUBLIC key in ~/.ssh/authorized_keys
+#   GCP firewall:  port 22 reachable
+
+name: Deploy to VM
+
+on:
+  push:
+    branches: [deployment]
+  workflow_dispatch: {}     # lets you trigger a deploy manually from the Actions tab
+
+concurrency:
+  group: deploy-vm          # never run two deploys at once
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # Only deploy from the repo the VM actually tracks. If you mirror-push the
+    # branch to another GitHub remote, that copy won't try to deploy (and won't
+    # fail for lack of secrets).
+    if: github.repository == 'aitexsolutionsorg/brochure-indexing-bostech'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Redeploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/brochure-indexing-bostech
+            # Force the VM to match the remote exactly. .env files and certs/
+            # are gitignored, so they are NOT touched by this reset.
+            git fetch origin deployment
+            git reset --hard origin/deployment
+            # Rebuild changed images and restart; leftover old images pruned.
+            docker compose -f docker-compose.prod.yml up -d --build
+            docker image prune -f
+            docker compose -f docker-compose.prod.yml ps
