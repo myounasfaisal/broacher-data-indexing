@@ -954,3 +954,29 @@ itself. Run from `/opt/<repo>` after
       + jobs across replicas, no restart loop
 - [ ] Reboot the VM → `docker compose ... ps` shows everything back Up
       (restart: unless-stopped) without manual intervention
+
+## Admin Settings tab overhaul (SettingField + modelCatalog + stable ordering)
+
+Reworked admin Settings page: typed field rendering, curated model dropdowns,
+testable saved keys, and stable field order. Backend: SETTING_ORDER +
+test-saved-key resolution.
+
+- [ ] Open Admin → Settings: every category renders with its icon; fields appear
+      in a stable, semantic order and do NOT shuffle position on reload/refetch
+- [ ] Model fields (e.g. claude_model, openai_model) render as dropdowns of
+      curated options, not free-text boxes
+- [ ] Choosing "Custom…" on a model field reveals a text input; saving a custom
+      value persists and re-renders as that value (not a blank select)
+- [ ] A stored model outside the catalogue still shows correctly (falls back to
+      Custom) and is not silently reset on save
+- [ ] Boolean settings (chat_enabled, embeddings_enabled, pubchem_*) render as
+      switches; number settings render narrow with a stepper
+- [ ] API-key fields show a masked value with an eye toggle to reveal/edit
+- [ ] "Test" on a key that is ALREADY SAVED (field still masked, nothing typed)
+      resolves the stored key server-side and returns a real ok/fail result
+- [ ] "Test" with no key saved anywhere returns "No key saved for this provider
+      yet — enter one first."
+- [ ] Advanced fields (endpoint URLs, embedding_dim, nuextract_project_id) are
+      folded away by default and expand on demand
+- [ ] Saving persists; reload shows saved values; the embeddings category reads
+      "Semantic Search"

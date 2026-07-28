@@ -33,12 +33,48 @@ CATEGORIES = [
     "reconciler",
 ]
 
+# Display order within a category. Postgres returns rows in no guaranteed
+# order without an ORDER BY, so without this the fields shuffle between loads —
+# and a settings page whose fields move is one you have to re-read every visit.
+# Ordering here rather than in SQL keeps it semantic (concurrency next to DPI)
+# instead of alphabetical, and needs no migration.
+SETTING_ORDER: list[str] = [
+    # extraction
+    "extraction_provider", "search_provider", "page_extract_provider",
+    "page_concurrency", "split_dpi",
+    # api_keys — live keys first, endpoints after (the UI folds those away)
+    "anthropic_api_key", "openai_api_key", "qwen_api_key", "gemini_api_key",
+    "openrouter_api_key", "nuextract_api_key",
+    "openai_api_base", "qwen_api_base", "openrouter_api_base",
+    "nuextract_api_base", "nuextract_project_id",
+    # models
+    "claude_model", "openai_model", "qwen_model", "qwen_vlm_model",
+    "qwen_text_model", "gemini_model", "openrouter_model",
+    "page_extract_claude_model",
+    # chat — the on/off switch first, then who runs it, then its limits
+    "chat_enabled", "chat_provider", "chat_anthropic_model", "chat_gpt_model",
+    "chat_qwen_model", "chat_effort", "chat_max_messages",
+    "chat_max_tool_iterations", "chat_rate_limit",
+    # embeddings
+    "embeddings_enabled", "embedding_provider", "embedding_model",
+    "embedding_match_count", "embedding_min_similarity", "embedding_dim",
+    # enrichment
+    "pubchem_enrichment", "pubchem_cas_lookup",
+    # limits
+    "max_upload_size_mb", "api_max_retries", "allowed_origin",
+    # reconciler
+    "reconciler_interval_seconds", "document_stale_seconds",
+    "max_page_attempts",
+]
+
+_ORDER_INDEX = {key: i for i, key in enumerate(SETTING_ORDER)}
+
 CATEGORY_LABELS: dict[str, str] = {
     "extraction": "Extraction Pipeline",
     "api_keys": "API Keys",
     "models": "Models",
     "chat": "Chat Assistant",
-    "embeddings": "Embeddings & Semantic Search",
+    "embeddings": "Semantic Search",
     "enrichment": "PubChem Enrichment",
     "limits": "Behaviour & Limits",
     "reconciler": "Reconciler",
@@ -87,11 +123,23 @@ def get_raw(key: str) -> str | None:
     return entry["value"] or None
 
 
+def _sort_key(row: dict[str, Any]) -> tuple[int, int, str]:
+    """(category position, position within category, key) — total and stable.
+    Anything not listed in SETTING_ORDER sorts to the end of its category by
+    key, so a newly seeded setting appears predictably instead of at random."""
+    cat = row.get("category", "")
+    return (
+        CATEGORIES.index(cat) if cat in CATEGORIES else len(CATEGORIES),
+        _ORDER_INDEX.get(row["key"], len(_ORDER_INDEX)),
+        row["key"],
+    )
+
+
 def get_all_masked() -> list[dict[str, Any]]:
     """Return all settings with secrets masked — for the admin GET endpoint."""
     ensure_loaded()
     result = []
-    for row in _cache.values():
+    for row in sorted(_cache.values(), key=_sort_key):
         entry = {
             "key": row["key"],
             "value": _mask(row["value"]) if row["is_secret"] else row["value"],

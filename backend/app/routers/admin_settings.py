@@ -25,6 +25,19 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin/settings", tags=["admin-settings"])
 
+# provider -> (api-key setting, base-url setting). The base-url entry is None
+# where the provider has a fixed endpoint.
+_PROVIDER_SETTINGS: dict[str, tuple[str, str | None]] = {
+    "claude": ("anthropic_api_key", None),
+    "anthropic": ("anthropic_api_key", None),
+    "openai": ("openai_api_key", "openai_api_base"),
+    "gpt": ("openai_api_key", "openai_api_base"),
+    "qwen": ("qwen_api_key", "qwen_api_base"),
+    "gemini": ("gemini_api_key", None),
+    "openrouter": ("openrouter_api_key", "openrouter_api_base"),
+    "nuextract": ("nuextract_api_key", "nuextract_api_base"),
+}
+
 
 class SettingsResponse(BaseModel):
     settings: list[dict[str, Any]]
@@ -37,7 +50,10 @@ class SettingsUpdate(BaseModel):
 
 class TestKeyRequest(BaseModel):
     provider: str
-    api_key: str
+    # Empty means "test the key already stored" — the frontend never holds the
+    # real secret (GET only ever returns a mask), so a test of a saved key has
+    # to be resolved server-side.
+    api_key: str = ""
     api_base: str = ""
 
 
@@ -86,8 +102,24 @@ async def test_key(
     key = body.api_key
     base = body.api_base
 
-    if not key or "****" in key:
-        return TestKeyResponse(ok=False, message="No key provided (or masked value sent).")
+    # Resolve an unsupplied (or masked) key from storage so "Test" works on a
+    # key that is already saved, not just one being typed.
+    stored_key_setting, stored_base_setting = _PROVIDER_SETTINGS.get(
+        provider, (None, None)
+    )
+    if (not key or "****" in key) and stored_key_setting:
+        key = app_settings.get_raw(stored_key_setting) or getattr(
+            env_settings, stored_key_setting, ""
+        )
+    if not base and stored_base_setting:
+        base = app_settings.get_raw(stored_base_setting) or getattr(
+            env_settings, stored_base_setting, ""
+        )
+
+    if not key:
+        return TestKeyResponse(
+            ok=False, message="No key saved for this provider yet — enter one first."
+        )
 
     try:
         if provider == "openai" or provider == "gpt":
