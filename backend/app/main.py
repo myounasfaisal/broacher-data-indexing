@@ -65,9 +65,19 @@ async def _database_error_handler(_request: Request, exc: DatabaseError) -> JSON
     )
 
 # CORS: allow only the configured frontend origin — no wildcard in production.
+# In local dev, "localhost" and "127.0.0.1" are the same server but different
+# CORS origins to the browser — allow whichever one ALLOWED_ORIGIN didn't spell
+# out, so it doesn't matter which one a dev happens to open. Doesn't affect a
+# real deployed origin (e.g. https://34.18.9.118), which contains neither.
+_origins = [settings.allowed_origin]
+if "localhost" in settings.allowed_origin:
+    _origins.append(settings.allowed_origin.replace("localhost", "127.0.0.1"))
+elif "127.0.0.1" in settings.allowed_origin:
+    _origins.append(settings.allowed_origin.replace("127.0.0.1", "localhost"))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.allowed_origin],
+    allow_origins=_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
