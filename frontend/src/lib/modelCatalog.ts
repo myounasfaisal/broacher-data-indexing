@@ -22,11 +22,11 @@ export const CUSTOM_MODEL = "__custom__";
 // Aliases only, never date-suffixed IDs: the alias always resolves to the
 // current snapshot, a pinned date eventually 404s.
 const CLAUDE_MODELS: ModelOption[] = [
-  { value: "claude-opus-5", label: "Claude Opus 5 · most capable" },
-  { value: "claude-opus-4-8", label: "Claude Opus 4.8" },
-  { value: "claude-sonnet-5", label: "Claude Sonnet 5 · balanced" },
-  { value: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
+  { value: "claude-sonnet-5", label: "Claude Sonnet 5 · recommended, balanced" },
   { value: "claude-haiku-4-5", label: "Claude Haiku 4.5 · fastest, cheapest" },
+  { value: "claude-opus-5", label: "Claude Opus 5 · most capable, slowest" },
+  { value: "claude-opus-4-8", label: "Claude Opus 4.8" },
+  { value: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
 ];
 
 // --- OpenAI --------------------------------------------------------------
