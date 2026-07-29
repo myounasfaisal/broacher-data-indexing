@@ -30,16 +30,21 @@ export function UploadQueue({
   onRestart: (id: string) => Promise<void> | void;
   onDiscard: (id: string) => Promise<void> | void;
 }) {
-  if (documents.length === 0 && uploading.length === 0) return null;
+  const TERMINAL: Set<string> = new Set(["done", "cancelled"]);
+  const visible = documents.filter(
+    (d) => !TERMINAL.has(d.status) && !d.duplicate,
+  );
 
-  const active = documents.filter(
+  if (visible.length === 0 && uploading.length === 0) return null;
+
+  const active = visible.filter(
     (d) =>
       d.status === "pending" ||
       d.status === "splitting" ||
       d.status === "split" ||
       d.status === "extracting",
   ).length;
-  const staged = documents.filter((d) => d.status === "staged").length;
+  const staged = visible.filter((d) => d.status === "staged").length;
 
   return (
     <div className="space-y-2">
@@ -51,7 +56,7 @@ export function UploadQueue({
         </p>
       )}
       <ul className="divide-y divide-line">
-        {documents.map((doc) => (
+        {visible.map((doc) => (
           <UploadJobRow
             key={doc.id}
             doc={doc}
