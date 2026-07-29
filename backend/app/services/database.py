@@ -588,6 +588,8 @@ EDITABLE_LISTING_FIELDS = (
     "currency",
     "purity",
     "needs_review",
+    "company_id",
+    "company_website",
 )
 
 
@@ -644,6 +646,35 @@ def update_listing(
         }
     ).eq("id", listing_id).execute()
     return get_listing(listing_id)
+
+
+@_db_op
+def get_company(company_id: int) -> dict[str, Any] | None:
+    """One supplier row by id — used to denormalize its website onto a
+    listing when an admin manually reassigns the supplier."""
+    resp = (
+        get_client()
+        .table("companies")
+        .select("id, company_name, company_name_en, website, email, contact_number")
+        .eq("id", company_id)
+        .limit(1)
+        .execute()
+    )
+    return resp.data[0] if resp.data else None
+
+
+@_db_op
+def create_company(name: str) -> dict[str, Any]:
+    """Create a brand-new supplier with just a name — the manual-assign path
+    for when the right supplier isn't in the directory yet (no website/email
+    known, unlike the automatic extraction-time resolve_company)."""
+    resp = (
+        get_client()
+        .table("companies")
+        .insert({"company_name": name})
+        .execute()
+    )
+    return resp.data[0]
 
 
 @_db_op

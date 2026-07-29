@@ -120,6 +120,10 @@ export interface ListingUpdate {
   needs_review?: boolean;
   /** Full replacement of the technical-details object (reference block kept). */
   details?: Record<string, unknown> | null;
+  /** Reassign to an existing supplier (from the suppliers directory). */
+  company_id?: number;
+  /** Create a new supplier with this name and assign it. Ignored if company_id is also set. */
+  new_company_name?: string;
 }
 
 /** One supplier in the directory (GET /suppliers). */

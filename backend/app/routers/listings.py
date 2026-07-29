@@ -67,11 +67,30 @@ async def update_listing(
     """
     Admin/manager data-fix for extraction mistakes. Only the fields present in
     the request change; dedup_key and price_usd are recomputed server-side.
+
+    `new_company_name` is a convenience over `company_id`: when the right
+    supplier isn't in the directory yet, this creates it (name-only, no
+    website/email — those are learned automatically from future brochures)
+    and assigns the new id. If both are sent, `company_id` wins.
     """
     _require_uuid(listing_id)
     changes = body.model_dump(exclude_unset=True)
+    new_company_name = changes.pop("new_company_name", None)
+    if new_company_name and not changes.get("company_id"):
+        company = database.create_company(new_company_name)
+        changes["company_id"] = company["id"]
     if not changes:
         raise HTTPException(status_code=400, detail="No fields to update.")
+    # company_website is denormalized onto the listing (read by ProductDetail
+    # and the suppliers directory) — keep it in step whenever the supplier
+    # changes, rather than leaving the old supplier's website behind.
+    if "company_id" in changes:
+        company = (
+            database.get_company(changes["company_id"])
+            if changes["company_id"] is not None
+            else None
+        )
+        changes["company_website"] = company.get("website") if company else None
     row = database.update_listing(listing_id, changes)
     if row is None:
         raise HTTPException(status_code=404, detail="Listing not found.")
