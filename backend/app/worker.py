@@ -59,27 +59,71 @@ def _handle_stop(signum: int, _frame: Any) -> None:
 
 # ── Supplier identity (first two + last two pages) ───────────────────────
 
-def _extract_identity(pages: list[dict[str, Any]]) -> dict[str, Any]:
-    """Best-effort document-level company identity from the cover/footer pages.
-    Reuses the OCR + company prompt already in services.extraction."""
-    if not pages:
-        return {}
-    n = len(pages)
-    want = sorted({0, 1, n - 2, n - 1} & set(range(n)))
+# Total pages the identity pass is willing to look at across the quick first
+# try AND the wider retry — bounded so a bad first guess on a long catalog
+# doesn't turn into scanning the whole document just to find a footer.
+_IDENTITY_MAX_PAGES = 8
+
+
+def _identity_pass(
+    pages: list[dict[str, Any]], indices: list[int], provider: str
+) -> dict[str, Any]:
+    """One best-effort identity attempt over a specific set of page indices.
+
+    On the Claude pipeline the pages go to Claude directly (native vision) —
+    no Qwen OCR step, so a Claude-only setup never needs a Qwen key. Every
+    other pipeline still OCRs with Qwen first, then completes the prompt on
+    the configured provider."""
     try:
-        images = [pipeline_db.download_page_image(pages[i]["image_path"]) for i in want]
-        text = ocr.ocr_pages(images)
-        if not text.strip():
-            return {}
-        raw = extraction.complete_text(
-            f"{extraction._COMPANY_PROMPT}\n\n--- PAGE TEXT ---\n{text}\n--- END ---",
-            provider=eff_str("page_extract_provider"),
-            max_tokens=300,
-        )
+        images = [pipeline_db.download_page_image(pages[i]["image_path"]) for i in indices]
+        if provider == "claude":
+            raw = extraction.complete_claude_vision(
+                images, extraction._COMPANY_PROMPT, max_tokens=300
+            )
+        else:
+            text = ocr.ocr_pages(images)
+            if not text.strip():
+                return {}
+            raw = extraction.complete_text(
+                f"{extraction._COMPANY_PROMPT}\n\n--- PAGE TEXT ---\n{text}\n--- END ---",
+                provider=provider,
+                max_tokens=300,
+            )
         return extraction._parse_json_soft(raw, page_no=0)
     except Exception as exc:  # noqa: BLE001 — identity is best-effort
         logger.warning("Company-identity pass failed for document: %s", exc)
         return {}
+
+
+def _extract_identity(pages: list[dict[str, Any]]) -> dict[str, Any]:
+    """Best-effort document-level company identity, cover/footer first.
+
+    Most brochures print the supplier on the cover or the contact/footer
+    page, so that's the cheap first try. When that comes back empty — some
+    brochures bury contact details in an "About us" page instead — this
+    widens to the next few not-yet-tried pages once before giving up, rather
+    than leaving the document supplier-less over one bad guess at where to
+    look."""
+    if not pages:
+        return {}
+    n = len(pages)
+    provider = eff_str("page_extract_provider")
+
+    narrow = sorted({0, 1, n - 2, n - 1} & set(range(n)))
+    identity = _identity_pass(pages, narrow, provider)
+    if _has_identity(identity):
+        return identity
+
+    budget = _IDENTITY_MAX_PAGES - len(narrow)
+    if budget > 0:
+        unvisited = [i for i in range(n) if i not in narrow][:budget]
+        if unvisited:
+            logger.info(
+                "No supplier identity on cover/footer — widening to page(s) %s",
+                unvisited,
+            )
+            identity = _identity_pass(pages, unvisited, provider)
+    return identity
 
 
 def _has_identity(identity: dict[str, Any]) -> bool:
