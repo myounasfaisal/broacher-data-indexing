@@ -91,6 +91,7 @@ def _status_from_doc(doc: dict, *, duplicate: bool = False) -> DocumentStatusOut
         product_count=doc.get("product_count") or 0,
         company_name=doc.get("company_name"),
         duplicate=duplicate,
+        error=doc.get("error"),
         created_at=str(doc.get("created_at") or ""),
     )
 

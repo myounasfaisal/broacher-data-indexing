@@ -187,6 +187,7 @@ def restart_document(doc_id: str) -> dict[str, Any] | None:
         "cancel_requested": False,
         "claimed_by": None,
         "claimed_at": None,
+        "error": None,
     }).eq("id", doc_id).execute()
     return get_document(doc_id)
 
@@ -267,7 +268,7 @@ def list_documents_status(uploader_id: str, limit: int = 50) -> list[dict[str, A
     client = get_client()
     docs = (
         client.table("documents")
-        .select("id, content_hash, filename, status, page_count, product_count, company_id, created_at")
+        .select("id, content_hash, filename, status, page_count, product_count, company_id, created_at, error")
         .eq("uploaded_by", uploader_id)
         .order("created_at", desc=True)
         .limit(limit)

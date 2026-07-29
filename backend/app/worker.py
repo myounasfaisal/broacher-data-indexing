@@ -218,13 +218,19 @@ def process_document(doc: dict[str, Any]) -> None:
         pdf = pipeline_db.download_source_pdf(doc_id)
         if pdf is None:
             logger.warning("Document %s has no pages and no source PDF — failing", doc_id)
-            pipeline_db.set_document(doc_id, status="failed")
+            pipeline_db.set_document(
+                doc_id, status="failed",
+                error="The uploaded file is missing — try uploading it again.",
+            )
             return
         try:
             splitter.split_document(doc_id, pdf)
         except splitter.SplitError as exc:
             logger.warning("Split failed for document %s: %s", doc_id, exc)
-            pipeline_db.set_document(doc_id, status="failed")
+            pipeline_db.set_document(
+                doc_id, status="failed",
+                error="Couldn't open this file — check it's a valid PDF and try again.",
+            )
             return
         pages = pipeline_db.list_pages(doc_id)
 
@@ -275,6 +281,13 @@ def process_document(doc: dict[str, Any]) -> None:
             pipeline_db.update_page(
                 page["id"], status="failed", attempts=attempts, error_message=str(exc)
             )
+            if exc.fatal:
+                # A bad key / no credit / unknown model fails every remaining
+                # page identically — stop this document now with a clear
+                # reason instead of grinding through the rest one at a time.
+                pipeline_db.set_document(doc_id, status="failed", error=str(exc))
+                logger.error("Document %s stopped: %s", doc_id, exc)
+                return
             continue
 
         listing_ids = _write_page_listings(doc, page, result, company_id, company_website)
@@ -344,12 +357,22 @@ def _finalize_document(doc_id: str, *, cancelled: bool = False) -> None:
         status = "done"  # every page terminal (done/dead) — finished
 
     listing_ids = _document_listing_ids(doc_id)
-    pipeline_db.set_document(
-        doc_id,
-        status=status,
-        product_count=len(listing_ids),
-        listing_ids=listing_ids,
-    )
+    fields: dict[str, Any] = {
+        "status": status,
+        "product_count": len(listing_ids),
+        "listing_ids": listing_ids,
+    }
+    if status == "failed":
+        # Give the user a reason, not just "failed" — the last page that
+        # actually failed (not just still-queued) is the best summary.
+        failed_pages = [p for p in non_terminal if p["status"] == "failed" and p.get("error_message")]
+        if failed_pages:
+            reason = failed_pages[-1]["error_message"]
+            fields["error"] = (
+                reason if len(failed_pages) == 1
+                else f"{reason} ({len(failed_pages)} pages affected)"
+            )
+    pipeline_db.set_document(doc_id, **fields)
 
     # A genuinely finished document: drop the retained PDF and log the upload to
     # the activity feed (only on 'done', matching jobs.py._finalize).
@@ -413,7 +436,10 @@ def run_forever(poll_interval: float = _POLL_INTERVAL) -> None:
         except Exception:  # noqa: BLE001 — a bad document must not kill the worker
             logger.exception("Document %s crashed during processing", doc.get("id"))
             try:
-                pipeline_db.set_document(doc["id"], status="failed")
+                pipeline_db.set_document(
+                    doc["id"], status="failed",
+                    error="Something unexpected stopped this upload. Restart to try again.",
+                )
             except Exception:  # noqa: BLE001
                 logger.exception("Could not mark document %s failed", doc.get("id"))
     logger.info("Worker %s stopped", WORKER_ID)
