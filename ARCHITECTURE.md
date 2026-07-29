@@ -735,9 +735,13 @@ product and cost twelve times as much to index.
 | incremental refresh after an upload | [`worker.py`](backend/app/worker.py) `_finalize_document` |
 | one-off backfill | `python -m app.embed_backfill` |
 
-**Provider**: Qwen `text-embedding-v3` on the DashScope OpenAI-compatible
-endpoint the extractor already uses — same key, same base URL, no new account.
-Anthropic has no embeddings API.
+**Provider**: configurable via `embedding_provider` (`qwen` or `openai`) — Anthropic
+has no embeddings API, so Claude was never an option here despite driving every
+other pipeline (see §17.4). Deployed as `openai` (`text-embedding-3-small`) since
+2026-07-30; `qwen` (`text-embedding-v3` on the DashScope OpenAI-compatible endpoint)
+remains supported and was the original default. Either way the call requests
+exactly `embedding_dim` dimensions (`services/embeddings.py`), matching the fixed
+`vector(1024)` column, so switching provider is a settings change, not a migration.
 
 Decisions worth not undoing:
 
@@ -890,3 +894,16 @@ assumed a developer reader.
 - `extract_brochure`'s scanned-PDF branch also gained a Claude-vision path
   (`_call_claude_images`) during this work, but that function is dead code (§12.2) —
   reachable only from the unused `jobs.py` — so it exists but nothing calls it.
+
+### 17.4 Embedding provider switched to OpenAI — 2026-07-30
+
+The "switch everything to Claude" push in §17.2 stopped at the embedding index
+(§16) because Anthropic has no embeddings product — `find_similar_chemicals` was
+left on `qwen` by default while every other feature moved to Claude, which was an
+inconsistency worth resolving deliberately rather than leaving implicit. `embedding_provider`
+is now set to `openai` (`EMBEDDING_MODEL=text-embedding-3-small`) in both `.env`
+and the `app_settings` DB row; `embedding_dim` stays `1024` since OpenAI's API
+truncates to a requested width, so no migration or re-backfill was structurally
+required. **Still needs an `OPENAI_API_KEY`** — the provider switch alone doesn't
+supply credentials, and without one `find_similar_chemicals` keeps degrading to
+the name-match fallback described in §16.
