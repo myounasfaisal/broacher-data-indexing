@@ -29,6 +29,18 @@ _MIN_TEXT_CHARS = 30
 # between OCR quality and image size / API cost.
 _RENDER_DPI = 200
 
+# Vision APIs (Claude, and most others) reject a single image over ~5MB.
+# A normal text/table brochure page renders to a few hundred KB at 200 DPI —
+# this only bites a page with a large photo/graphic background (a brochure
+# cover is the common case), where PNG's lossless compression can't shrink it
+# enough. Stay safely under the real limit rather than skating the edge.
+_MAX_IMAGE_BYTES = 4_500_000
+
+# Never render below this DPI even to hit the size cap — a further shrink
+# would make small print (CAS numbers, units) genuinely unreadable, which is
+# worse than the page failing loudly.
+_MIN_RENDER_DPI = 72
+
 
 @dataclass
 class PdfAnalysis:
@@ -105,12 +117,27 @@ def render_pages(pdf_bytes: bytes, dpi: int = _RENDER_DPI) -> list[bytes]:
     demand here rather than duplicating the fitz plumbing.
     """
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-    zoom = dpi / 72  # fitz default is 72 dpi
-    matrix = fitz.Matrix(zoom, zoom)
-    images: list[bytes] = []
-    for page in doc:
-        pix = page.get_pixmap(matrix=matrix, alpha=False)
-        images.append(pix.tobytes(output="png"))
-        pix = None  # free memory early
+    images: list[bytes] = [_render_page_capped(page, dpi) for page in doc]
     doc.close()
     return images
+
+
+def _render_page_capped(page: fitz.Page, dpi: int) -> bytes:
+    """Render one page to PNG, halving the resolution if it comes out over
+    _MAX_IMAGE_BYTES (a photo-heavy cover page is the usual cause — a normal
+    text page never gets close) until it fits or _MIN_RENDER_DPI is hit."""
+    current_dpi = dpi
+    while True:
+        zoom = current_dpi / 72  # fitz default is 72 dpi
+        pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom), alpha=False)
+        png_bytes = pix.tobytes(output="png")
+        pix = None  # free memory early
+        if len(png_bytes) <= _MAX_IMAGE_BYTES or current_dpi <= _MIN_RENDER_DPI:
+            if len(png_bytes) > _MAX_IMAGE_BYTES:
+                logger.warning(
+                    "Page render still %.1fMB at the %d DPI floor — sending "
+                    "as-is; the provider may reject it.",
+                    len(png_bytes) / 1e6, _MIN_RENDER_DPI,
+                )
+            return png_bytes
+        current_dpi = max(_MIN_RENDER_DPI, current_dpi // 2)
