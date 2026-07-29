@@ -24,6 +24,9 @@ Our specific situation:
   PDF work), a **frontend** (the website users see), and a **database**
   (hosted on Supabase, not on our server).
 - We want it reachable at **https://34.18.9.118** for a small internal team.
+- The deployment branch now enables the assistant and semantic-search features
+  in the backend environment template so those parts are ready for production
+  once the provider keys and migrations are present.
 
 Here's the finished shape. Don't worry if it's not clear yet — we build up to it:
 
@@ -523,6 +526,70 @@ untouched.
   Fine for a demo; for real production you'd add a test/health gate first.
 - Opening port 22 to the internet is the tradeoff for push-button deploys. Keep
   it **key-only** (no password logins), which GCP does by default.
+
+## 18c. CI/CD for the database — Supabase migrations (2026-07-30)
+
+**Concept.** §18b automates the *code* deploy. The *database* was still manual:
+every schema change (a new column, a new table) got applied by hand against the
+live Supabase project — easy to forget, easy to apply inconsistently between
+your machine and production, and invisible in git history as a "deploy" the way
+a code push is.
+
+**How it works.** `supabase/migrations/` holds the same SQL files as
+`db/migrations/` (the CLI requires its own timestamped filename format, so they're
+duplicated there, not moved — `db/migrations/` stays the human-readable source,
+`supabase/migrations/` is what the CLI/CI actually reads). `.github/workflows/
+supabase-migrate.yml` says: *"whenever someone pushes a new file under
+supabase/migrations/ to the `deployment` branch, link to the project and push
+it."* Same shape as §18b, one layer down:
+
+```
+you: git push (deployment, with a new file in supabase/migrations/)
+        │
+        ▼
+GitHub Actions runner starts
+        │  supabase link --project-ref ...
+        │  supabase db push
+        ▼
+Live Supabase Postgres gets the new migration
+```
+
+**The pieces it needs (one-time setup):**
+
+1. **Repo secret** `SUPABASE_ACCESS_TOKEN` — a personal access token from
+   [supabase.com/dashboard/account/tokens](https://supabase.com/dashboard/account/tokens),
+   *not* the service-role key (that's for the app to talk to its own database;
+   this is for the CLI to manage the project itself).
+2. **Repo variable** `SUPABASE_PROJECT_REF` = `qpqdbyhfquqfrkrocnnu` (the id in
+   `SUPABASE_URL`). A variable, not a secret — it's not sensitive, it's just the
+   project name.
+
+Both go under the repo's Settings → Secrets and variables → Actions (variable
+goes on the **Variables** tab next to Secrets).
+
+**Making a schema change from now on:**
+```
+1. Write the SQL in db/migrations/YYYY-MM-DD_description.sql (as before)
+2. Copy it to supabase/migrations/YYYYMMDDHHMMSS_description.sql
+   (timestamp must sort after the last one — `supabase migration list` shows the order)
+3. Commit both, push to deployment
+4. The workflow applies it automatically — check the Actions tab if unsure
+```
+
+**Why keep both folders instead of just one?** `db/migrations/` files are named
+by date and read top-to-bottom as project history (that's how §17 of
+`ARCHITECTURE.md` cites them). The Supabase CLI needs a stricter
+`YYYYMMDDHHMMSS_name.sql` format to guarantee ordering when multiple migrations
+land the same day. Renaming the originals would break every existing doc
+reference to them, so the CLI gets its own copy instead.
+
+**Catching up a database that already has the change.** The seven migration
+files that existed before this workflow were already applied by hand to
+production earlier in the project. Pushing them again would be harmless (they
+all use `if not exists` guards) but `supabase migration repair --status applied
+<version>` marked them as done in Supabase's own tracking table without
+re-running them, so `supabase db push` only ever pushes genuinely new files
+going forward.
 
 ## 19. What's next (for later, not now)
 
