@@ -285,7 +285,10 @@ def process_document(doc: dict[str, Any]) -> None:
                 # A bad key / no credit / unknown model fails every remaining
                 # page identically — stop this document now with a clear
                 # reason instead of grinding through the rest one at a time.
-                pipeline_db.set_document(doc_id, status="failed", error=str(exc))
+                # fatal=True also tells the reconciler not to auto-retry this
+                # one every ~30s (see reconciler.py) — its remaining pages are
+                # still 'pending', which would otherwise look retriable.
+                pipeline_db.set_document(doc_id, status="failed", error=str(exc), fatal=True)
                 logger.error("Document %s stopped: %s", doc_id, exc)
                 return
             continue

@@ -188,6 +188,7 @@ def restart_document(doc_id: str) -> dict[str, Any] | None:
         "claimed_by": None,
         "claimed_at": None,
         "error": None,
+        "fatal": False,
     }).eq("id", doc_id).execute()
     return get_document(doc_id)
 
