@@ -97,6 +97,8 @@ Six tables carry the product data, two carry pipeline state.
 | `company_id` bigint FK | resolved supplier, stamped before listings are written |
 | `product_count` int, `listing_ids` uuid[] | ledger fields for upload history + undo |
 | `filename`, `uploaded_by`, `created_at` | |
+| `error` text | plain-English reason the last `failed` outcome happened; read by `GET /upload-jobs`, shown in the upload UI (2026-07-29) |
+| `fatal` bool | set alongside `error` when the worker stopped for an unrecoverable reason (bad key, no credit, unknown model) — tells the reconciler not to auto-retry; a manual Restart clears it (2026-07-30) |
 
 ### `pages` — one row per page image
 
@@ -189,10 +191,15 @@ Longest-job-first (`order by page_count desc`) so the tail shrinks during a spik
    each page to PNG, upload, insert `pages` rows. Idempotent: images upsert on a
    deterministic path and `pages` is unique on `(document_id, page_number)`, so a
    crash mid-split re-splits safely ([splitter.py:27](backend/app/services/splitter.py#L27)).
-2. **Supplier resolution** — one focused pass over the **first two + last two** pages
-   (cover/footer, where company identity actually lives): OCR those pages, run the
-   company prompt, then `supplier.resolve_company`. The resulting `company_id` is
-   stamped on the document *before* any listing is written.
+2. **Supplier resolution** — a focused pass over the **first two + last two** pages
+   (cover/footer, where company identity usually lives). On the `claude` pipeline the
+   pages go to Claude directly as images (native vision, no OCR step); every other
+   pipeline OCRs them with Qwen first, then runs the company prompt. If that narrow
+   pass finds nothing, one wider retry runs over the next few not-yet-tried pages
+   (capped at 8 pages total) before giving up — see
+   `_extract_identity`/`_identity_pass` ([worker.py:62](backend/app/worker.py#L62)).
+   `supplier.resolve_company` then resolves/creates the company row, and the
+   resulting `company_id` is stamped on the document *before* any listing is written.
 3. **Page loop**, in order, skipping pages already `done` (crash-resume):
    - `page_extract.extract(image, running_context)` → write listings;
    - update the page (`done`, markdown, raw JSON, attempt count);
@@ -201,13 +208,20 @@ Longest-job-first (`order by page_count desc`) so the tail shrinks during a spik
      document from a dead one;
    - persist the returned `running_context` for the next page;
    - **between pages only** — never mid-page — check for pause or cancel.
-   A page whose extraction raises is marked `failed` with the error; the loop
-   continues to the next page.
+   A page whose extraction raises is marked `failed` with the error. If the failure
+   is **fatal** (bad/expired key, no credit, unknown model — see §6) the document
+   stops right there with `documents.error` set to a plain-English reason and
+   `documents.fatal = true`, instead of failing every remaining page one at a time.
+   A non-fatal failure (schema-invalid output after retries) just moves to the next
+   page.
 4. **Finalize** ([worker.py:277](backend/app/worker.py#L277)) — status becomes
    `cancelled` if cancelled, `failed` if any page is still non-terminal, else `done`.
-   Only on `done` is the retained PDF deleted and an `upload` audit entry written.
-   `product_count` / `listing_ids` are recomputed **from the DB**, not from the
-   in-run list, so they stay complete across a crash + resume.
+   A `failed` finalize also writes `documents.error` from the last page's error
+   message, so a document that finished its run without a clean pass still has a
+   visible reason rather than a bare "failed". Only on `done` is the retained PDF
+   deleted and an `upload` audit entry written. `product_count` / `listing_ids` are
+   recomputed **from the DB**, not from the in-run list, so they stay complete across
+   a crash + resume.
 
 A crash anywhere loses at most the page in flight. A bad document can't kill the
 worker — the loop catches, marks it `failed`, and continues.
@@ -242,6 +256,18 @@ Low-level clients and the retry policy are reused from `services/extraction.py`
 (`_get_qwen`, `_get_anthropic`, `_parse_json`) so there is one client abstraction —
 see §11 for what else in that module is and isn't live.
 
+**Error classification** (`extraction.friendly_provider_error`,
+`extraction._is_transient_claude_error`) — a provider exception is sorted into
+transient (rate limit, connection drop, 5xx — retried automatically, up to
+`api_max_retries`) or fatal (invalid/expired key, no credit, unknown model — never
+retried, since the same call fails identically every time). `PageExtractError`
+carries a `fatal: bool`; the worker uses it to stop a document immediately instead of
+retrying a dead end across every remaining page (§5). The classifier covers both SDKs
+the app drives directly (Anthropic; OpenAI — also what Qwen's DashScope endpoint
+speaks) and always returns a plain-English message naming the feature and what to do
+about it, never a status code or raw SDK text. The same classifier backs the chat
+assistant (§14) and AI search (`nl_search.py`) error paths.
+
 ## 7. CAS, supplier, and review
 
 **CAS** — [`services/cas.py`](backend/app/services/cas.py), pure and unit-tested. The
@@ -257,6 +283,16 @@ always kept. Out-of-range digit counts leave `cas_number` null.
    row rather than risking a false merge**.
 
 A matched row is backfilled with newly-learned details (first printed value wins).
+A company created with no name at all gets the placeholder `"Unknown supplier"`; that
+placeholder specifically (not just a blank field) is also backfillable, so a later
+brochure from the same domain/email that prints a real name corrects it.
+
+**Manual override** — when detection finds nothing, or the wrong supplier, an
+admin/manager can fix it from the listing editor: `PATCH /listings/{id}` accepts
+`company_id` (reassign to an existing supplier, searched via `GET /suppliers`) or
+`new_company_name` (create one). This is the only recourse for an already-`done`
+document — its page images are deleted as each page completes (§8), so nothing is
+left to auto-retry supplier detection from after the fact.
 
 **Chemicals** — [`services/dedup.py`](backend/app/services/dedup.py): CAS is
 authoritative when present; with no CAS, an exact English-name match is confident and
@@ -304,6 +340,9 @@ One instance, sweeping every `RECONCILER_INTERVAL_SECONDS` (30). Each sweep:
 2. **Finish** any non-terminal document whose pages are all terminal → `done`, and
    delete the retained PDF.
 3. **Retry** `failed` documents that still have retriable pages → claimable again.
+   Skipped when `documents.fatal` is true — the worker set that when it stopped the
+   document for a reason retrying can't fix (§5/§6); only a manual Restart (which
+   clears the flag) tries it again.
 4. **Reset stalled claims** — a document `extracting` past `DOCUMENT_STALE_SECONDS`
    (300) with no page heartbeat means its worker died → claimable by another worker.
 
@@ -435,11 +474,11 @@ Pydantic-settings, loaded from `backend/.env`.
 | Setting | Default | Role |
 |---|---|---|
 | `supabase_url` / `supabase_service_key` / `supabase_anon_key` / `supabase_jwt_secret` | — | data + auth |
-| `page_extract_provider` | `qwen` | **the** extraction switch (`qwen` \| `claude`) |
-| `page_extract_claude_model` / `claude_model` | `""` / `claude-haiku-4-5-20251001` | stage-2 model when provider is `claude` |
+| `page_extract_provider` | `qwen` (code default; this deployment overrides to `claude` via the DB settings table) | **the** extraction switch (`qwen` \| `claude`) |
+| `page_extract_claude_model` / `claude_model` | `""` / `claude-haiku-4-5-20251001` (code default; deployed as `claude-sonnet-5`) | stage-2 model when provider is `claude` |
 | `qwen_api_key` / `qwen_api_base` / `qwen_model` | `qwen-vl-max` | stage 1+2 on the Qwen path, and OCR |
 | `anthropic_api_key` | — | Claude path |
-| `extraction_provider` / `search_provider` | `qwen` / `""` | **AI search only** (and the identity pass's text call) |
+| `extraction_provider` / `search_provider` | `qwen` / `""` (code default; deployed as `claude` / `""`) | **AI search only** (and the identity pass's text call) |
 | `page_concurrency` | 5 | OCR fan-out in the supplier-identity pass only |
 | `reconciler_interval_seconds` / `document_stale_seconds` / `max_page_attempts` | 30 / 300 / 3 | reconciler |
 | `max_upload_size_mb` | 20 | upload gate |
@@ -484,7 +523,12 @@ retroactively fix the gaps above.
   [`services/extraction.py`](backend/app/services/extraction.py) — GPT, Gemini, GLM,
   NuExtract, bundle-splitting, page-merging. Reachable only from `jobs.py`, so
   unreachable. **The rest of that module is live**: `page_extract`, `worker`, and
-  `nl_search` all use its clients, prompts, and JSON parsing.
+  `nl_search` all use its clients, prompts, retry policy, JSON parsing, and — as of
+  2026-07-29 — its `friendly_provider_error` error classifier and
+  `complete_claude_vision` (used by `worker._extract_identity` for the Claude
+  pipeline). Those additions live in the same module as the dead
+  multi-provider path but are called from live code; `extract_brochure` itself
+  is not.
 - **PubChem enrichment** (`services/enrich.py`) is called only from
   `extract_brochure` — so it **no longer runs**. Listings receive no reference data
   and no name→CAS lookup, despite `pubchem_enrichment` / `pubchem_cas_lookup`
@@ -765,3 +809,84 @@ real data showed:
 **Not built:** re-embedding on a manual listing edit (only uploads and the
 backfill refresh the index), pruning an embedding when a chemical loses its
 last listing, and any UI surface for similarity outside the chat.
+
+## 17. Claude-only pipeline, error handling, and manual supplier fix — 2026-07-29/30
+
+### 17.1 Before
+
+The `claude` extraction pipeline still leaned on Qwen for two things it didn't need
+to: a scanned page went through Qwen OCR before Claude ever saw it, and the
+supplier-identity pass (cover/footer OCR) always used Qwen regardless of which
+provider was doing the actual extraction. A Claude-only deployment therefore still
+needed a working Qwen key, silently.
+
+Provider failures were undifferentiated. `_CLAUDE_RETRYABLE` treated every Anthropic
+`APIStatusError` — a genuine rate limit as much as an invalid key or an empty
+account — as worth retrying, so an unrecoverable failure (bad key, no credit, unknown
+model) still cost ~14s of exponential backoff per page before it surfaced, and it
+surfaced as a generic `"Extraction failed — restart to try again."` in the UI with no
+way to tell a key problem from a bad PDF from a rate limit. `documents` had no column
+to hold a reason even if one had been produced.
+
+A document that finished with no resolvable supplier had no path to a fix: the worker
+tried the cover/footer once and gave up, and page images are deleted the moment each
+page completes, so by the time a document is `done` there is nothing left to retry
+supplier detection from. There was also no admin UI for assigning or correcting a
+supplier at all — `ListingAdminCard` edited name/CAS/price/purity/details but not the
+supplier. Separately, a company created from an identity pass with a website/email but
+no printed name got the literal string `"Unknown supplier"` as its name, and the
+backfill logic (`supplier._backfill_for`) only ever filled *blank* fields — so that
+placeholder could never be corrected by a later, better-identified brochure.
+
+The settings page listed six providers flat with no default, and technical labels
+("Extraction provider", "Page extract provider" as a separate, easy-to-miss control)
+assumed a developer reader.
+
+### 17.2 What changed
+
+- **Claude reads brochures end to end.** `extraction.complete_claude_vision` sends
+  page images straight to Claude (native vision); `worker._extract_identity` uses it
+  on the `claude` pipeline instead of Qwen OCR. A Claude-only deployment no longer
+  needs a Qwen key anywhere in the live path. Supplier detection also widened: a
+  cover/footer miss now retries once over a few more not-yet-tried pages (capped at 8
+  total) before giving up, instead of stopping after the first narrow pass.
+- **Provider failures are classified, not blanket-retried.** `_is_transient_claude_error`
+  restricts retries to rate limits, connection drops, and 5xx; everything else (auth,
+  permission, not-found, bad-request/no-credit) fails on the first attempt.
+  `friendly_provider_error` turns the exception into a plain-English message naming
+  the affected feature and what to do, covering both SDKs the app drives directly
+  (Anthropic, and OpenAI — which is also what Qwen's DashScope endpoint speaks).
+  `PageExtractError.fatal` carries that classification into the worker, which stops
+  the document immediately on a fatal error (§5) instead of failing every remaining
+  page the same way. A new `documents.error` column holds the reason and a new
+  `documents.fatal` column tells the reconciler not to auto-retry it (§9) — only a
+  manual Restart, which clears both, tries again. Applied consistently to brochure
+  extraction, the chat assistant, and AI search — one classifier, three surfaces.
+- **Manual supplier fix.** `PATCH /listings/{id}` accepts `company_id` (reassign to an
+  existing supplier) or `new_company_name` (create one); the listing editor gained a
+  `SupplierPicker` field that searches the directory as you type. The backfill fix
+  (§7) means a corrected supplier name can also propagate automatically to future
+  brochures from the same domain/email.
+- **Settings page reads as a decision, not a config file.** Claude is now the
+  first/default option in every provider choice; labels use plain language via a
+  frontend copy override (`settingsCopy.ts`) that leaves the underlying setting
+  keys/DB rows untouched; the visible extraction-provider control and the pipeline's
+  own `qwen`/`claude`-only switch (`page_extract_provider`) now stay in sync
+  automatically. A new "Add an AI key" dialog (`AddKeyDialog.tsx`) walks through
+  picking a service, pasting a key, and testing it, with plain-English hints on
+  common mistakes (`keySuggestions.ts`).
+
+### 17.3 What's still open
+
+- The classifier's "fatal" list (auth / permission / not-found / bad-request) is a
+  judgment call, not exhaustive — an Anthropic or OpenAI failure mode outside those
+  four categories still falls through to a generic, non-fatal message and gets
+  retried like a transient error.
+- Renaming a company away from the `"Unknown supplier"` placeholder through the
+  manual picker creates a **new** company row rather than renaming the existing one
+  in place, if the typed name doesn't fuzzy-match anything already in the directory.
+  The old placeholder row is left behind (harmless if it backfills correctly later
+  via §7, orphaned if it doesn't).
+- `extract_brochure`'s scanned-PDF branch also gained a Claude-vision path
+  (`_call_claude_images`) during this work, but that function is dead code (§12.2) —
+  reachable only from the unused `jobs.py` — so it exists but nothing calls it.
