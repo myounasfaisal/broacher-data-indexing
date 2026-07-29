@@ -778,11 +778,18 @@ def list_audit(page: int = 1, page_size: int = 20) -> tuple[list[dict[str, Any]]
 # ---------------------------------------------------------------------
 @_db_op
 def find_document(content_hash: str) -> dict[str, Any] | None:
-    """Return the ledger row for this PDF hash, or None if never processed."""
+    """Return the ledger row for this PDF hash, or None if never processed.
+
+    Includes status/error/fatal so the caller can tell a genuinely finished
+    duplicate from one that previously failed — a failed row must never be
+    reported as a successful duplicate (see routers/upload.py)."""
     resp = (
         get_client()
         .table("documents")
-        .select("content_hash, filename, product_count, created_at")
+        .select(
+            "id, content_hash, filename, status, error, fatal, "
+            "page_count, product_count, created_at"
+        )
         .eq("content_hash", content_hash)
         .limit(1)
         .execute()

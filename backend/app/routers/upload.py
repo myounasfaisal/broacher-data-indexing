@@ -140,12 +140,12 @@ async def enqueue_brochure(
     content_hash = hashlib.sha256(pdf_bytes).hexdigest()
 
     # Dedup: an identical PDF already in the ledger is a no-op (no split, no AI).
+    # Report its REAL status — a previous attempt that failed must say so, not
+    # be reported as a successful duplicate (the earlier behaviour silently hid
+    # fatal failures like a bad/expired key behind a fake "done").
     existing = database.find_document(content_hash)
     if existing is not None:
-        return _status_from_doc(
-            {**existing, "status": "done", "content_hash": content_hash},
-            duplicate=True,
-        )
+        return _status_from_doc(existing, duplicate=True)
 
     # Create the work-queue row, then retain the PDF + flip to 'pending' in the
     # background so the request returns immediately. The worker splits + extracts
