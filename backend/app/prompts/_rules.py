@@ -80,25 +80,43 @@ Repeat the column header row for each new sub-table so no section is left \
 headerless. Keep the label text EXACTLY as printed, in every language/script it \
 appears in — never translate, abbreviate, or normalise it here.
 
-PRODUCT PHOTOS IN TABLE CELLS carry text you must not drop. Many brochures have \
-a "Product" column holding a photograph of the labelled container rather than \
-the product's name in text. The brand and product name are PRINTED ON THAT \
-LABEL, and they are frequently the only place the real SKU appears anywhere on \
-the page. Read the label and transcribe what it says into the cell, as text:
+PRODUCT PHOTOS IN TABLE CELLS carry text worth recovering — but ONLY when you \
+can actually read it. Many brochures have a "Product" column holding a \
+photograph of the labelled container rather than the product's name in text, \
+and the label is often the only place the real SKU appears on the page.
 
-  | 1. | RESSI EPO CRACK FILL | A three-part solvent free epoxy system ... |
-  | 2. | RESSI EPO CRACK FILL LV | A three-part solvent free low viscosity ... |
+READ ONLY WHAT IS LEGIBLE. THE PENALTY FOR GUESSING IS SEVERE.
+A label you transcribe becomes a product name in a supplier catalog. A buyer \
+searches it, quotes it, orders against it. A name you guessed wrong is worse \
+than no name at all: a missing name is visibly missing and gets fixed, while a \
+confident wrong name is trusted and never questioned. Inventing a BRAND is the \
+worst case of all — it attributes a competitor's product to this supplier.
 
-Zoom in mentally on the packaging and read every legible line: brand name, \
-product name, and any variant suffix (LV, WR, CR, HD, 2K, ...). The suffix is \
-often what distinguishes one row from the next, so losing it collapses distinct \
-products into one.
+So, per label, choose exactly one of three:
 
-If the label text is genuinely too small or blurred to read, write \
-[product image: unreadable] in that cell. Do NOT write a generic placeholder \
-like "Product Image 1", do NOT invent a filename, and NEVER fabricate an image \
-URL — a downstream step decides what to do with an unreadable label, and it can \
-only do that if you reported honestly that you could not read it.
+1. FULLY LEGIBLE — transcribe it verbatim, including any variant suffix \
+(LV, WR, CR, HD, 2K). The suffix is frequently what distinguishes one row from \
+the next, so dropping it collapses distinct products into one.
+     | 1. | RESSI EPO CRACK FILL | A three-part solvent free epoxy ... |
+     | 2. | RESSI EPO CRACK FILL LV | A three-part low viscosity ... |
+2. PARTLY LEGIBLE — transcribe only the part you are sure of, and mark the \
+rest, e.g. [product image: partially legible: "RESSI EPO ... MIGHT"]. Never \
+complete a partial word by inference.
+3. NOT LEGIBLE — write [product image: unreadable].
+
+Hard prohibitions, no exceptions:
+- Do NOT write a generic placeholder like "Product Image 1".
+- Do NOT invent a filename, and NEVER fabricate an image URL. An image on a \
+page has no URL; writing one is proof of guessing.
+- Do NOT supply a brand name that you do not actually see rendered on the \
+label. If the brand is illegible but the supplier is known from elsewhere on \
+the page, that is NOT permission to write the supplier's name onto the label — \
+say the label is unreadable and let a later step decide.
+- Do NOT "correct" a label toward a name you think it should be. Transcribe \
+the glyphs you see, not the word you expect.
+
+If in doubt at any point, choose the more conservative option. \
+[product image: unreadable] is always an acceptable answer. A guess never is.
 
 The same applies to a label printed immediately above a table rather than \
 inside it: keep it directly above that table as a heading, never separated from \
@@ -209,6 +227,19 @@ only if the short form is itself what the page printed.
 queryable independently of the name string. If the label appears in several \
 languages, put the English (or primary) form in `product_family` and the other \
 form in characteristics (e.g. characteristics.product_family_zh).
+
+   `product_family` is a GROUPING KEY, not free text — it only works if every \
+row in a family spells it identically. Normalise it: Title Case ("Epoxy Crack \
+Fillers", never "EPOXY CRACK FILLERS"), and keep the plural/singular form the \
+heading uses, applied consistently to every row in that section — do not emit \
+"Epoxy Mid Coat" for one row and "Epoxy Mid Coats" for the next. Before you \
+finish, check that every distinct product_family you used differs from the \
+others by more than casing or a trailing "s"; if two differ only that way, they \
+are the same family and must be merged to one spelling.
+
+   Note the difference in treatment: name_raw preserves the source's exact \
+casing because it is a transcription, while product_family is normalised \
+because it is a key. This is deliberate, not a contradiction.
 3. SCOPE — inheritance continues down the page for every following row UNTIL a \
 new label appears. A later "Ethylene-vinyl acetate-vinyl chloride (EVAC) \
 emulsion" heading opens a new group; rows under THAT inherit EVAC, not the \
@@ -262,7 +293,13 @@ Work DOWN this ladder and stop at the first level that yields a real name:
 
 1. LABEL TEXT — the product name transcribed from the packaging photo in that \
 row (e.g. "RESSI EPO CRACK FILL LV"). Use it verbatim, in the printed casing \
-if it is a brand-style name.
+if it is a brand-style name. ALWAYS set confidence "low" for a name that came \
+from a photo label rather than from printed body text: reading small text off \
+a photograph is materially less reliable than reading typeset text, so every \
+such name must be routed to a human to confirm. If the transcription is marked \
+[product image: unreadable] or [product image: partially legible: ...], this \
+level yields NOTHING — do not reconstruct a name from a partial fragment; drop \
+to level 2.
 2. NAME IN THE DESCRIPTION — brochure descriptions very often name the product \
 in prose even when the name column is a photo: "Ressi EPO Roll Coat can be \
 applied to steel and concrete internal tank surfaces". Extract "Ressi EPO Roll \
@@ -372,6 +409,15 @@ chemistry, then "<Supplier> <Category>".
 underneath it? Drop the heading; the rows carry the category in product_family.
 - Is any product name in SCREAMING CAPS that the source did not print that way? \
 Convert it to Title Case.
+- Does any product name contain a BRAND I did not actually read on the page? \
+Attributing another company's brand to this supplier is the most damaging error \
+possible here. If I am not certain the brand was printed, drop to the \
+"<Supplier> <Category>" fallback.
+- Did any name come from reading a photo label? Every one of those must have \
+confidence "low", without exception.
+- Do two of my product_family values differ only by casing or a trailing "s"? \
+Merge them to one spelling — they are the same family and a split key breaks \
+category search.
 """
 
 
