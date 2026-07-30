@@ -1043,3 +1043,78 @@ Run `db/migrations/2026-07-28_settings_regroup.sql` first.
 - [ ] Switch the endpoint to international, save, Test → passes
 - [ ] The reverse case (mainland key, intl endpoint) names the mainland URL
 - [ ] Extraction against an intl key + intl endpoint actually runs end to end
+
+## Search bar: Enter dismisses the typeahead
+
+- [ ] Type a partial name, wait for the suggestion dropdown, press **Enter**
+      with NO suggestion highlighted → the dropdown closes and results show
+- [ ] Same again but arrow down to highlight a suggestion first, then Enter →
+      that suggestion is committed (unchanged behaviour)
+- [ ] Escape still closes the dropdown
+- [ ] Clicking outside the box still closes it
+
+## Supplier contact inside the product panel
+
+- [ ] Open any product from search → a "Supplier contact" card appears below
+      the main product card showing email / phone / website
+- [ ] Those details match what the Suppliers page shows for the same supplier
+- [ ] A supplier with no extracted contact details renders NO empty card
+      (the section is absent, not blank)
+- [ ] A product whose supplier is not in the directory renders no card and
+      logs no error
+
+## Prompt caching on the Claude extraction path
+
+- [ ] Process a multi-page brochure with `page_extract_provider=claude`
+- [ ] Page 1's Anthropic response shows `cache_creation_input_tokens > 0`
+- [ ] Page 2+ show `cache_read_input_tokens > 0` and
+      `cache_creation_input_tokens = 0` (the cache is being hit)
+- [ ] Extraction output is unchanged vs. before caching — same listings, same
+      fields. Caching must be cost-only, never behavioural
+- [ ] Page 1 (no continuation context) does not error — the empty context hint
+      block is omitted rather than sent blank
+
+## Prompts single-source-of-truth refactor
+
+- [ ] `python -c "import app.prompts as p; print(len(p.PROMPT_REGISTRY))"`
+      runs clean from `backend/` (no circular import)
+- [ ] Backend starts and a full brochure extracts end to end
+- [ ] `grep -rn '_STAGE2_SYSTEM\|_TOOL_PARAMETERS' backend/app/services/`
+      returns nothing — no prompt text left outside `app/prompts/`
+- [ ] Editing a rule in `app/prompts/_rules.py` visibly changes BOTH
+      `STAGE2_SYSTEM` and `EXTRACTION_PROMPT` (proves they share one source)
+
+## Table-header inheritance — the VAE regression (highest value test)
+
+Uses the Dairen Chemical brochure whose spec table has a merged full-width
+row reading "Vinyl acetate-ethylene (VAE) emulsion 醋酸乙烯 – 乙烯共聚物"
+above ~14 grade rows (DA-100, DA-100L, DA-101, …). Before this change every
+row was stored as a bare code and the family was unsearchable.
+
+- [ ] Re-upload that brochure and let it finish processing
+- [ ] Search "Vinyl acetate-ethylene" → returns the DA-1xx rows (was 0 results)
+- [ ] A DA-100 listing's `name_en` contains the FULL family label, not just
+      "DA-100", and not an invented abbreviation like "VAE DA-100"
+- [ ] Its `details.product_family` is set to the full label
+- [ ] The EVAC table on the same brochure inherits "Ethylene-vinyl
+      acetate-vinyl chloride (EVAC) emulsion" — NOT the VAE label (inheritance
+      resets at each new header)
+- [ ] The stage-1 markdown shows the family label as a markdown heading with a
+      fresh table beneath it, not as a ragged table row
+- [ ] No listing was created for an Application column value ("general
+      adhesive", "wood adhesive", "cigarette adhesive", "nonwoven/carpet")
+- [ ] Legend keys ("P = PVOH", "S = Surfactant") did not become products
+- [ ] Purity/solid-content values land in the right fields, not swapped
+
+## docker-compose runs the whole backend
+
+- [ ] `docker compose config` validates with no error
+- [ ] `docker compose up --build` starts THREE services: backend, worker,
+      reconciler (`docker compose ps` shows all three up)
+- [ ] Upload a brochure through the API and it actually gets processed —
+      the old file started only the API, so uploads sat forever
+- [ ] `docker compose up --scale worker=4` gives 4 workers, and they do not
+      collide (no document processed twice)
+- [ ] `docker compose stop worker` lets an in-flight page finish rather than
+      killing it mid-extraction (120s grace period)
+- [ ] Only the API publishes a port — workers/reconciler bind nothing

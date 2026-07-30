@@ -2,14 +2,20 @@
 
 Internal web tool for **BosTech Polymer**. It extracts structured product data from
 scanned chemical-supplier brochure PDFs (any language) and lets staff search the
-result to compare suppliers and prices — even when the same substance is sold under
-different trade names.
+result to compare suppliers and specifications — even when the same substance is sold
+under different trade names.
 
 - **Admin / manager** — upload a folder of brochure PDFs. Each is split into page
   images and extracted by a pool of worker processes into product listings.
-- **Everyone** — search by name, CAS, supplier, price, purity, or anything printed in
-  a product's details; or ask in plain language via the AI search bar, which converts
+- **Everyone** — search by name, CAS, supplier, purity, or anything printed in a
+  product's details; or ask in plain language via the AI search bar, which converts
   the sentence into the same filters (the model never invents rows).
+
+> **Price is a bonus field, not the spine.** Most brochures are spec sheets and print
+> no price at all — zero listings in the live catalog carry one. Price is captured
+> when printed and null otherwise; nothing ranks, gates, or filters by it by default.
+> The comparison axis is specification. See [PRODUCT.md](PRODUCT.md) → "Price is not
+> the product".
 
 ## Documentation map
 

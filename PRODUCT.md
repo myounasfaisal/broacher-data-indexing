@@ -16,22 +16,22 @@ GCC markets.
 
 Both tiers use the whole app, including the dense Search/Inspector view — this is not
 a system where executives get a summary and staff get the tool. The CEO runs his own
-price comparisons. He does so intermittently, between other commitments, often away
+sourcing comparisons. He does so intermittently, between other commitments, often away
 from a desk. The team works the same surfaces continuously: reviewing AI-matched
-entries, comparing supplier prices across trade names, curating catalog data extracted
+entries, comparing grades and specs across trade names, curating catalog data extracted
 from supplier brochures.
 
-The job is the same for both: find what a chemical costs across suppliers, and trust
-the answer. The difference is only tempo — one arrives cold and needs the interface to
-explain itself, the other arrives warm and needs it to get out of the way. Both
-conditions have to hold at once, on any screen size.
+The job is the same for both: find who supplies a chemical and on what specification,
+and trust the answer. The difference is only tempo — one arrives cold and needs the
+interface to explain itself, the other arrives warm and needs it to get out of the way.
+Both conditions have to hold at once, on any screen size.
 
 ## Product Purpose
 
 BrochureDB identifies the best supplier for a given product. A user searches a chemical
-and the app answers who to buy it from and at what price, drawing on a catalog extracted
-from supplier brochure PDFs. Everything else — review queues, supplier records, uploads,
-activity logs — exists to keep that answer trustworthy.
+and the app answers **who to buy it from, on what specification**, drawing on a catalog
+extracted from supplier brochure PDFs. Everything else — review queues, supplier
+records, uploads, activity logs — exists to keep that answer trustworthy.
 
 This is a decision tool, not a database browser. Search does not merely return matches;
 it ranks a field of suppliers down to a choice.
@@ -39,10 +39,45 @@ it ranks a field of suppliers down to a choice.
 Success is a sourcing question answered in seconds with enough confidence to act on,
 and a review queue that stays drained because working through it is not a chore.
 
+### Price is not the product — and this is deliberate
+
+**Most supplier brochures do not print prices.** Expo brochures are specification
+sheets: grade codes, solid content, viscosity, pH, purity, application
+recommendations. Pricing is quoted later, per enquiry, per volume — it is rarely on the
+printed page at all. Verified against the live catalog: **zero listings carry a printed
+price**, across every supplier processed.
+
+That is a fact about the source documents, not an extraction failure. Nothing is
+broken, and no amount of prompt work will change it.
+
+What this means for the product:
+
+- **Price is an opportunistic bonus field, never the spine.** `price`, `currency`, and
+  `price_usd` are captured faithfully when a brochure prints them and left null
+  otherwise. A null price is the normal case, not a defect.
+- **Never rank, gate, or filter by price by default.** Ranking by price ranks the
+  catalog by which supplier happened to print a number — which is close to random and
+  actively misleading. The assistant ranks by fit; `priced_only` is deliberately not
+  exposed in search or in the assistant's tool schema (ARCHITECTURE.md §10, §14.3).
+- **The comparison axis is specification, not cost.** Grade, purity, solid content,
+  viscosity, family, and application are what a buyer actually discriminates on here.
+  Search, the Inspector, and the assistant should all treat those as the primary
+  dimensions.
+- **"Missing price" is not a data-quality signal.** It says nothing about a listing's
+  usefulness, so it must never read as an error or drag a listing down a ranking. It is
+  reported in the dashboard's status split for completeness only.
+
+The thing that *does* make or break this product is **identity**: whether a listing
+carries the full name of what it is. A grade row stored as bare `DA-100`, stripped of
+the `Vinyl acetate-ethylene (VAE) emulsion` family label printed above its table, is
+unfindable by anyone searching for the substance — and that has happened
+(ARCHITECTURE.md §0). Identity completeness is the metric that deserves the attention
+price was getting.
+
 ## Positioning
 
-Every supplier's brochure, priced and comparable — the scattered PDF pricing of an
-entire supply base resolved into a single answer about who to buy from.
+Every supplier's brochure, searchable and comparable — the scattered specifications of
+an entire supply base resolved into a single answer about who to buy from.
 
 ## Brand Personality
 
@@ -101,7 +136,9 @@ placeholders held to the same body-text standard.
 
 Status is never carried by color alone. Complete, needs-review, and missing-price
 states take a label or icon alongside their hue — this governs the listing-status
-donut, its legend, and every status chip in the results table.
+donut, its legend, and every status chip in the results table. Missing-price is the
+normal case (most brochures print no price — see Product Purpose), so it must be
+styled as neutral information, never as a warning or an error.
 
 Every animation has a `prefers-reduced-motion: reduce` alternative, typically a
 crossfade or an instant transition.

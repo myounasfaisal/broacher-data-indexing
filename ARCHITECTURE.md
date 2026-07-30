@@ -1,8 +1,9 @@
 # Architecture — BrochureDB
 
 **Single source of truth.** Every statement here was verified against the code on
-**2026-07-26**. Where the code and an older document disagreed, the code won; where
-the code disagrees with itself, §12 says so explicitly.
+**2026-07-26** (extraction/prompt sections re-verified **2026-07-30**). Where the code
+and an older document disagreed, the code won; where the code disagrees with itself,
+§12 says so explicitly.
 
 Supporting docs: [PRODUCT.md](PRODUCT.md) (why), [DESIGN.md](DESIGN.md) (visual
 system), [manual_test.md](manual_test.md) (QA checklists). Everything else has been
@@ -10,12 +11,82 @@ moved to [docs/archive/](docs/archive/) and is historical — do not treat it as
 
 ---
 
+## 0. Read this first — three extraction paths, only one is live
+
+The repo contains **three** brochure-extraction implementations. They look
+comparably finished. Only the first one runs when a user uploads a PDF. Confusing
+them wastes hours and, once, cost us real data (see the incident below).
+
+| | **A. Per-page worker** | **B. Whole-document** | **C. Reference CLI** |
+|---|---|---|---|
+| Entry | `worker.py` → `page_extract.extract()` | `jobs.py` → `extraction.extract_brochure()` | `python -m app.pipeline` |
+| **Status** | ✅ **LIVE — this is production** | ❌ orphaned, zero importers | ⚠️ offline tool only |
+| Reachable from the API? | yes | **no** | no |
+| Unit of work | one page per call | whole PDF per call | whole PDF |
+| Queue state | Postgres (`documents`/`pages`) | in-memory dict | none |
+| Survives a restart? | yes | **no** | n/a |
+| Providers | `qwen`, `claude` | claude, gemini, qwen, gpt, glm, nuextract | qwen only |
+| JSON guaranteed by | forced `tool_use` / `json_object` | prompt + tolerant parsing | guided decoding (`guided_json`) |
+| Prompt it uses | `STAGE2_SYSTEM` | `EXTRACTION_PROMPT` | `EXTRACTION_PROMPT` |
+
+**Why A replaced B:** B held an entire PDF in memory, so one failure lost the whole
+document and a backend restart lost the queue. A stores each page as a DB row with a
+status machine, so a crash resumes and a bad page fails alone. A's tradeoff is that
+cross-page context must be threaded explicitly (`context_for_next_page`) — no single
+call sees the whole document.
+
+**C is not a lesser version of A.** It uses vLLM guided decoding, which constrains
+generation token-by-token against the JSON schema — a stronger correctness guarantee
+than A has. It also carries a `formula` field and `RepairStats` accuracy telemetry
+that production lacks. If extraction accuracy remains the bottleneck, porting guided
+decoding into A's stage 2 is more principled than further prompt tuning.
+
+Detail on all three: §12.2 (dead code) and §12.3 (`app/pipeline/*`).
+
+### Prompts: one package, one copy of each rule
+
+**All prompt text lives in [`backend/app/prompts/`](backend/app/prompts/).** Service
+modules import prompts; they never define them.
+
+Shared extraction rules live exactly once in
+[`app/prompts/_rules.py`](backend/app/prompts/_rules.py) as composable blocks, and
+both `STAGE2_SYSTEM` (path A) and `EXTRACTION_PROMPT` (paths B and C) compose from the
+same tuple. **Edit a rule there and every path gets it.** Never copy a rule between
+prompt files. `app.prompts.PROMPT_REGISTRY` enumerates every prompt with a
+live/not-live flag.
+
+This structure exists because of a specific failure. A Dairen Chemical brochure
+printed `Vinyl acetate-ethylene (VAE) emulsion` **once**, as a merged full-width row
+inside a spec table, above ~14 grade rows (`DA-100`, `DA-100L`, …). Every row was
+stored as a bare code with no family name, so searching "Vinyl acetate-ethylene"
+returned nothing for products we hold. Two independent causes, one per stage:
+
+- **Stage 1** — a merged full-width cell cannot be expressed in a markdown table, so
+  the label stopped being attached to the rows beneath it.
+- **Stage 2** — the live prompt's only inheritance rule covered labels "printed on an
+  earlier page". This one was on the *same* page, so no rule applied.
+
+The rule that would have prevented it **already existed** — in `EXTRACTION_PROMPT`,
+which path A never calls. The rule had been written twice by hand and only the dead
+copy got improved. That duplication was the bug, and `_rules.py` is the fix.
+
+---
+
 ## 1. What the system is
 
 An internal tool for **BosTech Polymer** (Dubai chemical supplier). Staff collect
 600–2,000 scanned supplier brochures per trade expo. The system extracts structured
-product data (name, CAS, price, purity, supplier) from those PDFs so a buyer can
-search a chemical and immediately see who sells it and at what price.
+product data (name, CAS, purity, specifications, supplier) from those PDFs so a buyer
+can search a chemical and immediately see who sells it and on what specification.
+
+> **Price is a bonus field, not the spine.** Most brochures are specification sheets
+> and print no price — **zero listings in the live catalog carry one**. That is a fact
+> about the source documents, not an extraction bug. Price is captured faithfully when
+> printed and null otherwise; nothing ranks, gates, or filters by it by default
+> (§10, §14.3). The comparison axis is specification. See
+> [PRODUCT.md](PRODUCT.md) → "Price is not the product". The metric that actually
+> matters is **identity completeness** — whether a listing carries the full name of
+> what it is (§0).
 
 The load profile shapes the whole design: **idle for weeks, then thousands of pages
 in a few hours.** Throughput after a spike matters; steady-state cost does not.
@@ -216,14 +287,36 @@ worker — the loop catches, marks it `failed`, and continues.
 
 `extract(image, context) -> PageExtraction` is **the one place the model is chosen.**
 
+Prompt text and the stage-2 tool schema live in
+[`app/prompts/`](backend/app/prompts/), not in this module — see §0.
+
 **Stage 1 — image → markdown.** The VLM transcribes the page faithfully, tables and
 all. The document's `running_context` is injected as a *continuation hint*, so a
-table header printed several pages back is not lost.
+table header printed several pages back is not lost. On the Claude path the static
+half of the prompt is sent as its own content block marked
+`cache_control: ephemeral`, so it bills at 0.1x base input after the first page of a
+document; the per-page continuation hint stays uncached and is omitted entirely on
+page 1.
+
+A merged full-width label row inside a table (a family/category name spanning every
+column) is transcribed as a **markdown heading followed by a fresh table**, not as a
+table row — markdown cannot express a merged cell, and transcribing it as a row
+silently detaches the label from the rows it describes. See §0 for the incident.
 
 **Stage 2 — markdown → JSON.** Structured per-listing output: `name_raw`, `name_en`,
-`cas_number_raw`, `price`, `currency`, `purity`, `characteristics`, `confidence`,
-plus `context_for_next_page`. Retried up to 2 attempts; every listing from a page
-that needed more than one attempt is flagged for review.
+`product_family`, `cas_number_raw`, `price`, `currency`, `purity`, `characteristics`,
+`confidence`, plus `context_for_next_page`. Retried up to 2 attempts; every listing
+from a page that needed more than one attempt is flagged for review. The system
+prompt and tool schema are both `cache_control: ephemeral` — identical on every page,
+so they bill at 0.1x after page 1.
+
+`product_family` carries the category/family label a row inherits from a heading,
+merged table row, or continuation context (e.g. `Vinyl acetate-ethylene (VAE)
+emulsion` for a `DA-100` row). The model must put the full label in the *name* **and**
+in this field; the worker merges it into `listings.details` via `_build_details()`
+using `setdefault`, so an explicit `characteristics.product_family` is never
+clobbered. Without it a bare grade code is unfindable by anyone searching for the
+substance.
 
 **Provider routing** (`PAGE_EXTRACT_PROVIDER`, only `qwen` or `claude` accepted):
 
@@ -513,9 +606,15 @@ deliberately, but don't mistake it for the production path.
   ([upload.py:131](backend/app/routers/upload.py#L131)).
 - `docker-compose.yml` builds and runs **only the API** — no worker, no reconciler.
   Following it alone gives a system that accepts uploads and never processes them.
-- Two data issues predating this audit and still open: `price` is frequently null
-  while `price_usd` is populated (printed prices not being captured), and some
-  `name_en`/`name_raw` values arrive already truncated with `…`.
+- `price` being null is **expected, not a defect** — most brochures are spec sheets
+  that print no price, and zero listings in the live catalog carry one. Do not treat it
+  as an extraction bug or try to prompt around it (§1, PRODUCT.md → "Price is not the
+  product"). If a listing has `price_usd` set while `price` is null, *that* pair is a
+  real inconsistency worth chasing; as of 2026-07-30 no rows are in that state.
+- Some `name_en`/`name_raw` values have historically arrived already truncated with
+  `…`. Not reproduced in the current catalog (0 rows as of 2026-07-30), but the
+  extraction path has not changed in a way that would explain the fix, so treat it as
+  unconfirmed rather than closed.
 
 ## 13. Scaling posture
 
@@ -578,7 +677,7 @@ fixes stayed fixed.
 | Change | The failure that caused it |
 |---|---|
 | `priced_only` removed from the agent's tool schema | The model set it unprompted despite an explicit instruction not to. **Zero of 387 listings have a price**, so it silently returned nothing — "we stock one flooring admixture" became "the catalog has nothing for floor coatings". A silent false negative on availability is the worst answer this assistant can give. |
-| Ranking by fit, never by price | Same root cause: price ordering ranks the catalog by which supplier happened to print a number. Note this puts the assistant at odds with PRODUCT.md's "what a chemical costs across suppliers", which is currently unanswerable for **every** product. |
+| Ranking by fit, never by price | Same root cause: price ordering ranks the catalog by which supplier happened to print a number. This *used* to contradict PRODUCT.md's "what a chemical costs across suppliers"; that framing was wrong and PRODUCT.md was corrected on 2026-07-30 — price is a bonus field, specification is the comparison axis (§1). The assistant's behaviour here was right all along and is now the documented product position. |
 | Query widening (phrase → singular → rarest word) | "hydrocarbon resins" matched nothing because the catalog stores "Hydrocarbon Resin" — 25 products reported as none. **Both models tested failed identically**, which is what makes it a retrieval bug rather than a prompting one. Prompting models to "use short terms" was asking them to work around broken search. |
 | `related_rows` for widened matches | Widening "calcium carbonate" to "carbonate" matches *dimethyl* carbonate — a different substance the model duly offered. Returning them as normal rows produced "we stock zinc oxide, but neither is in the catalog"; withholding them produced a false negative on flooring. Primary count stays zero; near-misses stay visible and citable. |
 | `CallGuard` (no repeated identical tool calls) | The model ran `search_catalog('solvent')` five times in one turn, burning the iteration budget on an unchanged result. |

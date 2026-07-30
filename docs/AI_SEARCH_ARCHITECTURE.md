@@ -12,14 +12,18 @@ three kinds of question, and they do not carry equal weight:
 1. **Sourcing** — "which of our suppliers carries an epoxy hardener for tile
    adhesive?" Every fact is in the catalog. Retrieval + ranking + explanation.
 
-   > ⚠️ **Availability, not price, is the primary axis.** Most brochures do not
-   > print prices. PRODUCT.md frames the product around "what a chemical costs
-   > across suppliers", and the dashboard's `missing_price` slice shows the
-   > gap — but for the assistant, price is *one optional column*, not the
-   > ranking key. What the catalog reliably knows is **who supplies what, and
-   > with what technical properties**. Design around that: rank by fit to the
-   > user's stated requirement (from `details`), surface price when present,
-   > never sort by it as a default. See §5.1.
+   > ⚠️ **Availability, not price, is the primary axis.** Most brochures are spec
+   > sheets and print no price at all — zero listings in the live catalog carry
+   > one. Price is *one optional column*, never the ranking key. What the catalog
+   > reliably knows is **who supplies what, and with what technical properties**.
+   > Design around that: rank by fit to the user's stated requirement (from
+   > `details`), surface price when present, never sort by it as a default.
+   > See §5.1.
+   >
+   > This was once at odds with PRODUCT.md, which framed the product around "what
+   > a chemical costs across suppliers". That framing was wrong and was corrected
+   > on 2026-07-30 — see PRODUCT.md → "Price is not the product". The guidance in
+   > this box is now the documented product position, not a local exception.
 2. **Opinion** — "what can I use instead of DEG for a GCC floor coating?"
    Not in the catalog. Chemistry judgement, constrained to what we can buy.
 3. **Regulatory** — "X got banned, what do I switch to?"

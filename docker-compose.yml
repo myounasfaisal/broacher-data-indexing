@@ -1,16 +1,63 @@
-# Convenience runner for the backend container (backend only — the frontend is
-# a static Vite build served elsewhere).
+# Runs the FULL backend: API + extraction worker(s) + reconciler.
 #
-#   docker compose up --build
+# All three are required. The API only *stages* uploads into Postgres; the worker
+# is what actually extracts, and the reconciler heals documents whose worker died
+# mid-page. Running the API alone gives a system that accepts uploads and silently
+# never processes them — which is exactly what this file used to do, so if you are
+# copying an older version, don't.
+#
+#   docker compose up --build              # 1 API, 2 workers, 1 reconciler
+#   docker compose up --build --scale worker=8    # more throughput for a batch
+#   docker compose logs -f worker          # follow extraction progress
+#
+# Concurrency IS the worker replica count — there is no in-process pool. Workers
+# claim documents with FOR UPDATE SKIP LOCKED, so replicas never collide and you
+# can scale up or down mid-batch.
+#
+# The reconciler must stay at exactly 1. It is a healer, not a worker: running two
+# means two processes reviving the same stalled documents.
 #
 # Reads secrets/config from backend/.env at runtime (never baked into the image).
 # The API is published on http://localhost:8000.
+
+# Shared by all three services — same image, same env, same code.
+x-backend: &backend
+  image: brochure-backend
+  env_file:
+    - ./backend/.env
+  restart: unless-stopped
+
 services:
+  # ── API ────────────────────────────────────────────────────────────────
+  # The only service that publishes a port. Builds the image the other two reuse.
   backend:
+    <<: *backend
     build: ./backend
-    image: brochure-backend
-    env_file:
-      - ./backend/.env
     ports:
       - "8000:8000"
-    restart: unless-stopped
+
+  # ── Extraction workers ─────────────────────────────────────────────────
+  # Scale this for throughput: --scale worker=N. No ports (nothing listens).
+  worker:
+    <<: *backend
+    command: ["python", "-m", "app.worker"]
+    depends_on:
+      backend:
+        condition: service_started
+    deploy:
+      replicas: 2
+    # The worker finishes its current page before exiting on SIGTERM (see the
+    # signal handler in app/worker.py). Give it room to do that instead of being
+    # killed mid-extraction, which would leave a page claimed and cost an AI call.
+    stop_grace_period: 120s
+
+  # ── Reconciler ─────────────────────────────────────────────────────────
+  # Exactly 1. Do NOT scale.
+  reconciler:
+    <<: *backend
+    command: ["python", "-m", "app.reconciler"]
+    depends_on:
+      backend:
+        condition: service_started
+    deploy:
+      replicas: 1
