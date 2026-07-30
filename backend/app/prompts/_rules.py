@@ -80,6 +80,26 @@ Repeat the column header row for each new sub-table so no section is left \
 headerless. Keep the label text EXACTLY as printed, in every language/script it \
 appears in — never translate, abbreviate, or normalise it here.
 
+PRODUCT PHOTOS IN TABLE CELLS carry text you must not drop. Many brochures have \
+a "Product" column holding a photograph of the labelled container rather than \
+the product's name in text. The brand and product name are PRINTED ON THAT \
+LABEL, and they are frequently the only place the real SKU appears anywhere on \
+the page. Read the label and transcribe what it says into the cell, as text:
+
+  | 1. | RESSI EPO CRACK FILL | A three-part solvent free epoxy system ... |
+  | 2. | RESSI EPO CRACK FILL LV | A three-part solvent free low viscosity ... |
+
+Zoom in mentally on the packaging and read every legible line: brand name, \
+product name, and any variant suffix (LV, WR, CR, HD, 2K, ...). The suffix is \
+often what distinguishes one row from the next, so losing it collapses distinct \
+products into one.
+
+If the label text is genuinely too small or blurred to read, write \
+[product image: unreadable] in that cell. Do NOT write a generic placeholder \
+like "Product Image 1", do NOT invent a filename, and NEVER fabricate an image \
+URL — a downstream step decides what to do with an unreadable label, and it can \
+only do that if you reported honestly that you could not read it.
+
 The same applies to a label printed immediately above a table rather than \
 inside it: keep it directly above that table as a heading, never separated from \
 it by other content.
@@ -144,6 +164,24 @@ describe.
 
 Emit a product only when there is a named grade / model / SKU code, or a \
 distinct chemical named as something offered.
+
+SECTION HEADINGS — emit once, never twice. A heading like "EPOXY CRACK \
+FILLERS" or "EPOXY PRIMERS" names a category, and how you treat it depends \
+entirely on whether the section has product rows beneath it:
+
+- IF the section HAS rows and you are emitting them: do NOT also emit the \
+heading as a listing of its own. Every row already carries the category in its \
+`product_family`, which is what makes the category searchable. Emitting the \
+heading too creates a duplicate that inflates the supplier's product count and \
+returns the same supplier repeatedly for one category search.
+- IF the section has NO rows beneath it — the supplier simply states they offer \
+this category, with no variants listed — then DO emit one listing for it, so \
+the offering is not lost. Name it "<Supplier> <Category>" in Title Case \
+("Ressichem Epoxy Primer"), never the raw heading in caps.
+
+The test: would emitting this heading duplicate something already covered by a \
+row's product_family? If yes, skip it. If it is the only record that the \
+supplier offers this category at all, keep it.
 """
 
 # --- 2. Product identity: the two mirror-image context failures ------------
@@ -209,6 +247,43 @@ RIGHT — full printed label in the name AND in its own field:
       "ph": "4.5-6.5"
     }
   }
+
+IDENTITY FALLBACK LADDER — what to name a row whose own name cell is unusable.
+
+Some tables have no product-name column at all: the "Product" cell holds a \
+photograph, or is blank, and only a row number (S.No) identifies it. NEVER \
+manufacture a SKU-shaped name from the section title plus that row number. \
+"EPOXY PRIMER 6" and "EPOXY PRIMER S.No 10" are inventions — they look like \
+real part numbers, they are not, and a buyer who searches for them finds \
+nothing while trusting the catalog less. Row indices are positions in a \
+printed table, not product identity.
+
+Work DOWN this ladder and stop at the first level that yields a real name:
+
+1. LABEL TEXT — the product name transcribed from the packaging photo in that \
+row (e.g. "RESSI EPO CRACK FILL LV"). Use it verbatim, in the printed casing \
+if it is a brand-style name.
+2. NAME IN THE DESCRIPTION — brochure descriptions very often name the product \
+in prose even when the name column is a photo: "Ressi EPO Roll Coat can be \
+applied to steel and concrete internal tank surfaces". Extract "Ressi EPO Roll \
+Coat" and use it.
+3. CHEMISTRY FROM THE DESCRIPTION — when no trade name exists anywhere, build \
+the name from the chemistry the description states, e.g. \
+"Bisphenol-A / polyamide epoxy crack filler". This is honest, and it is \
+searchable by the substance a buyer actually asks for.
+4. SUPPLIER + CATEGORY — last resort: "<Supplier> <Category>" in Title Case, \
+e.g. "Ressichem Epoxy Crack Filler". Set confidence "low" so the row is \
+flagged for a human to fill in the real name later.
+
+Levels 3 and 4 will repeat the same name across several rows of a section. \
+That is correct and expected — the rows are still distinct products, \
+differentiated by their packaging, density, coverage and chemistry, all of \
+which belong in characteristics. Do not merge them, and do not add a number to \
+tell them apart.
+
+Never emit SCREAMING CAPS as a product name unless the source itself prints \
+the brand that way. "EPOXY CRACK FILLERS" is a section heading; \
+"Ressichem Epoxy Crack Filler" is a product name.
 
 MANDATORY SPLITTING RULE (the mirror image — also always applies):
 Some brochures instead bundle several grades onto ONE line, e.g. \
@@ -289,6 +364,14 @@ several codes: that is a bundle. Split it now.
 "wood adhesive") rather than a named grade or chemical? Remove it.
 - Did I emit anything sourced from a footer, page number, or certification \
 stamp? Remove it.
+- Does any product name contain a row number or S.No index ("EPOXY PRIMER 6", \
+"Product 12")? That is invented identity. Rename it using the identity \
+fallback ladder — label text, then a name in the description, then the \
+chemistry, then "<Supplier> <Category>".
+- Did I emit a section heading as its own listing while ALSO emitting the rows \
+underneath it? Drop the heading; the rows carry the category in product_family.
+- Is any product name in SCREAMING CAPS that the source did not print that way? \
+Convert it to Title Case.
 """
 
 
