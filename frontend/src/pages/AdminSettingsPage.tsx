@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   ChevronRight,
+  KeyRound,
   Loader2,
   MessageSquare,
   RefreshCw,
@@ -19,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { AddKeyDialog } from "@/components/admin/AddKeyDialog";
 import {
   SettingField,
   TESTABLE_KEYS,
@@ -83,6 +85,7 @@ export default function AdminSettingsPage() {
   const [active, setActive] = useState<string>("extraction");
   const [query, setQuery] = useState("");
   const [tests, setTests] = useState<Record<string, TestState>>({});
+  const [addKeyOpen, setAddKeyOpen] = useState(false);
 
   const settings = data?.settings ?? [];
   const categories = data?.categories ?? [];
@@ -167,6 +170,23 @@ export default function AdminSettingsPage() {
     onError: (err: Error) => toast.error(err.message),
   });
 
+  // The upload pipeline that actually reads brochures only understands
+  // "claude" or "qwen" (see page_extract_provider), while the main dropdown
+  // offers six. Keeping a second, separately-labelled dropdown in sync by
+  // hand is exactly the kind of thing a non-technical admin would miss, so
+  // picking either of those two values up top carries the pipeline with it.
+  function syncedSetting(key: string, next: string) {
+    setEdits((prev) => {
+      const current = byKey[key];
+      if (!current) return prev;
+      if (!current.is_secret && next === current.value) {
+        const { [key]: _drop, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [key]: next };
+    });
+  }
+
   function setValue(setting: AppSetting, next: string) {
     setEdits((prev) => {
       // Typing a value back to what's stored isn't a change — drop the entry so
@@ -178,6 +198,9 @@ export default function AdminSettingsPage() {
       }
       return { ...prev, [setting.key]: next };
     });
+    if (setting.key === "extraction_provider" && (next === "claude" || next === "qwen")) {
+      syncedSetting("page_extract_provider", next);
+    }
   }
 
   function revert(key: string) {
@@ -221,23 +244,38 @@ export default function AdminSettingsPage() {
     <div className={cn(dirtyCount > 0 && "pb-24")}>
       <PageHeader
         title="Settings"
-        description="Providers, keys, and pipeline behaviour. Changes apply as soon as you save — no restart."
+        description="Which AI does what, and the keys it runs on. Changes apply as soon as you save — no restart."
         actions={
-          <div className="relative w-full sm:w-72">
-            <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle"
-              aria-hidden
-            />
-            <Input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search all settings…"
-              aria-label="Search settings"
-              className="pl-9"
-            />
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            <div className="relative w-full sm:w-72">
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle"
+                aria-hidden
+              />
+              <Input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search all settings…"
+                aria-label="Search settings"
+                className="pl-9"
+              />
+            </div>
+            <Button variant="outline" onClick={() => setAddKeyOpen(true)}>
+              <KeyRound className="h-4 w-4" aria-hidden />
+              Add an AI key
+            </Button>
           </div>
         }
+      />
+
+      <AddKeyDialog
+        open={addKeyOpen}
+        onClose={() => setAddKeyOpen(false)}
+        onSaved={() => {
+          queryClient.invalidateQueries({ queryKey: ["adminSettings"] });
+          toast.success("Key saved.");
+        }}
       />
 
       {status && <StatusStrip status={status} />}

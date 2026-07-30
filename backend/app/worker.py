@@ -59,27 +59,71 @@ def _handle_stop(signum: int, _frame: Any) -> None:
 
 # ── Supplier identity (first two + last two pages) ───────────────────────
 
-def _extract_identity(pages: list[dict[str, Any]]) -> dict[str, Any]:
-    """Best-effort document-level company identity from the cover/footer pages.
-    Reuses the OCR + company prompt already in services.extraction."""
-    if not pages:
-        return {}
-    n = len(pages)
-    want = sorted({0, 1, n - 2, n - 1} & set(range(n)))
+# Total pages the identity pass is willing to look at across the quick first
+# try AND the wider retry — bounded so a bad first guess on a long catalog
+# doesn't turn into scanning the whole document just to find a footer.
+_IDENTITY_MAX_PAGES = 8
+
+
+def _identity_pass(
+    pages: list[dict[str, Any]], indices: list[int], provider: str
+) -> dict[str, Any]:
+    """One best-effort identity attempt over a specific set of page indices.
+
+    On the Claude pipeline the pages go to Claude directly (native vision) —
+    no Qwen OCR step, so a Claude-only setup never needs a Qwen key. Every
+    other pipeline still OCRs with Qwen first, then completes the prompt on
+    the configured provider."""
     try:
-        images = [pipeline_db.download_page_image(pages[i]["image_path"]) for i in want]
-        text = ocr.ocr_pages(images)
-        if not text.strip():
-            return {}
-        raw = extraction.complete_text(
-            f"{extraction._COMPANY_PROMPT}\n\n--- PAGE TEXT ---\n{text}\n--- END ---",
-            provider=eff_str("page_extract_provider"),
-            max_tokens=300,
-        )
+        images = [pipeline_db.download_page_image(pages[i]["image_path"]) for i in indices]
+        if provider == "claude":
+            raw = extraction.complete_claude_vision(
+                images, extraction._COMPANY_PROMPT, max_tokens=300
+            )
+        else:
+            text = ocr.ocr_pages(images)
+            if not text.strip():
+                return {}
+            raw = extraction.complete_text(
+                f"{extraction._COMPANY_PROMPT}\n\n--- PAGE TEXT ---\n{text}\n--- END ---",
+                provider=provider,
+                max_tokens=300,
+            )
         return extraction._parse_json_soft(raw, page_no=0)
     except Exception as exc:  # noqa: BLE001 — identity is best-effort
         logger.warning("Company-identity pass failed for document: %s", exc)
         return {}
+
+
+def _extract_identity(pages: list[dict[str, Any]]) -> dict[str, Any]:
+    """Best-effort document-level company identity, cover/footer first.
+
+    Most brochures print the supplier on the cover or the contact/footer
+    page, so that's the cheap first try. When that comes back empty — some
+    brochures bury contact details in an "About us" page instead — this
+    widens to the next few not-yet-tried pages once before giving up, rather
+    than leaving the document supplier-less over one bad guess at where to
+    look."""
+    if not pages:
+        return {}
+    n = len(pages)
+    provider = eff_str("page_extract_provider")
+
+    narrow = sorted({0, 1, n - 2, n - 1} & set(range(n)))
+    identity = _identity_pass(pages, narrow, provider)
+    if _has_identity(identity):
+        return identity
+
+    budget = _IDENTITY_MAX_PAGES - len(narrow)
+    if budget > 0:
+        unvisited = [i for i in range(n) if i not in narrow][:budget]
+        if unvisited:
+            logger.info(
+                "No supplier identity on cover/footer — widening to page(s) %s",
+                unvisited,
+            )
+            identity = _identity_pass(pages, unvisited, provider)
+    return identity
 
 
 def _has_identity(identity: dict[str, Any]) -> bool:
@@ -190,13 +234,19 @@ def process_document(doc: dict[str, Any]) -> None:
         pdf = pipeline_db.download_source_pdf(doc_id)
         if pdf is None:
             logger.warning("Document %s has no pages and no source PDF — failing", doc_id)
-            pipeline_db.set_document(doc_id, status="failed")
+            pipeline_db.set_document(
+                doc_id, status="failed",
+                error="The uploaded file is missing — try uploading it again.",
+            )
             return
         try:
             splitter.split_document(doc_id, pdf)
         except splitter.SplitError as exc:
             logger.warning("Split failed for document %s: %s", doc_id, exc)
-            pipeline_db.set_document(doc_id, status="failed")
+            pipeline_db.set_document(
+                doc_id, status="failed",
+                error="Couldn't open this file — check it's a valid PDF and try again.",
+            )
             return
         pages = pipeline_db.list_pages(doc_id)
 
@@ -247,6 +297,16 @@ def process_document(doc: dict[str, Any]) -> None:
             pipeline_db.update_page(
                 page["id"], status="failed", attempts=attempts, error_message=str(exc)
             )
+            if exc.fatal:
+                # A bad key / no credit / unknown model fails every remaining
+                # page identically — stop this document now with a clear
+                # reason instead of grinding through the rest one at a time.
+                # fatal=True also tells the reconciler not to auto-retry this
+                # one every ~30s (see reconciler.py) — its remaining pages are
+                # still 'pending', which would otherwise look retriable.
+                pipeline_db.set_document(doc_id, status="failed", error=str(exc), fatal=True)
+                logger.error("Document %s stopped: %s", doc_id, exc)
+                return
             continue
 
         listing_ids = _write_page_listings(doc, page, result, company_id, company_website)
@@ -316,12 +376,22 @@ def _finalize_document(doc_id: str, *, cancelled: bool = False) -> None:
         status = "done"  # every page terminal (done/dead) — finished
 
     listing_ids = _document_listing_ids(doc_id)
-    pipeline_db.set_document(
-        doc_id,
-        status=status,
-        product_count=len(listing_ids),
-        listing_ids=listing_ids,
-    )
+    fields: dict[str, Any] = {
+        "status": status,
+        "product_count": len(listing_ids),
+        "listing_ids": listing_ids,
+    }
+    if status == "failed":
+        # Give the user a reason, not just "failed" — the last page that
+        # actually failed (not just still-queued) is the best summary.
+        failed_pages = [p for p in non_terminal if p["status"] == "failed" and p.get("error_message")]
+        if failed_pages:
+            reason = failed_pages[-1]["error_message"]
+            fields["error"] = (
+                reason if len(failed_pages) == 1
+                else f"{reason} ({len(failed_pages)} pages affected)"
+            )
+    pipeline_db.set_document(doc_id, **fields)
 
     # A genuinely finished document: drop the retained PDF and log the upload to
     # the activity feed (only on 'done', matching jobs.py._finalize).
@@ -385,7 +455,10 @@ def run_forever(poll_interval: float = _POLL_INTERVAL) -> None:
         except Exception:  # noqa: BLE001 — a bad document must not kill the worker
             logger.exception("Document %s crashed during processing", doc.get("id"))
             try:
-                pipeline_db.set_document(doc["id"], status="failed")
+                pipeline_db.set_document(
+                    doc["id"], status="failed",
+                    error="Something unexpected stopped this upload. Restart to try again.",
+                )
             except Exception:  # noqa: BLE001
                 logger.exception("Could not mark document %s failed", doc.get("id"))
     logger.info("Worker %s stopped", WORKER_ID)

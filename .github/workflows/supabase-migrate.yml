@@ -1,0 +1,50 @@
+# Auto-apply database migrations: on every push to `deployment` that touches
+# supabase/migrations/, push the new migration(s) to the live Supabase project.
+#
+# Why this exists: before this workflow, every schema change (new column, new
+# table) had to be applied by hand against the live database — easy to forget,
+# easy to apply inconsistently, and invisible in git history as a "deploy".
+# Migration files already live in supabase/migrations/ (mirrored from
+# db/migrations/); this just makes pushing them automatic instead of manual.
+#
+# One-time setup required before this runs:
+#   Repo secret: SUPABASE_ACCESS_TOKEN — a personal access token from
+#     https://supabase.com/dashboard/account/tokens (Settings -> Access Tokens)
+#   Repo variable: SUPABASE_PROJECT_REF — qpqdbyhfquqfrkrocnnu (from the
+#     project URL / SUPABASE_URL in backend/.env)
+
+name: Deploy Supabase migrations
+
+on:
+  push:
+    branches: [deployment]
+    paths:
+      - "supabase/migrations/**"
+  workflow_dispatch: {}   # lets you trigger a migration push manually from the Actions tab
+
+concurrency:
+  group: supabase-migrate
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    if: github.repository == 'aitexsolutionsorg/brochure-indexing-bostech'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link project
+        run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+
+      - name: Push new migrations
+        run: supabase db push
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}

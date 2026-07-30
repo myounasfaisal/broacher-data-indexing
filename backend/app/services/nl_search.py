@@ -37,7 +37,9 @@ def parse_query(query: str) -> InterpretedFilters:
     prompt = build_nl_search_prompt(query)
 
     try:
-        raw = extraction.complete_text(prompt, provider=provider, max_tokens=400)
+        raw = extraction.complete_text(
+            prompt, provider=provider, max_tokens=400, feature="AI search"
+        )
     except extraction.ExtractionError as exc:
         raise NLSearchError(str(exc)) from exc
 

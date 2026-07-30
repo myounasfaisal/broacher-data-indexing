@@ -78,7 +78,10 @@ function stageText(doc: DocumentStatus): string {
         doc.company_name ? ` from ${doc.company_name}` : ""
       }`;
     case "failed":
-      return "Extraction failed — restart to try again.";
+      // Every message the backend writes is already a complete, actionable
+      // sentence (what happened + what to do) — appending anything here
+      // risks a duplicated "restart to try again" tail.
+      return doc.error || "Extraction failed — restart to try again.";
     case "cancelled":
       return `Cancelled${
         doc.product_count ? ` — ${doc.product_count} product(s) were already saved` : ""

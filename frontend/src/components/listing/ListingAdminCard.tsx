@@ -6,6 +6,7 @@ import { Plus, X } from "lucide-react";
 import { api } from "@/lib/api";
 import type { Listing, ListingUpdate } from "@/types/chemical";
 import { REFERENCE_KEY } from "@/components/listing/ListingDetailBody";
+import { SupplierPicker, type SupplierValue } from "@/components/listing/SupplierPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +21,7 @@ interface FormState {
   currency: string;
   purity: string;
   needs_review: boolean;
+  supplier: SupplierValue;
 }
 
 /** One editable technical-detail entry; `id` is only a stable React key. */
@@ -38,6 +40,7 @@ function fromListing(l: Listing): FormState {
     currency: l.currency ?? "",
     purity: l.purity ?? "",
     needs_review: l.needs_review,
+    supplier: { id: l.company_id, name: l.company_name_en || l.company_name || "" },
   };
 }
 
@@ -137,6 +140,17 @@ function diff(form: FormState, rows: DetailRow[], l: Listing): ListingUpdate {
     out.needs_review = form.needs_review;
   const details = buildDetails(rows, l.details);
   if (!sameJson(details, l.details ?? null)) out.details = details;
+
+  const supplierName = form.supplier.name.trim();
+  if (form.supplier.id !== null && form.supplier.id !== l.company_id) {
+    out.company_id = form.supplier.id;
+  } else if (
+    form.supplier.id === null &&
+    supplierName &&
+    supplierName !== (l.company_name_en || l.company_name || "")
+  ) {
+    out.new_company_name = supplierName;
+  }
   return out;
 }
 
@@ -240,6 +254,10 @@ export function ListingAdminCard({
             label="Name (as printed)"
             value={form.name_raw}
             onChange={(v) => setForm({ ...form, name_raw: v })}
+          />
+          <SupplierPicker
+            value={form.supplier}
+            onChange={(supplier) => setForm({ ...form, supplier })}
           />
           <TextField
             id="edit-cas"

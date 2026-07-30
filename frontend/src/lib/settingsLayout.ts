@@ -36,6 +36,31 @@ export interface ProviderSpec {
 }
 
 export const PROVIDERS: Record<string, ProviderSpec> = {
+  anthropic: {
+    label: "Claude (Anthropic)",
+    keyKey: "anthropic_api_key",
+    testAs: "claude",
+    console: {
+      label: "console.anthropic.com",
+      href: "https://console.anthropic.com/settings/keys",
+    },
+  },
+  openai: {
+    label: "ChatGPT (OpenAI)",
+    keyKey: "openai_api_key",
+    baseKey: "openai_api_base",
+    testAs: "openai",
+    console: {
+      label: "platform.openai.com",
+      href: "https://platform.openai.com/api-keys",
+    },
+  },
+  gemini: {
+    label: "Gemini (Google)",
+    keyKey: "gemini_api_key",
+    testAs: "gemini",
+    console: { label: "ai.google.dev", href: "https://aistudio.google.com/apikey" },
+  },
   qwen: {
     label: "Qwen (Alibaba DashScope)",
     keyKey: "qwen_api_key",
@@ -46,40 +71,15 @@ export const PROVIDERS: Record<string, ProviderSpec> = {
       href: "https://dashscope.console.aliyun.com/apiKey",
     },
   },
-  anthropic: {
-    label: "Anthropic (Claude)",
-    keyKey: "anthropic_api_key",
-    testAs: "claude",
-    console: {
-      label: "console.anthropic.com",
-      href: "https://console.anthropic.com/settings/keys",
-    },
-  },
-  openai: {
-    label: "OpenAI (GPT)",
-    keyKey: "openai_api_key",
-    baseKey: "openai_api_base",
-    testAs: "openai",
-    console: {
-      label: "platform.openai.com",
-      href: "https://platform.openai.com/api-keys",
-    },
-  },
-  gemini: {
-    label: "Google (Gemini)",
-    keyKey: "gemini_api_key",
-    testAs: "gemini",
-    console: { label: "ai.google.dev", href: "https://aistudio.google.com/apikey" },
-  },
   openrouter: {
-    label: "OpenRouter (GLM-4.6V)",
+    label: "GLM-4.6V (via OpenRouter)",
     keyKey: "openrouter_api_key",
     baseKey: "openrouter_api_base",
     testAs: "openrouter",
     console: { label: "openrouter.ai", href: "https://openrouter.ai/keys" },
   },
   nuextract: {
-    label: "NuExtract (NuMind)",
+    label: "NuExtract (hosted service)",
     keyKey: "nuextract_api_key",
     baseKey: "nuextract_api_base",
     // Without the project ID a NuExtract job cannot be created at all, so it
@@ -126,24 +126,23 @@ export interface SectionSpec {
 export const SECTIONS: SectionSpec[] = [
   {
     key: "extraction",
-    title: "Extraction",
-    blurb:
-      "The model that reads an uploaded brochure and turns it into product rows.",
+    title: "Reading brochures",
+    blurb: "The AI that reads an uploaded brochure and pulls out the products.",
     provider: {
       setting: "extraction_provider",
       providerValues: {
-        qwen: "qwen",
-        gpt: "openai",
         claude: "anthropic",
+        gpt: "openai",
         gemini: "gemini",
+        qwen: "qwen",
         glm: "openrouter",
         nuextract: "nuextract",
       },
       modelFor: {
-        qwen: "qwen_model",
-        gpt: "openai_model",
         claude: "claude_model",
+        gpt: "openai_model",
         gemini: "gemini_model",
+        qwen: "qwen_model",
         glm: "openrouter_model",
         // NuExtract runs a hosted project, not a model you name here.
       },
@@ -165,7 +164,7 @@ export const SECTIONS: SectionSpec[] = [
   {
     key: "chat",
     title: "Chat assistant",
-    blurb: "The sourcing assistant users talk to. Off until you turn it on.",
+    blurb: "The assistant people can chat with to ask about the catalogue. Off until you turn it on.",
     leadKeys: ["chat_enabled"],
     provider: {
       setting: "chat_provider",
@@ -185,9 +184,9 @@ export const SECTIONS: SectionSpec[] = [
   },
   {
     key: "search",
-    title: "Semantic search",
+    title: "“Find similar” search",
     blurb:
-      "Vector similarity over the catalogue. Needs a backfill run after you enable it.",
+      "Lets search suggest similar chemicals, not just exact matches. Needs a one-time setup run after you enable it.",
     leadKeys: ["embeddings_enabled"],
     provider: {
       setting: "embedding_provider",
@@ -200,7 +199,7 @@ export const SECTIONS: SectionSpec[] = [
   {
     key: "system",
     title: "System",
-    blurb: "Upload limits and the background reconciler. Set once, rarely touched.",
+    blurb: "Upload limits and background cleanup. Set once, rarely touched.",
     tailKeys: [
       "max_upload_size_mb",
       "api_max_retries",

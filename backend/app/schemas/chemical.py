@@ -161,11 +161,25 @@ class ListingUpdate(BaseModel):
     # form sends the whole edited object; the PubChem reference block is
     # preserved client-side). Does not affect the dedup key.
     details: dict[str, Any] | None = None
+    # Reassign to an existing supplier (its id, from the suppliers directory).
+    # Manual fix for when extraction found no supplier or the wrong one.
+    company_id: int | None = None
+    # Create a brand-new supplier with this name and assign it, when the
+    # right one isn't in the directory yet. Mutually exclusive with
+    # company_id in intent (the router prefers company_id if both are sent).
+    new_company_name: str | None = None
 
     @field_validator("name_raw", "name_en")
     @classmethod
     def _names_non_empty(cls, v: str | None) -> str | None:
         # Names are required columns — an explicit null/blank would break rows.
+        if v is not None and not v.strip():
+            raise ValueError("must not be empty")
+        return v.strip() if isinstance(v, str) else v
+
+    @field_validator("new_company_name")
+    @classmethod
+    def _new_company_name_non_empty(cls, v: str | None) -> str | None:
         if v is not None and not v.strip():
             raise ValueError("must not be empty")
         return v.strip() if isinstance(v, str) else v

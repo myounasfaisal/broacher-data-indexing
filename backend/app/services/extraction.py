@@ -1,19 +1,23 @@
 """
-Multi-provider brochure extraction (GPT / Qwen / Gemini / Claude) with Qwen OCR.
+Multi-provider brochure extraction (GPT / Qwen / Gemini / Claude).
 
 Pipeline:
   1. Detect whether the PDF is scanned (image-only) via pdf_utils.
-  2. If scanned → run Qwen vision OCR to extract page text first.
+  2. If scanned → the provider reads the page images itself (claude) or gets
+     Qwen-OCR'd text first (gpt / gemini / nuextract).
   3. Send the PDF (or OCR text / page images) to the configured extraction
      provider with the structured extraction prompt.
   4. Parse + validate the JSON result against the pydantic schema.
 
 Provider selection is controlled by EXTRACTION_PROVIDER in the .env
-("gpt", "qwen", "gemini", or "claude"). With "gpt", **Qwen OCRs the brochure
-page images and GPT (OpenAI) turns that text into the structured JSON** — every
-PDF (scanned or text-based) goes image → Qwen OCR → text → GPT. The prompt text
-lives in app/prompts/extraction_prompt.py so it can be tuned without touching
-this logic.
+("gpt", "qwen", "gemini", or "claude"). With "gpt", Qwen OCRs the brochure
+page images and GPT (OpenAI) turns that text into the structured JSON — every
+PDF (scanned or text-based) goes image → Qwen OCR → text → GPT. With "claude",
+Claude handles everything itself — a text-based PDF goes to it as a native
+document, a scanned one as page images (native vision) — so provider=claude
+never needs a Qwen key. The prompt text lives in
+app/prompts/extraction_prompt.py so it can be tuned without touching this
+logic.
 """
 
 from __future__ import annotations
@@ -26,11 +30,13 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import anthropic
 import httpx
+import openai
 from google import genai
 from google.genai import types as genai_types
 from openai import OpenAI
 from tenacity import (
     retry,
+    retry_if_exception,
     retry_if_exception_type,
     stop_after_attempt,
     wait_exponential,
@@ -91,16 +97,82 @@ def _normalize_provider(raw: str) -> str:
 
 # ── Claude provider ───────────────────────────────────────────────────
 
-# Transient Anthropic errors worth retrying (rate limits, 5xx, connection drops).
-_CLAUDE_RETRYABLE = (
-    anthropic.RateLimitError,
-    anthropic.APIStatusError,
-    anthropic.APIConnectionError,
-)
+
+def _is_transient_claude_error(exc: BaseException) -> bool:
+    """True only for failures where trying again might work: rate limits,
+    connection drops, and the API's own 5xx. A bad key, no credit, an unknown
+    model, or a malformed request will fail identically every time — retrying
+    those just delays telling the user, so they are NOT in this set."""
+    if isinstance(exc, (anthropic.RateLimitError, anthropic.APIConnectionError)):
+        return True
+    if isinstance(exc, anthropic.APIStatusError):
+        return exc.status_code >= 500
+    return False
+
+
+# Used by both this module's Claude calls and page_extract.py's (imported
+# from here so there is exactly one retry policy for Claude in the codebase).
+_CLAUDE_RETRY_CONDITION = retry_if_exception(_is_transient_claude_error)
+
+
+def friendly_provider_error(exc: Exception, feature: str) -> tuple[str, bool]:
+    """
+    Turn a provider exception into (plain-English message, is_fatal) for a
+    named feature — e.g. "reading brochures", "the chat assistant", "AI
+    search". Never a status code or raw JSON: the message always says what to
+    do (add/replace a key in Settings) rather than what technically failed.
+
+    Covers both SDKs the app drives directly (Anthropic; OpenAI — also what
+    Qwen's DashScope endpoint speaks) since their exception hierarchies name
+    the same failure modes identically.
+
+    `is_fatal` means retrying won't help — the caller should stop rather than
+    burn through remaining pages/documents hitting the same wall.
+    """
+    if isinstance(exc, anthropic.APIError):
+        sdk = anthropic
+    elif isinstance(exc, openai.APIError):
+        sdk = openai
+    else:
+        return (f"{feature} failed: {exc}", False)
+
+    if isinstance(exc, sdk.AuthenticationError):
+        return (
+            f"The API key for {feature} isn't working. Add a working key in Settings.",
+            True,
+        )
+    if isinstance(exc, sdk.PermissionDeniedError):
+        return (
+            f"The API key for {feature} doesn't have access to that model. "
+            f"Check it in Settings.",
+            True,
+        )
+    if isinstance(exc, sdk.NotFoundError):
+        return (
+            f"The AI model set up for {feature} isn't available. Pick a "
+            f"different one in Settings.",
+            True,
+        )
+    if isinstance(exc, sdk.BadRequestError):
+        text = str(exc).lower()
+        if "credit" in text or "insufficient" in text or "quota" in text:
+            return (
+                f"The AI account for {feature} has run out of credit. Add "
+                f"credit, or add a different API key, in Settings.",
+                True,
+            )
+        return (f"{feature} couldn't process that request. Try again.", True)
+    if isinstance(exc, sdk.RateLimitError):
+        return (f"{feature} hit a temporary speed limit — retrying automatically.", False)
+    if isinstance(exc, sdk.APIConnectionError):
+        return (f"Couldn't reach the AI service for {feature} — retrying automatically.", False)
+    if isinstance(exc, sdk.APIStatusError):
+        return (f"{feature} hit a temporary problem with the AI service — retrying automatically.", False)
+    return (f"{feature} failed: {exc}", False)
 
 
 @retry(
-    retry=retry_if_exception_type(_CLAUDE_RETRYABLE),
+    retry=_CLAUDE_RETRY_CONDITION,
     stop=stop_after_attempt(settings.api_max_retries),
     wait=wait_exponential(multiplier=1, min=2, max=30),
     reraise=True,
@@ -131,27 +203,28 @@ def _call_claude_pdf(pdf_b64: str) -> str:
 
 
 @retry(
-    retry=retry_if_exception_type(_CLAUDE_RETRYABLE),
+    retry=_CLAUDE_RETRY_CONDITION,
     stop=stop_after_attempt(settings.api_max_retries),
     wait=wait_exponential(multiplier=1, min=2, max=30),
     reraise=True,
 )
-def _call_claude_text(text: str) -> str:
-    """Send OCR-extracted text to Claude for structured extraction."""
-    preamble = (
-        "The following text was extracted via OCR from a scanned brochure PDF. "
-        "Treat it as the brochure content and extract structured data.\n\n"
-        f"--- OCR TEXT ---\n{text}\n--- END OCR TEXT ---\n\n"
-    )
+def _call_claude_images(page_images: list[bytes]) -> str:
+    """Send scanned-page images straight to Claude (native vision) and return
+    raw text. Claude reads and structures the brochure in one call — no
+    separate OCR step, so a scanned PDF needs only the Anthropic key."""
+    content: list[dict] = []
+    for png_bytes in page_images:
+        b64 = base64.standard_b64encode(png_bytes).decode("ascii")
+        content.append({
+            "type": "image",
+            "source": {"type": "base64", "media_type": "image/png", "data": b64},
+        })
+    content.append({"type": "text", "text": EXTRACTION_PROMPT})
+
     message = _get_anthropic().messages.create(
         model=eff_str("claude_model"),
         max_tokens=8000,
-        messages=[
-            {
-                "role": "user",
-                "content": preamble + EXTRACTION_PROMPT,
-            }
-        ],
+        messages=[{"role": "user", "content": content}],
     )
     return "".join(block.text for block in message.content if block.type == "text")
 
@@ -450,7 +523,7 @@ def _call_nuextract_text(text: str) -> str:
 # provider abstraction in the codebase.
 
 @retry(
-    retry=retry_if_exception_type(_CLAUDE_RETRYABLE),
+    retry=_CLAUDE_RETRY_CONDITION,
     stop=stop_after_attempt(settings.api_max_retries),
     wait=wait_exponential(multiplier=1, min=2, max=30),
     reraise=True,
@@ -460,6 +533,32 @@ def _complete_claude(prompt: str, max_tokens: int) -> str:
         model=eff_str("claude_model"),
         max_tokens=max_tokens,
         messages=[{"role": "user", "content": prompt}],
+    )
+    return "".join(block.text for block in message.content if block.type == "text")
+
+
+@retry(
+    retry=_CLAUDE_RETRY_CONDITION,
+    stop=stop_after_attempt(settings.api_max_retries),
+    wait=wait_exponential(multiplier=1, min=2, max=30),
+    reraise=True,
+)
+def complete_claude_vision(images: list[bytes], prompt: str, max_tokens: int = 300) -> str:
+    """Text completion over page IMAGES sent straight to Claude (native
+    vision) — the Claude-only equivalent of OCR-then-complete_text, used so a
+    Claude pipeline never needs a Qwen key just to read a cover/footer page."""
+    content: list[dict] = []
+    for png_bytes in images:
+        b64 = base64.standard_b64encode(png_bytes).decode("ascii")
+        content.append({
+            "type": "image",
+            "source": {"type": "base64", "media_type": "image/png", "data": b64},
+        })
+    content.append({"type": "text", "text": prompt})
+    message = _get_anthropic().messages.create(
+        model=eff_str("claude_model"),
+        max_tokens=max_tokens,
+        messages=[{"role": "user", "content": content}],
     )
     return "".join(block.text for block in message.content if block.type == "text")
 
@@ -510,12 +609,16 @@ def _complete_gpt(prompt: str, max_tokens: int) -> str:
 
 
 def complete_text(
-    prompt: str, provider: str | None = None, max_tokens: int = 600
+    prompt: str,
+    provider: str | None = None,
+    max_tokens: int = 600,
+    feature: str = "this request",
 ) -> str:
     """
     Small text-only completion against one of the providers (defaults to the
-    configured extraction provider). Raises ExtractionError on failure, like
-    the extraction paths.
+    configured extraction provider). Raises ExtractionError on failure, with a
+    plain-English message naming `feature` (e.g. "AI search") — not a status
+    code or raw SDK dump.
     """
     chosen = _normalize_provider(provider or eff_str("extraction_provider"))
     try:
@@ -531,9 +634,8 @@ def complete_text(
     except ExtractionError:
         raise
     except Exception as exc:
-        raise ExtractionError(
-            f"{chosen.capitalize()} API error after retries: {exc}"
-        ) from exc
+        message, _fatal = friendly_provider_error(exc, feature)
+        raise ExtractionError(message) from exc
 
 
 # ── JSON parsing ─────────────────────────────────────────────────────
@@ -914,22 +1016,27 @@ def extract_brochure(pdf_bytes: bytes) -> ExtractionResult:
                 )
 
         elif analysis.is_scanned and analysis.page_images:
-            # Scanned → Qwen OCR first, then a single text-based call (claude /
-            # gemini). Small scanned docs; native-PDF providers keep one call.
-            logger.info(
-                "Scanned PDF detected (%d pages) — running Qwen OCR",
-                analysis.page_count,
-            )
-            ocr_text = ocr.ocr_pages(analysis.page_images)
-            if not ocr_text.strip():
-                raise ExtractionError(
-                    "Qwen OCR returned no text from the scanned PDF."
+            # Scanned → claude reads the page images itself (native vision, no
+            # OCR step, no Qwen key needed). gemini still goes through Qwen OCR
+            # text first, then a single text-based call.
+            if provider == "claude":
+                logger.info(
+                    "Scanned PDF detected (%d pages) — sending page images to "
+                    "Claude directly (no OCR step)",
+                    analysis.page_count,
                 )
-            raw = (
-                _call_claude_text(ocr_text)
-                if provider == "claude"
-                else _call_gemini_text(ocr_text)
-            )
+                raw = _call_claude_images(analysis.page_images)
+            else:
+                logger.info(
+                    "Scanned PDF detected (%d pages) — running Qwen OCR",
+                    analysis.page_count,
+                )
+                ocr_text = ocr.ocr_pages(analysis.page_images)
+                if not ocr_text.strip():
+                    raise ExtractionError(
+                        "Qwen OCR returned no text from the scanned PDF."
+                    )
+                raw = _call_gemini_text(ocr_text)
             data = _parse_json(raw)
         else:
             # Text-based → send the native PDF directly (claude / gemini).

@@ -59,7 +59,15 @@ _STAGE2_MAX_ATTEMPTS = 2
 
 
 class PageExtractError(Exception):
-    """Raised when a page could not be extracted into valid structured data."""
+    """Raised when a page could not be extracted into valid structured data.
+
+    `fatal=True` means the cause won't fix itself on retry (bad/expired key,
+    no credit, unknown model) — the worker stops the whole document instead
+    of failing every remaining page the same way, one at a time."""
+
+    def __init__(self, message: str, *, fatal: bool = False) -> None:
+        super().__init__(message)
+        self.fatal = fatal
 
 
 # ── Output shape (matches IMPLEMENTATION_BRIEF.md §3) ────────────────────
@@ -148,7 +156,7 @@ def _stage1_qwen(image: bytes, context: dict[str, Any] | None) -> str:
 
 
 @retry(
-    retry=retry_if_exception_type(extraction._CLAUDE_RETRYABLE),
+    retry=extraction._CLAUDE_RETRY_CONDITION,
     stop=stop_after_attempt(settings.api_max_retries),
     wait=wait_exponential(multiplier=1, min=2, max=30),
     reraise=True,
@@ -207,7 +215,7 @@ def _stage2_qwen(markdown: str) -> dict[str, Any]:
 
 
 @retry(
-    retry=retry_if_exception_type(extraction._CLAUDE_RETRYABLE),
+    retry=extraction._CLAUDE_RETRY_CONDITION,
     stop=stop_after_attempt(settings.api_max_retries),
     wait=wait_exponential(multiplier=1, min=2, max=30),
     reraise=True,
@@ -289,12 +297,16 @@ def extract(
     try:
         markdown = stage1(image, context)
     except Exception as exc:
-        raise PageExtractError(f"Stage 1 (transcription) failed: {exc}") from exc
+        message, fatal = extraction.friendly_provider_error(exc, "reading brochures")
+        raise PageExtractError(message, fatal=fatal) from exc
     if not markdown.strip():
         # A blank page is legitimately empty — not an error, just no listings.
         return PageExtraction(markdown="", listings=[], next_context=context, stage2_attempts=0)
 
-    # Stage 2 — structure it, retrying on schema-invalid output.
+    # Stage 2 — structure it, retrying on schema-invalid output. A raw
+    # provider exception (key/credit/model problem) is not worth retrying
+    # here — it will fail the same way every time — so it's translated and
+    # raised immediately rather than burning through _STAGE2_MAX_ATTEMPTS.
     last_err: Exception | None = None
     for attempt in range(1, _STAGE2_MAX_ATTEMPTS + 1):
         try:
@@ -312,6 +324,9 @@ def extract(
         except (ValidationError, json.JSONDecodeError, PageExtractError) as exc:
             last_err = exc
             logger.warning("Stage 2 attempt %d/%d failed: %s", attempt, _STAGE2_MAX_ATTEMPTS, exc)
+        except Exception as exc:
+            message, fatal = extraction.friendly_provider_error(exc, "reading brochures")
+            raise PageExtractError(message, fatal=fatal) from exc
 
     raise PageExtractError(
         f"Stage 2 (structuring) failed after {_STAGE2_MAX_ATTEMPTS} attempts: {last_err}"

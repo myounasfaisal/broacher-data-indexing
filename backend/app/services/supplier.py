@@ -112,6 +112,13 @@ def resolve_company(identity: dict[str, Any]) -> int:
 
     def _backfill_for(row: dict[str, Any]) -> dict[str, Any]:
         patch: dict[str, Any] = {}
+        # A real name backfills a row created with no name at all, OR one
+        # that got the "Unknown supplier" placeholder because only a website
+        # or email was known at the time — otherwise that placeholder is
+        # permanent, since it isn't blank and never gets replaced.
+        existing_name = row.get("company_name") or ""
+        if name and (not existing_name or existing_name == "Unknown supplier"):
+            patch["company_name"] = name
         if name_en and not row.get("company_name_en"):
             patch["company_name_en"] = name_en
         if website and not row.get("website"):

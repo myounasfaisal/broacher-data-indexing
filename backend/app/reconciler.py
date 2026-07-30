@@ -12,6 +12,9 @@ Every ~30s it sweeps the DB and fixes work that can't fix itself:
      never got finalized — mark 'done' and delete the retained source PDF.
   3. Retry failed documents that still have retriable pages — reset to a
      claimable status so a worker resumes at the first non-done page.
+     Skipped for documents the worker stopped for a fatal reason (bad key,
+     no credit, unknown model, see documents.fatal) — retrying would just
+     fail identically; only a manual Restart clears that flag.
   4. Reset documents stuck 'extracting' past the staleness timeout with no page
      heartbeat (their worker died) — back to claimable for another worker.
 
@@ -86,7 +89,7 @@ def reconcile_documents(stale_seconds: int) -> dict[str, int]:
     client = get_client()
     docs = (
         client.table("documents")
-        .select("id, status, claimed_at, page_count")
+        .select("id, status, claimed_at, page_count, fatal")
         .in_("status", ["extracting", "failed"])
         .execute()
         .data
@@ -128,6 +131,13 @@ def reconcile_documents(stale_seconds: int) -> dict[str, int]:
             continue
 
         has_retriable = any(p["status"] in _RETRIABLE_PAGE for p in pages)
+
+        # A document the worker deliberately stopped (bad key, no credit, an
+        # unknown model) has "retriable" pages only because they were never
+        # attempted — retrying would just fail the same way again. Leave it
+        # failed until a human restarts it (which clears the flag).
+        if doc.get("fatal"):
+            continue
 
         # A failed document with pages still worth retrying → re-queue.
         if status == "failed" and has_retriable:

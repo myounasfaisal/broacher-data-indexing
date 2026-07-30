@@ -41,7 +41,7 @@ import anthropic
 from openai import OpenAI
 
 from app.config import eff_int, eff_str
-from app.services import agent_tools, llm_clients
+from app.services import agent_tools, extraction, llm_clients
 
 logger = logging.getLogger(__name__)
 
@@ -129,6 +129,16 @@ class ChatProvider(Protocol):
 
 _get_anthropic = llm_clients.anthropic_client
 
+# The adaptive-thinking `effort` dial only exists on the Claude 5 tier
+# (Sonnet 5, Opus 5) — Haiku 4.5 and every Claude 4.x model reject the
+# parameter outright (400 invalid_request_error). Checked by prefix, not
+# equality, so a dated snapshot of the same model still matches.
+_EFFORT_CAPABLE_PREFIXES = ("claude-sonnet-5", "claude-opus-5")
+
+
+def _supports_effort(model: str) -> bool:
+    return model.startswith(_EFFORT_CAPABLE_PREFIXES)
+
 
 class AnthropicChatProvider:
     """
@@ -167,19 +177,21 @@ class AnthropicChatProvider:
 
         for _ in range(eff_int("chat_max_tool_iterations")):
             on_event({"type": "thinking"})
+            model = eff_str("chat_anthropic_model")
+            kwargs: dict[str, Any] = dict(
+                model=model,
+                max_tokens=2048,
+                system=system,
+                tools=tools,
+                messages=history,
+            )
+            if _supports_effort(model):
+                kwargs["output_config"] = {"effort": eff_str("chat_effort")}
             try:
-                response = client.messages.create(
-                    model=eff_str("chat_anthropic_model"),
-                    max_tokens=2048,
-                    system=system,
-                    tools=tools,
-                    messages=history,
-                    output_config={"effort": eff_str("chat_effort")},
-                )
-            except anthropic.APIStatusError as exc:
-                raise ChatProviderError(f"Anthropic API error: {exc}") from exc
-            except anthropic.APIConnectionError as exc:
-                raise ChatProviderError("Could not reach the Anthropic API.") from exc
+                response = client.messages.create(**kwargs)
+            except (anthropic.APIStatusError, anthropic.APIConnectionError) as exc:
+                message, _fatal = extraction.friendly_provider_error(exc, "the chat assistant")
+                raise ChatProviderError(message) from exc
 
             # Check stop_reason BEFORE reading content: on a refusal the
             # content array is empty (or partial) and indexing it would blow up.
@@ -285,7 +297,8 @@ class OpenAICompatProvider:
                     max_tokens=2048,
                 )
             except Exception as exc:  # noqa: BLE001 - SDK raises a wide range
-                raise ChatProviderError(f"{self.flavour} API error: {exc}") from exc
+                message, _fatal = extraction.friendly_provider_error(exc, "the chat assistant")
+                raise ChatProviderError(message) from exc
 
             if not response.choices:
                 raise ChatProviderError(f"{self.flavour} returned no choices.")

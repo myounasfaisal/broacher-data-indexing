@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { CUSTOM_MODEL, EMPTY_MEANS, MODEL_OPTIONS } from "@/lib/modelCatalog";
+import { COPY_OVERRIDES } from "@/lib/settingsCopy";
 import { cn } from "@/lib/utils";
 
 /** Settings whose value is a boolean, rendered as a switch. */
@@ -32,43 +33,44 @@ const NUMBER_KEYS = new Set([
   "max_page_attempts",
 ]);
 
-/** Fixed vocabularies that are not model names. */
+/**
+ * Fixed vocabularies that are not model names. Claude is listed first in
+ * every provider choice — it's the recommended, fully-supported default —
+ * with everything else available below for anyone who wants to add another
+ * key later. Wording is kept in plain language, not implementation detail.
+ */
 const CHOICE_KEYS: Record<string, { value: string; label: string }[]> = {
-  // GLM and NuExtract are listed because extraction.py has always accepted
-  // them (see _PROVIDER_ALIASES) and their keys, endpoints and model rows
-  // already shipped — they were simply unreachable from the UI, which made
-  // those rows look like clutter rather than the options they are.
   extraction_provider: [
-    { value: "qwen", label: "Qwen · vision OCR + extraction" },
-    { value: "gpt", label: "OpenAI GPT · Qwen OCRs, GPT writes JSON" },
-    { value: "gemini", label: "Google Gemini" },
-    { value: "claude", label: "Anthropic Claude" },
-    { value: "glm", label: "GLM-4.6V via OpenRouter · one-shot, all pages" },
-    { value: "nuextract", label: "NuExtract · hosted extraction project" },
+    { value: "claude", label: "Claude (Anthropic) · recommended" },
+    { value: "gpt", label: "ChatGPT (OpenAI)" },
+    { value: "gemini", label: "Gemini (Google)" },
+    { value: "qwen", label: "Qwen (Alibaba)" },
+    { value: "glm", label: "GLM-4.6V (via OpenRouter)" },
+    { value: "nuextract", label: "NuExtract (hosted service)" },
   ],
   search_provider: [
-    { value: "", label: "Same as extraction provider" },
-    { value: "qwen", label: "Qwen" },
-    { value: "gpt", label: "OpenAI GPT" },
-    { value: "gemini", label: "Google Gemini" },
-    { value: "claude", label: "Anthropic Claude" },
+    { value: "", label: "Same as above" },
+    { value: "claude", label: "Claude (Anthropic)" },
+    { value: "gpt", label: "ChatGPT (OpenAI)" },
+    { value: "gemini", label: "Gemini (Google)" },
+    { value: "qwen", label: "Qwen (Alibaba)" },
   ],
   page_extract_provider: [
-    { value: "qwen", label: "Qwen · testing" },
-    { value: "claude", label: "Claude · production" },
+    { value: "claude", label: "Claude (Anthropic) · recommended" },
+    { value: "qwen", label: "Qwen (Alibaba)" },
   ],
   chat_provider: [
-    { value: "anthropic", label: "Anthropic" },
-    { value: "gpt", label: "OpenAI GPT" },
-    { value: "qwen", label: "Qwen" },
+    { value: "anthropic", label: "Claude (Anthropic) · recommended" },
+    { value: "gpt", label: "ChatGPT (OpenAI)" },
+    { value: "qwen", label: "Qwen (Alibaba)" },
   ],
   chat_effort: [
-    { value: "low", label: "Low · fastest, cheapest" },
-    { value: "medium", label: "Medium · balanced" },
-    { value: "high", label: "High · most thorough" },
+    { value: "low", label: "Fast · shortest answers" },
+    { value: "medium", label: "Balanced · recommended" },
+    { value: "high", label: "Thorough · slower" },
   ],
   embedding_provider: [
-    { value: "qwen", label: "Qwen · reuses the Dashscope key" },
+    { value: "qwen", label: "Qwen · reuses the same key as brochure reading" },
     { value: "openai", label: "OpenAI" },
   ],
 };
@@ -104,7 +106,10 @@ export function SettingField({
   onTest,
   testState,
 }: Props) {
-  const { key, label, description, is_secret } = setting;
+  const { key, is_secret } = setting;
+  const override = COPY_OVERRIDES[key];
+  const label = override?.label ?? setting.label;
+  const description = override?.description ?? setting.description;
   const dirty = draft !== undefined;
   const value = draft ?? setting.value;
 

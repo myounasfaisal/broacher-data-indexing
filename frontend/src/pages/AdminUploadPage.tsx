@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { AlertTriangle, Loader2, Play, X } from "lucide-react";
+import { AlertTriangle, Copy, Loader2, Play, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { useRole } from "@/hooks/useRole";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,13 @@ interface RejectedFile {
   reason: string;
 }
 
+/** A file that matched one already in the catalog — nothing new was queued. */
+interface DuplicateFile {
+  id: string;
+  name: string;
+  note: string;
+}
+
 /**
  * Admin/manager page: pick brochure PDFs and hand them to the DB-worker
  * pipeline. Each upload creates a `documents` row, is split into page images in
@@ -48,6 +55,8 @@ export default function AdminUploadPage() {
   const [isStarting, setIsStarting] = useState(false);
   // Files that never entered the pipeline — too large, or the upload call failed.
   const [rejected, setRejected] = useState<RejectedFile[]>([]);
+  // Files the server recognized as already in the catalog — skipped, not queued.
+  const [duplicates, setDuplicates] = useState<DuplicateFile[]>([]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["uploadJobs"],
@@ -174,8 +183,10 @@ export default function AdminUploadPage() {
     const files = staged;
     if (files.length === 0) return;
     setRejected([]);
+    setDuplicates([]);
     setIsSending(true);
     let queued = 0;
+    const newDuplicates: DuplicateFile[] = [];
     for (const file of files) {
       if (file.size > MAX_SIZE_BYTES) {
         reject(file.name, "exceeds the 20MB limit");
@@ -184,8 +195,30 @@ export default function AdminUploadPage() {
       const tempId = `${file.name}-${Date.now()}-${Math.random()}`;
       setUploading((prev) => [...prev, { tempId, name: file.name }]);
       try {
-        await api.enqueueUpload(file);
-        queued++;
+        const result = await api.enqueueUpload(file);
+        if (result.duplicate && result.status === "done") {
+          newDuplicates.push({
+            id: `${file.name}-${Date.now()}`,
+            name: file.name,
+            note: "already in the catalog",
+          });
+        } else if (result.duplicate && (result.status === "failed" || result.status === "cancelled")) {
+          // A previous attempt at this exact file didn't finish — don't report
+          // it as a successful duplicate. Route it like a rejection so the
+          // admin sees the real reason instead of a false "uploaded".
+          reject(
+            file.name,
+            `already uploaded before and ${result.status} (${result.error ?? "no reason recorded"}) — restart the existing upload instead of re-uploading`,
+          );
+        } else if (result.duplicate) {
+          newDuplicates.push({
+            id: `${file.name}-${Date.now()}`,
+            name: file.name,
+            note: `already in the queue (${result.status})`,
+          });
+        } else {
+          queued++;
+        }
       } catch (err) {
         reject(file.name, err instanceof Error ? err.message : "upload failed");
       } finally {
@@ -194,6 +227,14 @@ export default function AdminUploadPage() {
     }
     setStaged([]);
     setIsSending(false);
+    if (newDuplicates.length > 0) {
+      setDuplicates((prev) => [...prev, ...newDuplicates]);
+      toast.warning(
+        newDuplicates.length === 1
+          ? `${newDuplicates[0].name} was ${newDuplicates[0].note} — skipped as a duplicate, nothing new was queued.`
+          : `${newDuplicates.length} file(s) were already known (duplicates) — skipped, nothing new was queued.`,
+      );
+    }
     if (queued > 0) {
       queryClient.invalidateQueries({ queryKey: ["uploadJobs"] });
       toast.success(
@@ -275,6 +316,46 @@ export default function AdminUploadPage() {
                     setRejected((prev) => prev.filter((x) => x.id !== r.id))
                   }
                   className="touch-target shrink-0 rounded-btn p-1 hover:bg-danger/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/70"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {duplicates.length > 0 && (
+        <div className="rounded-card border border-warn-soft/60 bg-warn-soft p-4">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <p className="flex items-center gap-2 text-sm font-medium text-warn-text">
+              <Copy className="h-4 w-4 shrink-0" aria-hidden />
+              {duplicates.length} duplicate{duplicates.length === 1 ? "" : "s"} skipped
+            </p>
+            <button
+              type="button"
+              onClick={() => setDuplicates([])}
+              className="rounded-btn px-2 py-0.5 text-xs font-medium text-warn-text hover:bg-warn-text/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/70"
+            >
+              Dismiss all
+            </button>
+          </div>
+          <ul className="space-y-1">
+            {duplicates.map((d) => (
+              <li
+                key={d.id}
+                className="flex items-center justify-between gap-3 text-xs text-warn-text"
+              >
+                <span className="min-w-0 truncate" title={d.name}>
+                  <span className="font-medium">{d.name}</span> — {d.note}, nothing new was queued
+                </span>
+                <button
+                  type="button"
+                  aria-label={`Dismiss ${d.name}`}
+                  onClick={() =>
+                    setDuplicates((prev) => prev.filter((x) => x.id !== d.id))
+                  }
+                  className="touch-target shrink-0 rounded-btn p-1 hover:bg-warn-text/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/70"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>

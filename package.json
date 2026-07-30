@@ -1,0 +1,7 @@
+{
+  "name": "brochure-indexing-bostech",
+  "private": true,
+  "devDependencies": {
+    "supabase": "2.110.0"
+  }
+}
