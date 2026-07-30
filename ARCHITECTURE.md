@@ -592,20 +592,33 @@ this section exists so nobody rediscovers them the hard way.
 ### 12.1 The SQL in the repo does not describe the live database
 
 `db/schema.sql` predates several migrations, and `schema-additions.sql` only
-`ALTER`s tables it assumes already exist. Missing from version control entirely:
+`ALTER`s tables it assumes already exist.
 
-- **`claim_next_document`** — the RPC the worker's claim loop depends on. The worker
-  cannot run without it, and it exists in no `.sql` file in this repo.
+**Closed 2026-07-30** by `20260730000002_backfill_missing_functions.sql`, captured
+from the live project with `pg_get_functiondef` so it reproduces production exactly:
+
+- ~~**`claim_next_document`**~~ — the RPC the worker's claim loop depends on. Now in
+  version control.
+- ~~`search_text` / `details_text`~~ — now in version control. Note these are
+  PostgREST **computed fields (functions taking the row type)**, *not* columns, so
+  they never appear in `information_schema.columns`. Auditing for them as columns
+  reports them missing when they are fine.
+
+Still missing from version control:
+
 - The `CREATE TABLE` for `documents`, `audit_log`, and `exchange_rates`.
-- The computed/generated columns the read side relies on: `search_text`,
-  `details_text`, `price_usd`, `dedup_key`, `listings.company_website`.
+- The remaining generated columns: `price_usd`, `dedup_key`,
+  `listings.company_website`.
 - Creation of the `brochure-pages` Storage bucket and its policies.
 
-A fresh environment therefore cannot be provisioned from this repo alone.
+**A fresh environment still cannot be provisioned from this repo alone** — the
+function backfill removes the worker-crashes-on-first-claim failure, not the
+missing tables. The durable fix is a baseline dump (`supabase db dump --schema
+public`) committed as an initial migration.
 
-Newer schema changes do live in `db/migrations/` (starting with
-`2026-07-26_staged_status.sql`). That's the pattern to follow — it doesn't
-retroactively fix the gaps above.
+Newer schema changes live in `supabase/migrations/` (mirrored to `db/migrations/`).
+`supabase/migrations/` is what the Deploy Supabase migrations workflow reads —
+`db/migrations/` is documentation only and applies nothing.
 
 ### 12.2 Dead code that still looks live
 
