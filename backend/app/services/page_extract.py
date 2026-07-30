@@ -40,7 +40,14 @@ from tenacity import (
 )
 
 from app.config import eff_str, settings
-from app.prompts.extraction_prompt import VLM_TRANSCRIPTION_PROMPT
+from app.prompts.extraction_prompt import (
+    STAGE2_JSON_SHAPE,
+    STAGE2_SYSTEM,
+    TOOL_DESCRIPTION,
+    TOOL_NAME,
+    TOOL_PARAMETERS,
+    VLM_TRANSCRIPTION_PROMPT,
+)
 from app.services import extraction  # reuse the Qwen/Claude clients + retry policy
 
 logger = logging.getLogger(__name__)
@@ -66,6 +73,12 @@ class PageListing(BaseModel):
 
     name_raw: str
     name_en: str
+    # The category/family label this row inherits from a heading or a merged
+    # full-width table row (e.g. "Vinyl acetate-ethylene (VAE) emulsion" above a
+    # table of DA-1xx grades). Carried as its own field so the family stays
+    # queryable independently of the name string; the worker merges it into
+    # listings.details. See app/prompts/_rules.py PRODUCT_IDENTITY.
+    product_family: str | None = None
     cas_number_raw: str | None = None
     price: float | None = None
     currency: str | None = None
@@ -86,87 +99,12 @@ class PageExtraction(BaseModel):
     stage2_attempts: int = 1
 
 
-# ── Tool / function schema (forced tool-calling) ─────────────────────────
+# ── Prompts and tool schema ──────────────────────────────────────────────
 #
-# The parameter schema is shared; only the envelope differs between the OpenAI
-# (Qwen) and Anthropic (Claude) tool-calling formats.
-
-_TOOL_NAME = "record_page_listings"
-_TOOL_DESCRIPTION = (
-    "Record every product listing transcribed from this brochure page, plus the "
-    "table context to carry to the next page. Call this exactly once."
-)
-_TOOL_PARAMETERS: dict[str, Any] = {
-    "type": "object",
-    "properties": {
-        "listings": {
-            "type": "array",
-            "description": "One entry per product offered on the page.",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "name_raw": {
-                        "type": "string",
-                        "description": "Product name exactly as printed, in the source language/script.",
-                    },
-                    "name_en": {
-                        "type": "string",
-                        "description": "English translation of the product name.",
-                    },
-                    "cas_number_raw": {
-                        "type": ["string", "null"],
-                        "description": (
-                            "CAS number EXACTLY as it appears on the page. Do NOT "
-                            "reformat, correct, or infer missing digits. Null if none printed."
-                        ),
-                    },
-                    "price": {"type": ["number", "null"]},
-                    "currency": {"type": ["string", "null"]},
-                    "purity": {"type": ["string", "null"]},
-                    "characteristics": {
-                        "type": ["object", "null"],
-                        "description": "Any other printed attributes as key/value pairs; omit if none.",
-                    },
-                    "confidence": {
-                        "type": "string",
-                        "enum": ["high", "low"],
-                        "description": (
-                            "'low' if the source was blurry, the table structure "
-                            "ambiguous, or any field had to be inferred rather than read."
-                        ),
-                    },
-                },
-                "required": ["name_raw", "name_en", "confidence"],
-                "additionalProperties": False,
-            },
-        },
-        "context_for_next_page": {
-            "type": ["object", "null"],
-            "description": (
-                "Table headers / current product family that a CONTINUATION table on "
-                "the next page would need but may not reprint (e.g. "
-                '{"table_headers": ["Grade", "CAS", "Purity"], "product_family": "VAE emulsion"}). '
-                "Null if the page ends no open table."
-            ),
-        },
-    },
-    "required": ["listings"],
-    "additionalProperties": False,
-}
-
-_STAGE2_SYSTEM = (
-    "You convert a faithful markdown transcription of ONE chemical-brochure page "
-    "into structured product listings by calling the record_page_listings tool.\n"
-    "Rules:\n"
-    "- Emit one listing per distinct product. If a single line bundles several "
-    "products under a shared category (\"Silane: A171, A110, A170\"), split it "
-    "into one listing each, carrying the category into every name.\n"
-    "- If a table's header/family was printed on an earlier page (given to you as "
-    "CONTINUATION CONTEXT), apply it to this page's rows.\n"
-    "- Transcribe cas_number_raw EXACTLY as printed — never reformat or invent digits.\n"
-    "- Never invent data. Only record what the transcription shows. Set confidence "
-    "'low' when a value had to be inferred or the source was unclear."
-)
+# Both stages' prompt text and the stage-2 tool schema live in app/prompts —
+# see that package's docstring for why (they used to be duplicated here and in
+# app/prompts/extraction_prompt.py, and the two copies drifted). Edit rules in
+# app/prompts/_rules.py, never here.
 
 
 # ── Stage 1: image -> markdown ───────────────────────────────────────────
@@ -217,30 +155,29 @@ def _stage1_qwen(image: bytes, context: dict[str, Any] | None) -> str:
 )
 def _stage1_claude(image: bytes, context: dict[str, Any] | None) -> str:
     b64 = base64.standard_b64encode(image).decode("ascii")
+    # Split the static instruction prompt (identical on every page) from the
+    # per-page continuation hint so the static half can be cached — Anthropic
+    # honours cache_control per content block. Cache reads are 0.1x base input.
+    content: list[dict[str, Any]] = [
+        {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": b64}},
+        {
+            "type": "text",
+            "text": VLM_TRANSCRIPTION_PROMPT,
+            "cache_control": {"type": "ephemeral"},
+        },
+    ]
+    hint = _running_context_hint(context)
+    if hint:
+        content.append({"type": "text", "text": hint})
     msg = extraction._get_anthropic().messages.create(
         model=_claude_model(),
         max_tokens=4096,
-        messages=[{
-            "role": "user",
-            "content": [
-                {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": b64}},
-                {"type": "text", "text": VLM_TRANSCRIPTION_PROMPT + _running_context_hint(context)},
-            ],
-        }],
+        messages=[{"role": "user", "content": content}],
     )
     return "".join(b.text for b in msg.content if b.type == "text")
 
 
 # ── Stage 2: markdown -> JSON via forced tool-calling ────────────────────
-
-# The exact JSON shape for the Qwen path (which has no tool schema to lean on).
-_STAGE2_JSON_SHAPE = (
-    "\n\nReturn ONLY a JSON object of this exact shape (no prose, no fences):\n"
-    '{"listings": [{"name_raw": str, "name_en": str, "cas_number_raw": str|null, '
-    '"price": number|null, "currency": str|null, "purity": str|null, '
-    '"characteristics": object|null, "confidence": "high"|"low"}], '
-    '"context_for_next_page": object|null}'
-)
 
 
 @retry(
@@ -261,7 +198,7 @@ def _stage2_qwen(markdown: str) -> dict[str, Any]:
         temperature=0,
         response_format={"type": "json_object"},
         messages=[
-            {"role": "system", "content": _STAGE2_SYSTEM + _STAGE2_JSON_SHAPE},
+            {"role": "system", "content": STAGE2_SYSTEM + STAGE2_JSON_SHAPE},
             {"role": "user", "content": f"--- PAGE TRANSCRIPTION ---\n{markdown}\n--- END ---"},
         ],
     )
@@ -276,23 +213,34 @@ def _stage2_qwen(markdown: str) -> dict[str, Any]:
     reraise=True,
 )
 def _stage2_claude(markdown: str) -> dict[str, Any]:
+    # System text + tool schema are identical on every stage-2 call — mark both
+    # with cache_control so subsequent pages in the same document read them at
+    # 0.1x base input price. The user message (the actual page markdown, which
+    # changes every call) is intentionally left uncached.
     msg = extraction._get_anthropic().messages.create(
         model=_claude_model(),
         max_tokens=8000,
-        system=_STAGE2_SYSTEM,
+        system=[
+            {
+                "type": "text",
+                "text": STAGE2_SYSTEM,
+                "cache_control": {"type": "ephemeral"},
+            },
+        ],
         tools=[{
-            "name": _TOOL_NAME,
-            "description": _TOOL_DESCRIPTION,
-            "input_schema": _TOOL_PARAMETERS,
+            "name": TOOL_NAME,
+            "description": TOOL_DESCRIPTION,
+            "input_schema": TOOL_PARAMETERS,
+            "cache_control": {"type": "ephemeral"},
         }],
-        tool_choice={"type": "tool", "name": _TOOL_NAME},
+        tool_choice={"type": "tool", "name": TOOL_NAME},
         messages=[{
             "role": "user",
             "content": f"--- PAGE TRANSCRIPTION ---\n{markdown}\n--- END ---",
         }],
     )
     for block in msg.content:
-        if block.type == "tool_use" and block.name == _TOOL_NAME:
+        if block.type == "tool_use" and block.name == TOOL_NAME:
             return dict(block.input)
     raise PageExtractError("Claude stage 2 returned no tool_use block.")
 

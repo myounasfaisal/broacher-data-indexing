@@ -35,20 +35,10 @@ _get_client = llm_clients.qwen_client
 
 
 # The OCR prompt asks Qwen to be a faithful text extractor — no
-# interpretation, no summarisation, preserve layout where possible.
-_OCR_PROMPT = """\
-You are an OCR engine. The image is one page of a scanned document.
-Extract ALL visible text from the image faithfully and completely.
-
-Rules:
-- Reproduce the text exactly as it appears, preserving the original language \
-and script (Chinese, English, Japanese, Korean, German, Arabic, etc.).
-- Maintain the logical reading order (top to bottom, left to right for LTR \
-scripts, right to left for RTL scripts).
-- Separate distinct sections or columns with blank lines.
-- Do NOT summarise, interpret, or add commentary. Output only the extracted text.
-- If a section is illegible, write [illegible] in its place.
-"""
+# interpretation, no summarisation, preserve layout where possible. It lives in
+# app/prompts/ocr_prompt.py; all prompt text belongs in that package (see its
+# docstring). Aliased to the old private name so call sites below are unchanged.
+from app.prompts.ocr_prompt import OCR_PROMPT as _OCR_PROMPT
 
 # Retry on transient errors from the OpenAI-compatible endpoint.
 _RETRYABLE = (Exception,)  # broad — the openai SDK raises various errors

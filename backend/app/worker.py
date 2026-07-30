@@ -109,6 +109,22 @@ def _review_reasons(
     return reasons
 
 
+def _build_details(listing: page_extract.PageListing) -> dict[str, Any] | None:
+    """Flatten a listing's flexible attributes into the `details` JSON column.
+
+    `product_family` is a first-class field on the extraction schema (a grade row
+    like "DA-100" is unfindable without the family label printed above it), but
+    `details` is what search indexes and the UI renders — so it is merged in here
+    rather than needing its own column. An explicit key the model already set in
+    characteristics wins, so we never overwrite a more specific value.
+    """
+    details = dict(listing.characteristics or {})
+    family = (listing.product_family or "").strip()
+    if family:
+        details.setdefault("product_family", family)
+    return details or None
+
+
 def _write_page_listings(
     doc: dict[str, Any],
     page: dict[str, Any],
@@ -149,7 +165,7 @@ def _write_page_listings(
             # Write flexible attributes to `details` — the column the rest of the
             # app reads (search_text/details_text index it, ProductDetail renders
             # it, the admin editor edits it). `characteristics` is not read anywhere.
-            "details": listing.characteristics or None,
+            "details": _build_details(listing),
             # Per-listing supplier website, matching the old jobs.py write shape
             # (the suppliers directory + ProductDetail's website link read this).
             "company_website": company_website,

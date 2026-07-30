@@ -790,18 +790,10 @@ def _extract_pages(page_images: list[bytes], per_page_call) -> dict:
 # contact/footer page), not something every product page repeats — so per-page
 # product extraction reliably misses it. We recover it with one focused pass
 # over the first + last page (where suppliers print their name/website).
-_COMPANY_PROMPT = (
-    "You are identifying the SUPPLIER company that published this chemical "
-    "brochure. From the page text below (typically the cover and the "
-    "contact/footer page), return ONLY a JSON object with exactly these keys:\n"
-    '{"company_name": <supplier name exactly as printed, in its original '
-    'language/script, or null>, "company_name_en": <English form of the name, '
-    'or null>, "company_website": <website URL if printed, else null>, '
-    '"company_email": <contact email if printed, else null>, '
-    '"company_phone": <contact phone number exactly as printed, else null>}\n'
-    "Use only what is printed. Do NOT list products. If the name is not "
-    "printed, use null."
-)
+# Lives in app/prompts/company_prompt.py — all prompt text belongs in that
+# package (see its docstring). Aliased to the old private name so the existing
+# call sites (here and worker._extract_identity) are unchanged.
+from app.prompts.company_prompt import COMPANY_PROMPT as _COMPANY_PROMPT
 
 
 def _extract_company_identity(page_images: list[bytes], provider: str) -> dict:
