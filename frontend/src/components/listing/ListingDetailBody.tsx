@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ExternalLink, Pencil, Search as SearchIcon } from "lucide-react";
+import { ExternalLink, Mail, Pencil, Phone, Search as SearchIcon } from "lucide-react";
 import { api } from "@/lib/api";
 import { useRole } from "@/hooks/useRole";
+import type { Supplier } from "@/types/chemical";
 import {
   ConvertedPrice,
   formatPrice,
@@ -178,6 +179,12 @@ export function ListingDetailBody({
             </CardContent>
           </Card>
 
+          {(data.company_name_en || data.company_name) && (
+            <SupplierContactCard
+              name={data.company_name_en || data.company_name}
+            />
+          )}
+
           {canManage && !editOpen && (
             <Button
               variant="outline"
@@ -325,6 +332,100 @@ function formatDetailValue(value: unknown): string | null {
 }
 
 
+
+/**
+ * Supplier contact + phone / email / websites, inlined into the product panel
+ * so the user does not have to bounce to the suppliers directory just to see
+ * who to call. Fetched by name through the existing /suppliers filter — the
+ * best directory match is the row whose company name equals the listing's.
+ */
+function SupplierContactCard({ name }: { name: string }) {
+  const query = name.split(/[,()\\%_]/, 1)[0].trim() || name;
+  const { data, isPending, isError } = useQuery({
+    queryKey: ["supplierByName", query],
+    queryFn: () => api.listSuppliers(1, 5, query),
+    staleTime: 60_000,
+  });
+
+  const match = pickSupplier(data?.items ?? [], name);
+
+  if (isPending) {
+    return (
+      <Card>
+        <CardContent className="space-y-2 pt-6" aria-hidden>
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-4 w-60" />
+        </CardContent>
+      </Card>
+    );
+  }
+  if (isError || !match) return null;
+
+  const hasContact =
+    match.email || match.contact_number || match.websites.length > 0;
+  if (!hasContact) return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Supplier contact</CardTitle>
+        <p className="mt-1 text-xs text-fg-subtle">
+          Pulled from this supplier's directory entry — same details as the
+          Suppliers page.
+        </p>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-col items-start gap-1.5 text-sm">
+          {match.email && (
+            <a
+              href={`mailto:${match.email}`}
+              className="inline-flex max-w-full items-center gap-1.5 font-medium text-brand-text hover:underline"
+            >
+              <Mail className="h-3.5 w-3.5 shrink-0" />
+              <span className="min-w-0 truncate">{match.email}</span>
+            </a>
+          )}
+          {match.contact_number && (
+            <span className="inline-flex max-w-full items-center gap-1.5 text-fg">
+              <Phone className="h-3.5 w-3.5 shrink-0 text-fg-subtle" />
+              <span className="min-w-0 truncate font-mono text-xs">
+                {match.contact_number}
+              </span>
+            </span>
+          )}
+          {match.websites.map((site) => (
+            <a
+              key={site}
+              href={websiteHref(site)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex max-w-full items-center gap-1.5 font-medium text-brand-text hover:underline"
+            >
+              <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+              <span className="min-w-0 truncate">{site}</span>
+            </a>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * `/suppliers?q=` is a substring filter, so a query like "ABC" can match
+ * several rows. Prefer an exact name match (either script); otherwise fall
+ * back to the first row the directory returned.
+ */
+function pickSupplier(rows: Supplier[], name: string): Supplier | null {
+  if (rows.length === 0) return null;
+  const lower = name.trim().toLowerCase();
+  const exact = rows.find(
+    (r) =>
+      r.company_name.toLowerCase() === lower ||
+      (r.company_name_en ?? "").toLowerCase() === lower,
+  );
+  return exact ?? rows[0];
+}
 
 /**
  * Honest product lookup: a web search scoped to the supplier's site when we

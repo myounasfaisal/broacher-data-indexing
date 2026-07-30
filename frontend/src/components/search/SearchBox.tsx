@@ -94,6 +94,11 @@ export function SearchBox({
       if (showList && highlight >= 0) {
         e.preventDefault();
         choose(suggestions[highlight]);
+      } else {
+        // Enter commits the query — collapse the dropdown so it doesn't linger
+        // over the results the user is about to look at.
+        setOpen(false);
+        setHighlight(-1);
       }
     } else if (e.key === "Escape") {
       setOpen(false);
