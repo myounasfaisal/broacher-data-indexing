@@ -594,31 +594,51 @@ this section exists so nobody rediscovers them the hard way.
 `db/schema.sql` predates several migrations, and `schema-additions.sql` only
 `ALTER`s tables it assumes already exist.
 
-**Closed 2026-07-30** by `20260730000002_backfill_missing_functions.sql`, captured
-from the live project with `pg_get_functiondef` so it reproduces production exactly:
+**Closed 2026-07-30** by `supabase/migrations/00000000000000_baseline.sql` — a
+full schema baseline, plus `20260730131133_backfill_missing_functions.sql` for
+the three RPCs/computed fields that were the first gap discovered. Both files
+were captured from the live project via `pg_catalog` and `pg_get_functiondef`,
+so the definitions are byte-identical to production, not reconstructed from
+memory. Included in the baseline:
 
-- ~~**`claim_next_document`**~~ — the RPC the worker's claim loop depends on. Now in
-  version control.
-- ~~`search_text` / `details_text`~~ — now in version control. Note these are
-  PostgREST **computed fields (functions taking the row type)**, *not* columns, so
-  they never appear in `information_schema.columns`. Auditing for them as columns
-  reports them missing when they are fine.
+- All 13 public tables (`documents`, `audit_log`, `exchange_rates`, and the ten
+  others).
+- The six functions the app calls: `claim_next_document`, `search_text`,
+  `details_text`, `match_chemicals`, `handle_new_user`, `rls_auto_enable`.
+- The `on_auth_user_created` trigger and the `ensure_rls` event trigger.
+- Every index (20), every RLS policy (9), and RLS enabled on every public table.
+- The `brochure-pages` storage bucket, and `service_role` grants on the RPCs.
 
-Still missing from version control:
+The baseline is fully idempotent: `CREATE ... IF NOT EXISTS` on tables /
+indexes / bucket, `CREATE OR REPLACE` on functions, `DROP ... IF EXISTS` +
+`CREATE` on policies and triggers, `REVOKE`-then-`GRANT` on function ACLs.
+Safe to re-apply against any target — a semantic no-op on live, a full schema
+build on a fresh Supabase project.
 
-- The `CREATE TABLE` for `documents`, `audit_log`, and `exchange_rates`.
-- The remaining generated columns: `price_usd`, `dedup_key`,
-  `listings.company_website`.
-- Creation of the `brochure-pages` Storage bucket and its policies.
+Two things worth internalising:
 
-**A fresh environment still cannot be provisioned from this repo alone** — the
-function backfill removes the worker-crashes-on-first-claim failure, not the
-missing tables. The durable fix is a baseline dump (`supabase db dump --schema
-public`) committed as an initial migration.
+- `search_text` / `details_text` are PostgREST **computed fields (functions
+  taking the row type)**, not columns, so they never appear in
+  `information_schema.columns`. Auditing for them as columns reports them
+  missing when they are fine.
+- The `brochure-pages` bucket is private with **no `storage.objects` policies**,
+  by design: the backend uses the `service_role` key which bypasses RLS. If a
+  future feature needs direct browser access to a page image, add policies —
+  do not make the bucket public.
 
-Newer schema changes live in `supabase/migrations/` (mirrored to `db/migrations/`).
-`supabase/migrations/` is what the Deploy Supabase migrations workflow reads —
-`db/migrations/` is documentation only and applies nothing.
+**How migrations are applied.** Claude Code runs migrations directly against
+the live project through the Supabase MCP (`apply_migration`), which registers
+each in the ledger properly. The `Deploy Supabase migrations` GitHub workflow
+exists but is not the operational path today — its credentials
+(`SUPABASE_ACCESS_TOKEN` secret, `SUPABASE_PROJECT_REF` variable) have never
+been configured, and its failing runs on the Actions tab are expected and
+harmless. If you set those credentials later, the workflow becomes a
+belt-and-braces backup; nothing needs to change here.
+
+`supabase/migrations/` is the authoritative directory (what `supabase db push`
+would read). `db/schema.sql`, `db/schema-additions.sql`, and `db/migrations/`
+remain in the repo as historical documentation only — the baseline supersedes
+them, do not consult them when reasoning about the current schema.
 
 ### 12.2 Dead code that still looks live
 
