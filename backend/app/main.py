@@ -19,6 +19,7 @@ from app.config import settings
 from app.rate_limit import limiter
 from app.routers import (
     admin_settings,
+    auth,
     chat,
     dashboard,
     listings,
@@ -84,6 +85,7 @@ app.add_middleware(
 )
 
 # Feature routers.
+app.include_router(auth.router)
 app.include_router(search.router)
 app.include_router(listings.router)
 app.include_router(suppliers.router)
